@@ -1,0 +1,6 @@
+[package]
+name = "ibis-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

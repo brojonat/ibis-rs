@@ -1,0 +1,19 @@
+[env]
+PGHOST = "{{config_root}}/.pg"
+PGPORT = "54329"
+PGDATABASE = "postgres"
+DUCKDB_PATH = "{{config_root}}/.data/spike.duckdb"
+SQLITE_PATH = "{{config_root}}/.data/spike.sqlite"
+
+[tasks.pg-start]
+description = "Start a throwaway local Postgres on a unix socket in .pg/"
+run = "scripts/pg.sh start"
+
+[tasks.pg-stop]
+description = "Stop the throwaway Postgres"
+run = "scripts/pg.sh stop"
+
+[tasks.run]
+description = "Run the unparser conformance spike (JSON on stdout, matrix on stderr)"
+depends = ["pg-start"]
+run = 'mkdir -p logs .data; f() { cargo run --quiet -- "$@" > logs/results.jsonl 2> >(tee logs/summary.txt >&2); }; f'

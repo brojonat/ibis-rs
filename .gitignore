@@ -1,0 +1,8 @@
+target/
+logs/
+ci/ibis-testing-data/
+.env
+.venv/
+__pycache__/
+.agents/
+.claude/skills/

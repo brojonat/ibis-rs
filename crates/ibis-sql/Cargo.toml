@@ -1,0 +1,6 @@
+[package]
+name = "ibis-sql"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
