@@ -585,6 +585,568 @@
    "postgres": "same"
   }
  },
+ "test_date_column_from_iso": {
+  "file": "test_temporal/test_date_column_from_iso.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_column_from_ymd": {
+  "file": "test_temporal/test_date_column_from_ymd.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "timestamp_col"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_extract[cast-day]": {
+  "file": "test_temporal/test_date_extract[cast-day].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_extract[cast-month]": {
+  "file": "test_temporal/test_date_extract[cast-month].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_extract[cast-year]": {
+  "file": "test_temporal/test_date_extract[cast-year].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_extract[date-day]": {
+  "file": "test_temporal/test_date_extract[date-day].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_extract[date-month]": {
+  "file": "test_temporal/test_date_extract[date-month].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_extract[date-year]": {
+  "file": "test_temporal/test_date_extract[date-year].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_literal": {
+  "file": "test_temporal/test_date_literal.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar_from_iso": {
+  "file": "test_temporal/test_date_scalar_from_iso.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_truncate[D]": {
+  "file": "test_temporal/test_date_truncate[D].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_truncate[M]": {
+  "file": "test_temporal/test_date_truncate[M].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_truncate[Q]": {
+  "file": "test_temporal/test_date_truncate[Q].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_truncate[W]": {
+  "file": "test_temporal/test_date_truncate[W].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_truncate[Y]": {
+  "file": "test_temporal/test_date_truncate[Y].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_column#1": {
+  "file": "test_temporal/test_day_of_week_column#1.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int16"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_column#2": {
+  "file": "test_temporal/test_day_of_week_column#2.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_column_group_by[day_of_week_full_name]": {
+  "file": "test_temporal/test_day_of_week_column_group_by[day_of_week_full_name].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "string_col",
+   "day_of_week_result"
+  ],
+  "dtypes": [
+   "string",
+   "int64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_column_group_by[day_of_week_index]": {
+  "file": "test_temporal/test_day_of_week_column_group_by[day_of_week_index].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "string_col",
+   "day_of_week_result"
+  ],
+  "dtypes": [
+   "string",
+   "int64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[friday]#1": {
+  "file": "test_temporal/test_day_of_week_scalar[friday]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[friday]#2": {
+  "file": "test_temporal/test_day_of_week_scalar[friday]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[monday]#1": {
+  "file": "test_temporal/test_day_of_week_scalar[monday]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[monday]#2": {
+  "file": "test_temporal/test_day_of_week_scalar[monday]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[saturday]#1": {
+  "file": "test_temporal/test_day_of_week_scalar[saturday]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[saturday]#2": {
+  "file": "test_temporal/test_day_of_week_scalar[saturday]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[sunday]#1": {
+  "file": "test_temporal/test_day_of_week_scalar[sunday]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[sunday]#2": {
+  "file": "test_temporal/test_day_of_week_scalar[sunday]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[thursday]#1": {
+  "file": "test_temporal/test_day_of_week_scalar[thursday]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[thursday]#2": {
+  "file": "test_temporal/test_day_of_week_scalar[thursday]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[tuesday]#1": {
+  "file": "test_temporal/test_day_of_week_scalar[tuesday]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[tuesday]#2": {
+  "file": "test_temporal/test_day_of_week_scalar[tuesday]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[wednesday]#1": {
+  "file": "test_temporal/test_day_of_week_scalar[wednesday]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_day_of_week_scalar[wednesday]#2": {
+  "file": "test_temporal/test_day_of_week_scalar[wednesday]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_difference[all]": {
   "file": "test_set_ops/test_difference[all].parquet",
   "kind": "table",
@@ -6239,6 +6801,24 @@
    "postgres": "same"
   }
  },
+ "test_strftime[literal_format_str]": {
+  "file": "test_temporal/test_strftime[literal_format_str].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_string[ascii_str]": {
   "file": "test_string/test_string[ascii_str].parquet",
   "kind": "column",
@@ -7250,6 +7830,562 @@
   ],
   "dtypes": [
    "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_column_from_ymdhms": {
+  "file": "test_temporal/test_timestamp_column_from_ymdhms.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "timestamp_col"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract[day]": {
+  "file": "test_temporal/test_timestamp_extract[day].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract[day_of_year]": {
+  "file": "test_temporal/test_timestamp_extract[day_of_year].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract[hour]": {
+  "file": "test_temporal/test_timestamp_extract[hour].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract[minute]": {
+  "file": "test_temporal/test_timestamp_extract[minute].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract[month]": {
+  "file": "test_temporal/test_timestamp_extract[month].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract[quarter]": {
+  "file": "test_temporal/test_timestamp_extract[quarter].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract[second]": {
+  "file": "test_temporal/test_timestamp_extract[second].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract[year]": {
+  "file": "test_temporal/test_timestamp_extract[year].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[day]": {
+  "file": "test_temporal/test_timestamp_extract_literal[day].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[day_of_week_full_name]": {
+  "file": "test_temporal/test_timestamp_extract_literal[day_of_week_full_name].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[day_of_week_index]": {
+  "file": "test_temporal/test_timestamp_extract_literal[day_of_week_index].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[hour]": {
+  "file": "test_temporal/test_timestamp_extract_literal[hour].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[millisecond]": {
+  "file": "test_temporal/test_timestamp_extract_literal[millisecond].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[minute]": {
+  "file": "test_temporal/test_timestamp_extract_literal[minute].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[month]": {
+  "file": "test_temporal/test_timestamp_extract_literal[month].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[second]": {
+  "file": "test_temporal/test_timestamp_extract_literal[second].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_literal[year]": {
+  "file": "test_temporal/test_timestamp_extract_literal[year].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_microseconds": {
+  "file": "test_temporal/test_timestamp_extract_microseconds.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_milliseconds": {
+  "file": "test_temporal/test_timestamp_extract_milliseconds.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_extract_week_of_year": {
+  "file": "test_temporal/test_timestamp_extract_week_of_year.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_literal": {
+  "file": "test_temporal/test_timestamp_literal.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[D-D]": {
+  "file": "test_temporal/test_timestamp_truncate[D-D].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[W-W]": {
+  "file": "test_temporal/test_timestamp_truncate[W-W].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[h-h]": {
+  "file": "test_temporal/test_timestamp_truncate[h-h].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[m-min]": {
+  "file": "test_temporal/test_timestamp_truncate[m-min].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[month]": {
+  "file": "test_temporal/test_timestamp_truncate[month].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[ms-ms]": {
+  "file": "test_temporal/test_timestamp_truncate[ms-ms].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[quarter]": {
+  "file": "test_temporal/test_timestamp_truncate[quarter].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[s-s]": {
+  "file": "test_temporal/test_timestamp_truncate[s-s].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[us-us]": {
+  "file": "test_temporal/test_timestamp_truncate[us-us].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_truncate[year]": {
+  "file": "test_temporal/test_timestamp_truncate[year].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
   ],
   "rows": 7300,
   "ibis": {

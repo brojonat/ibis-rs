@@ -135,6 +135,58 @@ impl Dialect for SqliteDialect {
             Func::Minute => extract("%M")?,
             Func::Second => extract("%S")?,
             Func::DayOfWeekIndex => Some(format!("((CAST(STRFTIME('%w', {}) AS INTEGER) + 6) % 7)", a(0)?)),
+            Func::DayOfYear => extract("%j")?,
+            Func::WeekOfYear => extract("%V")?,
+            Func::Quarter => Some(format!("((CAST(STRFTIME('%m', {}) AS INTEGER) + 2) / 3)", a(0)?)),
+            // Timestamps are ISO text; STRFTIME's %f rounds to milliseconds,
+            // so read the fraction's digits instead.
+            Func::Microsecond | Func::Millisecond => {
+                let x = a(0)?;
+                let micros = format!(
+                    "CASE WHEN INSTR({x}, '.') > 0 \
+                     THEN CAST(SUBSTR(SUBSTR({x}, INSTR({x}, '.') + 1) || '000000', 1, 6) AS INTEGER) ELSE 0 END"
+                );
+                Some(if f == Func::Microsecond { format!("({micros})") } else { format!("(({micros}) / 1000)") })
+            }
+            Func::DayOfWeekName => Some(format!(
+                "CASE STRFTIME('%w', {}) WHEN '0' THEN 'Sunday' WHEN '1' THEN 'Monday' WHEN '2' THEN 'Tuesday' \
+                 WHEN '3' THEN 'Wednesday' WHEN '4' THEN 'Thursday' WHEN '5' THEN 'Friday' WHEN '6' THEN 'Saturday' END",
+                a(0)?
+            )),
+            Func::Strftime => Some(format!("STRFTIME({}, {})", a(1)?, a(0)?)),
+            Func::DateFromYmd => Some(format!("DATE(PRINTF('%04d-%02d-%02d', {}, {}, {}))", a(0)?, a(1)?, a(2)?)),
+            Func::TimestampFromYmdhms => Some(format!(
+                "DATETIME(PRINTF('%04d-%02d-%02d %02d:%02d:%02d', {}, {}, {}, {}, {}, {}))",
+                a(0)?,
+                a(1)?,
+                a(2)?,
+                a(3)?,
+                a(4)?,
+                a(5)?
+            )),
+            Func::Truncate => {
+                let x = a(0)?;
+                let s = match ExprCompiler::lit_str(&args[1]) {
+                    Some("Y") => format!("DATETIME({x}, 'start of year')"),
+                    Some("Q") => format!(
+                        "DATETIME(STRFTIME('%Y', {x}) || '-' || \
+                         PRINTF('%02d', ((CAST(STRFTIME('%m', {x}) AS INTEGER) - 1) / 3) * 3 + 1) || '-01')"
+                    ),
+                    Some("M") => format!("DATETIME({x}, 'start of month')"),
+                    // back to Monday
+                    Some("W") => format!(
+                        "DATETIME({x}, 'start of day', '-' || ((CAST(STRFTIME('%w', {x}) AS INTEGER) + 6) % 7) || ' days')"
+                    ),
+                    Some("D") => format!("DATETIME({x}, 'start of day')"),
+                    Some("h") => format!("STRFTIME('%Y-%m-%d %H:00:00', {x})"),
+                    Some("m") => format!("STRFTIME('%Y-%m-%d %H:%M:00', {x})"),
+                    Some("s") => format!("STRFTIME('%Y-%m-%d %H:%M:%S', {x})"),
+                    Some("ms") => format!("STRFTIME('%Y-%m-%d %H:%M:%f', {x})"),
+                    Some("us") => x,
+                    _ => return Err(Error::Unsupported { backend: "sqlite".into(), op: "truncate unit".into() }),
+                };
+                Some(if c.dtype(&args[0])? == DataType::Date { format!("DATE({s})") } else { s })
+            }
             _ => None,
         })
     }

@@ -610,6 +610,14 @@ impl ExprCompiler<'_> {
         })
     }
 
+    /// Literal string argument, if the expression is one.
+    pub fn lit_str(e: &Expr) -> Option<&str> {
+        match e {
+            Expr::Literal(Value::String(s), _) => Some(s),
+            _ => None,
+        }
+    }
+
     /// Literal integer argument, if the expression is one.
     pub fn lit_int(e: &Expr) -> Option<i64> {
         match e {
@@ -689,8 +697,38 @@ impl ExprCompiler<'_> {
             Hour => int(format!("EXTRACT(HOUR FROM {x})"))?,
             Minute => int(format!("EXTRACT(MINUTE FROM {x})"))?,
             Second => int(format!("FLOOR(EXTRACT(SECOND FROM {x}))"))?,
-            DayOfWeekIndex => int(format!("(EXTRACT(ISODOW FROM {x}) - 1)"))?,
+            DayOfWeekIndex => {
+                format!("CAST(EXTRACT(ISODOW FROM {x}) - 1 AS {})", self.d.type_name(&DataType::Int16)?)
+            }
             IsNan => format!("ISNAN({x})"),
+            DayOfYear => int(format!("EXTRACT(DOY FROM {x})"))?,
+            Quarter => int(format!("EXTRACT(QUARTER FROM {x})"))?,
+            // EXTRACT(MILLISECOND) includes the seconds: 5.359s is 5359
+            Millisecond => int(format!("{} % 1000", bigint(format!("FLOOR(EXTRACT(MILLISECOND FROM {x}))"))?))?,
+            Microsecond => int(format!("{} % 1000000", bigint(format!("FLOOR(EXTRACT(MICROSECOND FROM {x}))"))?))?,
+            WeekOfYear => int(format!("EXTRACT(WEEK FROM {x})"))?,
+            DayOfWeekName => format!("DAYNAME({x})"),
+            Truncate => {
+                let unit = match Self::lit_str(&args[1]) {
+                    Some("Y") => "year",
+                    Some("Q") => "quarter",
+                    Some("M") => "month",
+                    Some("W") => "week",
+                    Some("D") => "day",
+                    Some("h") => "hour",
+                    Some("m") => "minute",
+                    Some("s") => "second",
+                    Some("ms") => "milliseconds",
+                    Some("us") => "microseconds",
+                    _ => return unsupported(self.d, "truncate with a non-literal or unknown unit"),
+                };
+                let s = format!("DATE_TRUNC('{unit}', {x})");
+                // DATE_TRUNC of a date gives a timestamp on some engines
+                if self.dtype(&args[0])? == DataType::Date { format!("CAST({s} AS DATE)") } else { s }
+            }
+            Strftime => format!("STRFTIME({x}, {})", a[1]),
+            DateFromYmd => format!("MAKE_DATE({})", a.join(", ")),
+            TimestampFromYmdhms => format!("MAKE_TIMESTAMP({})", a.join(", ")),
         })
     }
 

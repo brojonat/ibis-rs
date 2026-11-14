@@ -70,6 +70,16 @@ impl Dialect for PostgresDialect {
             }
             // Postgres orders NaN as equal to itself (and above everything)
             Func::IsNan => Some(format!("({} = CAST('NaN' AS DOUBLE PRECISION))", a(0)?)),
+            Func::DayOfWeekName => Some(format!("TRIM(TO_CHAR({}, 'Day'))", a(0)?)),
+            Func::Strftime => {
+                let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
+                    return Err(Error::Unsupported {
+                        backend: "postgres".into(),
+                        op: "strftime with a non-literal format".into(),
+                    });
+                };
+                Some(format!("TO_CHAR({}, {})", a(0)?, quote_str(&to_char_format(fmt)?)))
+            }
             Func::Log2 => Some(format!("(LN({x}) / LN(2.0))", x = a(0)?)),
             Func::Log10 => Some(format!("LOG({})", a(0)?)),
             // ROUND(DOUBLE PRECISION) rounds half to even; NUMERIC rounds half
@@ -109,6 +119,57 @@ impl Dialect for PostgresDialect {
             _ => None,
         })
     }
+}
+
+/// A C `strftime` pattern as a Postgres `TO_CHAR` template. Literal text is
+/// double-quoted so letters in it aren't read as template patterns.
+fn to_char_format(fmt: &str) -> Result<String> {
+    let mut out = String::new();
+    let mut text = String::new();
+    let flush = |text: &mut String, out: &mut String| {
+        if !text.is_empty() {
+            out.push_str(&format!("\"{}\"", text.replace('"', "\\\"")));
+            text.clear();
+        }
+    };
+    let mut chars = fmt.chars();
+    while let Some(ch) = chars.next() {
+        if ch != '%' {
+            text.push(ch);
+            continue;
+        }
+        let pattern = match chars.next() {
+            Some('Y') => "YYYY",
+            Some('y') => "YY",
+            Some('m') => "MM",
+            Some('d') => "DD",
+            Some('H') => "HH24",
+            Some('I') => "HH12",
+            Some('M') => "MI",
+            Some('S') => "SS",
+            Some('f') => "US",
+            Some('j') => "DDD",
+            Some('p') => "AM",
+            Some('B') => "FMMonth",
+            Some('b') => "Mon",
+            Some('A') => "FMDay",
+            Some('a') => "Dy",
+            Some('%') => {
+                text.push('%');
+                continue;
+            }
+            other => {
+                return Err(Error::Unsupported {
+                    backend: "postgres".into(),
+                    op: format!("strftime directive %{}", other.map(String::from).unwrap_or_default()),
+                });
+            }
+        };
+        flush(&mut text, &mut out);
+        out.push_str(pattern);
+    }
+    flush(&mut text, &mut out);
+    Ok(out)
 }
 
 pub struct Postgres {

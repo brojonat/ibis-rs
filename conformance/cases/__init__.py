@@ -36,6 +36,7 @@ MODULES = [
     "test_join",
     "test_set_ops",
     "test_window",
+    "test_temporal",
 ]
 
 

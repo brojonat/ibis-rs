@@ -12,6 +12,7 @@ mod join;
 mod numeric;
 mod set_ops;
 mod string;
+mod temporal;
 mod window;
 
 use std::collections::BTreeMap;
@@ -114,5 +115,6 @@ pub fn all() -> Vec<Case> {
     join::register(&mut v);
     set_ops::register(&mut v);
     window::register(&mut v);
+    temporal::register(&mut v);
     v
 }

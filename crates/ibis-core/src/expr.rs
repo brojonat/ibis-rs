@@ -186,7 +186,31 @@ pub enum Func {
     DayOfWeekIndex,
     /// True for NaN; NULL for NULL.
     IsNan,
+    /// 1-366.
+    DayOfYear,
+    /// 1-4.
+    Quarter,
+    /// Milliseconds within the second, 0-999.
+    Millisecond,
+    /// Microseconds within the second, 0-999999.
+    Microsecond,
+    /// ISO 8601 week number, 1-53.
+    WeekOfYear,
+    /// English day name, e.g. "Tuesday".
+    DayOfWeekName,
+    /// `truncate(x, unit)`: round down to the start of the unit. Units are
+    /// Ibis's: Y Q M W (Monday) D h m s ms us.
+    Truncate,
+    /// `strftime(x, format)` with a literal C-style format.
+    Strftime,
+    /// `date_from_ymd(year, month, day)`
+    DateFromYmd,
+    /// `timestamp_from_ymdhms(year, month, day, hour, minute, second)`
+    TimestampFromYmdhms,
 }
+
+/// Units `Expr::truncate` accepts.
+pub const TRUNCATE_UNITS: [&str; 10] = ["Y", "Q", "M", "W", "D", "h", "m", "s", "ms", "us"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AggFunc {
@@ -273,6 +297,26 @@ pub fn date(s: &str) -> Expr {
         Some(d) => Expr::Literal(Value::Date(d), DataType::Date),
         None => null(DataType::Date),
     }
+}
+
+/// A timestamp literal from `YYYY-MM-DD HH:MM:SS[.ffffff]` (Ibis
+/// `ibis.timestamp("...")`). An unparseable string becomes a NULL timestamp.
+pub fn timestamp(s: &str) -> Expr {
+    let t = DataType::Timestamp { tz: None };
+    match crate::convert::parse_timestamp(s) {
+        Some(us) => Expr::Literal(Value::Timestamp(us), t),
+        None => null(t),
+    }
+}
+
+/// A date from year, month and day expressions (Ibis `ibis.date(y, m, d)`).
+pub fn date_from_ymd(year: impl Into<Expr>, month: impl Into<Expr>, day: impl Into<Expr>) -> Expr {
+    func(Func::DateFromYmd, vec![year.into(), month.into(), day.into()])
+}
+
+/// A timestamp from its fields (Ibis `ibis.timestamp(y, m, d, h, mi, s)`).
+pub fn timestamp_from_ymdhms(parts: [Expr; 6]) -> Expr {
+    func(Func::TimestampFromYmdhms, parts.into())
 }
 
 /// A literal of an explicit type (Ibis `ibis.literal(v, type=...)`).
@@ -632,8 +676,42 @@ impl Expr {
     pub fn second(self) -> Expr {
         func(Func::Second, vec![self])
     }
+    /// Monday = 0 (Ibis `x.day_of_week.index()`).
     pub fn day_of_week_index(self) -> Expr {
         func(Func::DayOfWeekIndex, vec![self])
+    }
+    /// English day name (Ibis `x.day_of_week.full_name()`).
+    pub fn day_of_week_name(self) -> Expr {
+        func(Func::DayOfWeekName, vec![self])
+    }
+    pub fn day_of_year(self) -> Expr {
+        func(Func::DayOfYear, vec![self])
+    }
+    pub fn quarter(self) -> Expr {
+        func(Func::Quarter, vec![self])
+    }
+    pub fn millisecond(self) -> Expr {
+        func(Func::Millisecond, vec![self])
+    }
+    pub fn microsecond(self) -> Expr {
+        func(Func::Microsecond, vec![self])
+    }
+    /// ISO 8601 week number.
+    pub fn week_of_year(self) -> Expr {
+        func(Func::WeekOfYear, vec![self])
+    }
+    /// The date part of a timestamp, or a string parsed as an ISO date.
+    pub fn date(self) -> Expr {
+        self.cast(DataType::Date)
+    }
+    /// Round down to the start of `unit`: one of `TRUNCATE_UNITS`
+    /// (Y Q M W D h m s ms us; weeks start on Monday).
+    pub fn truncate(self, unit: &str) -> Expr {
+        func(Func::Truncate, vec![self, lit(unit)])
+    }
+    /// Format with a C `strftime` pattern, e.g. `"%Y-%m-%d"`.
+    pub fn strftime(self, format: &str) -> Expr {
+        func(Func::Strftime, vec![self, lit(format)])
     }
 
     // reductions
@@ -1014,6 +1092,11 @@ impl Expr {
                 }
             }
             Expr::Func(f, args) => {
+                if let (Func::Truncate, Some(Expr::Literal(Value::String(u), _))) = (f, args.get(1))
+                    && !TRUNCATE_UNITS.contains(&u.as_str())
+                {
+                    return invalid(format!("truncate: unknown unit {u:?}; expected one of {TRUNCATE_UNITS:?}"));
+                }
                 let ts = args.iter().map(|a| a.dtype(schema)).collect::<Result<Vec<_>>>()?;
                 func_dtype(*f, &ts)?
             }
@@ -1148,11 +1231,23 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
         Find => T::Int64,
         Coalesce => ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?,
         NullIf => first,
-        Year | Month | Day | Hour | Minute | Second | DayOfWeekIndex => {
+        Year | Month | Day | Hour | Minute | Second | DayOfWeekIndex | DayOfYear | Quarter | Millisecond
+        | Microsecond | WeekOfYear | DayOfWeekName | Truncate | Strftime => {
             if !first.is_temporal() && first != T::Null {
                 return invalid(format!("{f:?} needs a date or timestamp, got {first}"));
             }
-            T::Int32
+            match f {
+                DayOfWeekIndex => T::Int16,
+                DayOfWeekName | Strftime => T::String,
+                Truncate => first,
+                _ => T::Int32,
+            }
+        }
+        DateFromYmd | TimestampFromYmdhms => {
+            if let Some(t) = ts.iter().find(|t| !t.is_numeric()) {
+                return invalid(format!("{f:?} needs numeric fields, got {t}"));
+            }
+            if f == DateFromYmd { T::Date } else { T::Timestamp { tz: None } }
         }
     })
 }

@@ -23,7 +23,8 @@ pub mod prelude {
     pub use crate::backend::Backend;
     pub use crate::datatypes::{DataType, Schema};
     pub use crate::expr::{
-        Expr, WindowSpec, asc, cases, coalesce, col, count, date, desc, lit, lit_as, null, row_number,
+        Expr, WindowSpec, asc, cases, coalesce, col, count, date, date_from_ymd, desc, lit, lit_as, null, row_number,
+        timestamp, timestamp_from_ymdhms,
     };
     pub use crate::table::{How, JoinKind, Table};
     pub use crate::value::Value;
