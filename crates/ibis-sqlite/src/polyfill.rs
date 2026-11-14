@@ -21,6 +21,9 @@ fn regex(ctx: &Context, i: usize) -> Result<Arc<Regex>> {
     })
 }
 
+type UnaryF64 = fn(f64) -> f64;
+type BinaryF64 = fn(f64, f64) -> f64;
+
 type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 fn pad(s: &str, n: usize, fill: &str, left: bool) -> String {
@@ -79,7 +82,7 @@ pub fn register(conn: &Connection) -> Result<()> {
     })?;
     // Math functions: only present when SQLite is built with
     // SQLITE_ENABLE_MATH_FUNCTIONS, which the bundled build is not.
-    let unary: [(&str, fn(f64) -> f64); 7] = [
+    let unary: [(&str, UnaryF64); 7] = [
         ("ceil", f64::ceil),
         ("floor", f64::floor),
         ("sqrt", f64::sqrt),
@@ -93,7 +96,7 @@ pub fn register(conn: &Connection) -> Result<()> {
             Ok(ctx.get::<Option<f64>>(0)?.map(f).filter(|v| v.is_finite() || v.is_infinite()))
         })?;
     }
-    let binary: [(&str, fn(f64, f64) -> f64); 3] = [("power", f64::powf), ("pow", f64::powf), ("fmod", |a, b| a % b)];
+    let binary: [(&str, BinaryF64); 3] = [("power", f64::powf), ("pow", f64::powf), ("fmod", |a, b| a % b)];
     for (name, f) in binary {
         conn.create_scalar_function(name, 2, DET, move |ctx| {
             Ok(match (ctx.get::<Option<f64>>(0)?, ctx.get::<Option<f64>>(1)?) {

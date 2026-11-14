@@ -1,0 +1,2 @@
+# The default flags ordinary case tables like Vec<(&str, fn() -> Expr)>.
+type-complexity-threshold = 500

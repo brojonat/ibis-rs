@@ -6,15 +6,34 @@
 
 use std::fmt;
 use std::ops;
+use std::sync::Arc;
 
 use crate::datatypes::{DataType, Schema};
 use crate::error::{Result, invalid};
+use crate::table::Rel;
 use crate::value::Value;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
-    /// A column of the input relation, by name.
+    /// A column of the input relation, by name (Ibis `_.name`).
     Column(String),
+    /// A column of a specific relation (Ibis `t.name`). Table operations
+    /// rewrite these to `Column`s of their input when the relation is the input
+    /// or one of its ancestors; what's left refers to an enclosing query
+    /// (a correlated reference).
+    Field {
+        rel: Arc<Rel>,
+        name: String,
+    },
+    /// A one-row, one-column relation used as a value.
+    ScalarSubquery(Arc<Rel>),
+    /// `EXISTS (rel)`
+    Exists(Arc<Rel>),
+    /// `arg IN (rel)`; `rel` has one column.
+    InSubquery {
+        arg: Box<Expr>,
+        rel: Arc<Rel>,
+    },
     Literal(Value, DataType),
     /// Names an expression; only meaningful at the top of a projection.
     Alias(Box<Expr>, String),
@@ -231,6 +250,15 @@ pub fn col(name: &str) -> Expr {
     Expr::Column(name.to_string())
 }
 
+/// A date literal from `YYYY-MM-DD` (Ibis `ibis.date("...")`).
+/// An unparseable string becomes a NULL date.
+pub fn date(s: &str) -> Expr {
+    match crate::convert::parse_date(s) {
+        Some(d) => Expr::Literal(Value::Date(d), DataType::Date),
+        None => null(DataType::Date),
+    }
+}
+
 pub fn lit(v: impl Into<Value>) -> Expr {
     let v = v.into();
     let t = v.dtype();
@@ -394,6 +422,25 @@ impl Expr {
     }
     pub fn notin(self, list: impl IntoIterator<Item = impl Into<Expr>>) -> Expr {
         Expr::InList { arg: Box::new(self), list: list.into_iter().map(Into::into).collect(), negated: true }
+    }
+    /// `self IN (SELECT column FROM ...)`: membership in a column of
+    /// another table (Ibis `x.isin(other.col)`). `column` must be built
+    /// from a single table's columns.
+    pub fn isin_col(self, column: Expr) -> Expr {
+        let rel = match &column {
+            Expr::Field { rel, .. } => rel.clone(),
+            e => match e.field_rels().first() {
+                Some(r) => r.clone(),
+                None => return bin(BinaryOp::Eq, self, column),
+            },
+        };
+        let name = column.output_name();
+        let table = crate::table::Table::from_arc(rel);
+        match table.select([column.name(&name)]) {
+            Ok(sub) => Expr::InSubquery { arg: Box::new(self), rel: sub.arc() },
+            // surfaces when the expression is used: dtype() of the bad column errors
+            Err(_) => Expr::InSubquery { arg: Box::new(self), rel: table.arc() },
+        }
     }
     /// `cond.ifelse(a, b)`
     pub fn ifelse(self, then: impl Into<Expr>, otherwise: impl Into<Expr>) -> Expr {
@@ -657,6 +704,9 @@ op_impl!(Sub, sub, BinaryOp::Sub);
 op_impl!(Mul, mul, BinaryOp::Mul);
 op_impl!(Div, div, BinaryOp::Div);
 op_impl!(Rem, rem, BinaryOp::Mod);
+// Ibis spells boolean AND/OR as `&` / `|`.
+op_impl!(BitAnd, bitand, BinaryOp::And);
+op_impl!(BitOr, bitor, BinaryOp::Or);
 
 impl ops::Neg for Expr {
     type Output = Expr;
@@ -678,7 +728,7 @@ impl Expr {
     /// The output column name for this expression.
     pub fn output_name(&self) -> String {
         match self {
-            Expr::Column(n) | Expr::Alias(_, n) => n.clone(),
+            Expr::Column(n) | Expr::Alias(_, n) | Expr::Field { name: n, .. } => n.clone(),
             e => e.to_string(),
         }
     }
@@ -702,7 +752,10 @@ impl Expr {
 
     pub fn children(&self) -> Vec<&Expr> {
         match self {
-            Expr::Column(_) | Expr::Literal(..) => vec![],
+            Expr::Column(_) | Expr::Literal(..) | Expr::Field { .. } | Expr::ScalarSubquery(_) | Expr::Exists(_) => {
+                vec![]
+            }
+            Expr::InSubquery { arg, .. } => vec![arg],
             Expr::Alias(e, _) | Expr::Cast(e, _) | Expr::Unary(_, e) => vec![e],
             Expr::Binary(_, l, r) => vec![l, r],
             Expr::Func(_, a) | Expr::Analytic(_, a) => a.iter().collect(),
@@ -722,6 +775,64 @@ impl Expr {
         }
     }
 
+    /// Rebuild this node with `f` applied to each direct child (the same
+    /// children `children()` lists, in the same order).
+    pub fn map_children(self, f: &mut impl FnMut(Expr) -> Result<Expr>) -> Result<Expr> {
+        Ok(match self {
+            e @ (Expr::Column(_)
+            | Expr::Literal(..)
+            | Expr::Field { .. }
+            | Expr::ScalarSubquery(_)
+            | Expr::Exists(_)) => e,
+            Expr::InSubquery { arg, rel } => Expr::InSubquery { arg: Box::new(f(*arg)?), rel },
+            Expr::Alias(e, n) => Expr::Alias(Box::new(f(*e)?), n),
+            Expr::Cast(e, t) => Expr::Cast(Box::new(f(*e)?), t),
+            Expr::Unary(op, e) => Expr::Unary(op, Box::new(f(*e)?)),
+            Expr::Binary(op, l, r) => Expr::Binary(op, Box::new(f(*l)?), Box::new(f(*r)?)),
+            Expr::Func(func, a) => Expr::Func(func, a.into_iter().map(&mut *f).collect::<Result<_>>()?),
+            Expr::Analytic(a, args) => Expr::Analytic(a, args.into_iter().map(&mut *f).collect::<Result<_>>()?),
+            Expr::Agg { func, arg, filter } => Expr::Agg {
+                func,
+                arg: arg.map(|x| f(*x).map(Box::new)).transpose()?,
+                filter: filter.map(|x| f(*x).map(Box::new)).transpose()?,
+            },
+            Expr::Window(e, spec) => {
+                let e = Box::new(f(*e)?);
+                let partition_by = spec.partition_by.into_iter().map(&mut *f).collect::<Result<_>>()?;
+                let order_by =
+                    spec.order_by.into_iter().map(|k| Ok(SortKey { expr: f(k.expr)?, ..k })).collect::<Result<_>>()?;
+                Expr::Window(e, WindowSpec { partition_by, order_by, frame: spec.frame })
+            }
+            Expr::Case { branches, default } => Expr::Case {
+                branches: branches.into_iter().map(|(c, r)| Ok((f(c)?, f(r)?))).collect::<Result<_>>()?,
+                default: default.map(|x| f(*x).map(Box::new)).transpose()?,
+            },
+            Expr::InList { arg, list, negated } => Expr::InList {
+                arg: Box::new(f(*arg)?),
+                list: list.into_iter().map(&mut *f).collect::<Result<_>>()?,
+                negated,
+            },
+        })
+    }
+
+    /// Distinct relations referenced by `Field`s in this expression (not
+    /// looking inside subqueries), in first-seen order.
+    pub fn field_rels(&self) -> Vec<Arc<Rel>> {
+        fn go(e: &Expr, out: &mut Vec<Arc<Rel>>) {
+            if let Expr::Field { rel, .. } = e
+                && !out.iter().any(|r| r.id == rel.id)
+            {
+                out.push(rel.clone());
+            }
+            for c in e.children() {
+                go(c, out);
+            }
+        }
+        let mut out = vec![];
+        go(self, &mut out);
+        out
+    }
+
     /// Infer the output type against `schema`. This is also validation:
     /// unknown columns and ill-typed ops are errors.
     pub fn dtype(&self, schema: &Schema) -> Result<DataType> {
@@ -734,6 +845,25 @@ impl Expr {
                     return invalid(format!("no column {n:?}; have {have:?}"));
                 }
             },
+            Expr::Field { rel, name } => match rel.schema.field(name) {
+                Some(f) => f.dtype.clone(),
+                None => {
+                    let have: Vec<_> = rel.schema.names().collect();
+                    return invalid(format!("no column {name:?} in table; have {have:?}"));
+                }
+            },
+            Expr::ScalarSubquery(rel) => match rel.schema.fields.as_slice() {
+                [f] => f.dtype.clone(),
+                _ => return invalid(format!("scalar subquery must have one column, has {}", rel.schema.len())),
+            },
+            Expr::Exists(_) => T::Boolean,
+            Expr::InSubquery { arg, rel } => {
+                arg.dtype(schema)?;
+                if rel.schema.len() != 1 {
+                    return invalid(format!("IN subquery must have one column, has {}", rel.schema.len()));
+                }
+                T::Boolean
+            }
             Expr::Literal(_, t) => t.clone(),
             Expr::Alias(e, _) => e.dtype(schema)?,
             Expr::Cast(e, t) => {
@@ -779,7 +909,10 @@ impl Expr {
                     (CountStar | Count | CountDistinct, _) => T::Int64,
                     (Sum, Some(t)) if t.is_integer() || t == T::Boolean => T::Int64,
                     (Sum, Some(t)) if t.is_floating() => T::Float64,
+                    (Sum, Some(T::Decimal { scale, .. })) => T::Decimal { precision: 38, scale },
                     (Sum, Some(t)) => t,
+                    // Ibis: the mean of a decimal is that decimal type
+                    (Mean, Some(t @ T::Decimal { .. })) => t,
                     (Mean | StdSamp | StdPop | VarSamp | VarPop, _) => T::Float64,
                     (Min | Max, Some(t)) => t,
                     (Any | All, _) => T::Boolean,
@@ -889,7 +1022,10 @@ impl fmt::Display for Expr {
             f.write_str(")")
         }
         match self {
-            Expr::Column(n) => f.write_str(n),
+            Expr::Column(n) | Expr::Field { name: n, .. } => f.write_str(n),
+            Expr::ScalarSubquery(_) => f.write_str("ScalarSubquery"),
+            Expr::Exists(_) => f.write_str("ExistsSubquery"),
+            Expr::InSubquery { arg, .. } => write!(f, "InSubquery({arg})"),
             Expr::Literal(v, _) => match v {
                 Value::Null => f.write_str("None"),
                 Value::Bool(b) => write!(f, "{}", if *b { "True" } else { "False" }),

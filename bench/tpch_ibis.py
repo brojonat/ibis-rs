@@ -20,7 +20,7 @@ stdout: one JSON object per (backend, query):
 
 Usage: tpch_ibis.py [--sf 0.01] [--backend duckdb,sqlite,postgres] [--repeat 3]
                     [--goldens DIR] [QUERY_SUBSTRING]
-  --goldens DIR   also write each result to DIR/<query>.parquet (from the first backend)
+  --goldens DIR   also write each result to DIR/<backend>/<query>.parquet
 Env: IBIS_TESTING_POSTGRES_URL  libpq keyword string, e.g. "host=/x/.pg port=54330 user=postgres"
 """
 
@@ -98,7 +98,7 @@ def main() -> int:
     args = ap.parse_args()
 
     failed = False
-    for i, backend in enumerate(args.backend.split(",")):
+    for backend in args.backend.split(","):
         con = connect(backend, args.sf)
         tables = {t: con.table(t) for t in TABLES}
         for name, fn in queries():
@@ -113,9 +113,10 @@ def main() -> int:
                 # several queries ("Rescaling Decimal value would cause data loss").
                 execute_s, result = timed(lambda: con.to_pandas(expr), args.repeat)
                 rec |= {"rows": len(result), "build_s": build_s, "compile_s": compile_s, "execute_s": execute_s}
-                if args.goldens and i == 0:
-                    args.goldens.mkdir(parents=True, exist_ok=True)
-                    pq.write_table(pa.Table.from_pandas(result, preserve_index=False), args.goldens / f"{name}.parquet")
+                if args.goldens:
+                    out = args.goldens / backend
+                    out.mkdir(parents=True, exist_ok=True)
+                    pq.write_table(pa.Table.from_pandas(result, preserve_index=False), out / f"{name}.parquet")
             except Exception as e:  # report and keep going: one query shouldn't sink the run
                 failed = True
                 rec["error"] = f"{type(e).__name__}: {e}"[:500]

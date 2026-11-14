@@ -4,18 +4,18 @@
 //! only when that preserves meaning; otherwise the current query is wrapped as
 //! a derived table and the op applies to that. Correctness over pretty SQL.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 use ibis_core::{
-    AggFunc, Analytic, BinaryOp, Bound, DataType, Error, Expr, Func, JoinKind, Rel, RelOp, Result, Schema, SetKind,
-    Side, SortKey, Table, UnaryOp, Value, WindowSpec,
+    AggFunc, Analytic, BinaryOp, Bound, DataType, DerefMap, Error, Expr, Func, JoinKind, Rel, RelOp, Result, Schema,
+    SetKind, Side, SortKey, Table, UnaryOp, Value, WindowSpec,
 };
 
 use crate::dialect::Dialect;
 
 /// Compile a table expression to a SQL query string.
 pub fn compile(d: &dyn Dialect, t: &Table) -> Result<String> {
-    let c = RelCompiler { d, aliases: Cell::new(0) };
+    let c = RelCompiler { d, aliases: Cell::new(0), scopes: RefCell::new(vec![]) };
     Ok(c.rel(t.rel())?.render(d))
 }
 
@@ -42,6 +42,8 @@ struct Select {
     /// `None` means `*`.
     items: Option<Vec<String>>,
     from: String,
+    /// Alias of the single FROM source, if there is one (not for joins).
+    alias: Option<String>,
     wheres: Vec<String>,
     group_by: Vec<String>,
     order_by: Vec<String>,
@@ -52,6 +54,10 @@ struct Select {
 impl Select {
     fn from(from: String) -> Self {
         Select { from, ..Default::default() }
+    }
+
+    fn aliased(from: String, alias: String) -> Self {
+        Select { from, alias: Some(alias), ..Default::default() }
     }
 
     /// No projection, grouping, distinct or limit: a WHERE/SELECT list can still be added.
@@ -87,9 +93,19 @@ impl Select {
     }
 }
 
+/// A relation visible to expressions: columns of relation `id` (or of its
+/// ancestors, via `deref`) are spelled `alias."column"`.
+struct Scope {
+    id: u64,
+    alias: String,
+    deref: DerefMap,
+}
+
 struct RelCompiler<'a> {
     d: &'a dyn Dialect,
     aliases: Cell<usize>,
+    /// Innermost last. Correlated subqueries look outward through it.
+    scopes: RefCell<Vec<Scope>>,
 }
 
 impl RelCompiler<'_> {
@@ -100,17 +116,58 @@ impl RelCompiler<'_> {
     }
 
     fn wrap(&self, s: Select) -> Select {
-        Select::from(format!("({}) AS {}", s.render(self.d), self.alias()))
+        let a = self.alias();
+        Select::aliased(format!("({}) AS {a}", s.render(self.d)), a)
     }
 
     fn exprs<'s>(&'s self, schema: &'s Schema, in_project: bool) -> ExprCompiler<'s> {
-        ExprCompiler { d: self.d, schema, in_project }
+        ExprCompiler { d: self.d, schema, in_project, rc: self }
+    }
+
+    /// Run `f` with `rels` (relation, alias) in scope.
+    fn scoped<T>(&self, rels: &[(&Rel, &str)], f: impl FnOnce() -> Result<T>) -> Result<T> {
+        let n = rels.len();
+        self.scopes.borrow_mut().extend(rels.iter().map(|(r, a)| Scope {
+            id: r.id,
+            alias: a.to_string(),
+            deref: r.deref_map(),
+        }));
+        let out = f();
+        let mut sc = self.scopes.borrow_mut();
+        let keep = sc.len() - n;
+        sc.truncate(keep);
+        out
+    }
+
+    /// Scope for expressions over `input`, compiled into `s`.
+    fn in_scope<T>(&self, input: &Rel, s: &Select, f: impl FnOnce() -> Result<T>) -> Result<T> {
+        match &s.alias {
+            Some(a) => self.scoped(&[(input, a)], f),
+            None => f(),
+        }
+    }
+
+    /// `alias."column"` for a column of relation `rel` visible in scope.
+    fn field(&self, rel: &Rel, name: &str) -> Result<String> {
+        for sc in self.scopes.borrow().iter().rev() {
+            let col = if sc.id == rel.id {
+                Some(name.to_string())
+            } else {
+                sc.deref.get(&(rel.id, name.to_string())).cloned()
+            };
+            if let Some(c) = col {
+                return Ok(format!("{}.{}", sc.alias, self.d.quote_ident(&c)));
+            }
+        }
+        Err(Error::Invalid(format!("column {name:?} belongs to a table that isn't part of this query")))
     }
 
     /// A relation usable in a FROM clause under `alias`.
     fn source(&self, r: &Rel, alias: &str) -> Result<String> {
-        if let RelOp::Table { name } = &r.op {
-            return Ok(format!("{} AS {alias}", self.d.quote_ident(name)));
+        match &r.op {
+            RelOp::Table { name } => return Ok(format!("{} AS {alias}", self.d.quote_ident(name))),
+            RelOp::View { input } => return self.source(input, alias),
+            _ => {}
         }
         Ok(format!("({}) AS {alias}", self.rel(r)?.render(self.d)))
     }
@@ -118,7 +175,11 @@ impl RelCompiler<'_> {
     fn rel(&self, r: &Rel) -> Result<Select> {
         let q = |s: &str| self.d.quote_ident(s);
         match &r.op {
-            RelOp::Table { name } => Ok(Select::from(q(name))),
+            RelOp::Table { name } => {
+                let a = self.alias();
+                Ok(Select::aliased(format!("{} AS {a}", q(name)), a))
+            }
+            RelOp::View { input } => self.rel(input),
 
             RelOp::Filter { input, predicates } => {
                 let mut s = self.rel(input)?;
@@ -126,12 +187,18 @@ impl RelCompiler<'_> {
                     s = self.wrap(s);
                 }
                 let c = self.exprs(&input.schema, false);
-                for p in predicates {
-                    if contains_window(p) {
-                        return unsupported(self.d, "window function in filter (mutate first)");
-                    }
-                    s.wheres.push(c.sql(p)?);
-                }
+                let wheres = self.in_scope(input, &s, || {
+                    predicates
+                        .iter()
+                        .map(|p| {
+                            if contains_window(p) {
+                                return unsupported(self.d, "window function in filter (mutate first)");
+                            }
+                            c.sql(p)
+                        })
+                        .collect::<Result<Vec<_>>>()
+                })?;
+                s.wheres.extend(wheres);
                 Ok(s)
             }
 
@@ -141,8 +208,9 @@ impl RelCompiler<'_> {
                     s = self.wrap(s);
                 }
                 let c = self.exprs(&input.schema, true);
-                let items =
-                    exprs.iter().map(|(n, e)| Ok(format!("{} AS {}", c.sql(e)?, q(n)))).collect::<Result<Vec<_>>>()?;
+                let items = self.in_scope(input, &s, || {
+                    exprs.iter().map(|(n, e)| Ok(format!("{} AS {}", c.sql(e)?, q(n)))).collect::<Result<Vec<_>>>()
+                })?;
                 s.items = Some(items);
                 Ok(s)
             }
@@ -154,15 +222,19 @@ impl RelCompiler<'_> {
                 }
                 s.order_by.clear();
                 let c = self.exprs(&input.schema, false);
-                let mut items = vec![];
-                for (n, e) in groups {
-                    let sql = c.sql(e)?;
-                    items.push(format!("{sql} AS {}", q(n)));
-                    s.group_by.push(sql);
-                }
-                for (n, e) in metrics {
-                    items.push(format!("{} AS {}", c.sql(e)?, q(n)));
-                }
+                let (items, group_by) = self.in_scope(input, &s, || {
+                    let (mut items, mut group_by) = (vec![], vec![]);
+                    for (n, e) in groups {
+                        let sql = c.sql(e)?;
+                        items.push(format!("{sql} AS {}", q(n)));
+                        group_by.push(sql);
+                    }
+                    for (n, e) in metrics {
+                        items.push(format!("{} AS {}", c.sql(e)?, q(n)));
+                    }
+                    Ok((items, group_by))
+                })?;
+                s.group_by = group_by;
                 s.items = Some(items);
                 Ok(s)
             }
@@ -173,7 +245,7 @@ impl RelCompiler<'_> {
                     s = self.wrap(s);
                 }
                 let c = self.exprs(&input.schema, false);
-                s.order_by = keys.iter().map(|k| c.sort_key(k)).collect::<Result<_>>()?;
+                s.order_by = self.in_scope(input, &s, || keys.iter().map(|k| c.sort_key(k)).collect::<Result<_>>())?;
                 Ok(s)
             }
 
@@ -196,21 +268,21 @@ impl RelCompiler<'_> {
                 Ok(s)
             }
 
-            RelOp::Join { left, right, how, on, outputs } => {
+            RelOp::Join { left, right, how, predicates, outputs } => {
                 let (la, ra) = (self.alias(), self.alias());
                 let col = |side: Side, c: &str| format!("{}.{}", if side == Side::Left { &la } else { &ra }, q(c));
-                let cond = on
-                    .iter()
-                    .map(|(l, r)| format!("{} = {}", col(Side::Left, l), col(Side::Right, r)))
-                    .collect::<Vec<_>>()
-                    .join(" AND ");
+                let c = self.exprs(&left.schema, false);
+                let cond = self.scoped(&[(left, &la), (right, &ra)], || {
+                    predicates.iter().map(|p| c.sql(p)).collect::<Result<Vec<_>>>()
+                })?;
+                let cond = if cond.is_empty() { "TRUE".to_string() } else { cond.join(" AND ") };
                 let items =
                     outputs.iter().map(|(out, side, src)| format!("{} AS {}", col(*side, src), q(out))).collect();
                 let (lsrc, rsrc) = (self.source(left, &la)?, self.source(right, &ra)?);
                 let mut s = match how {
                     JoinKind::Semi | JoinKind::Anti => {
                         let not = if *how == JoinKind::Anti { "NOT " } else { "" };
-                        let mut s = Select::from(lsrc);
+                        let mut s = Select::aliased(lsrc, la.clone());
                         s.wheres.push(format!("{not}EXISTS (SELECT 1 FROM {rsrc} WHERE {cond})"));
                         s
                     }
@@ -242,7 +314,8 @@ impl RelCompiler<'_> {
                 let l = self.source(left, &self.alias())?;
                 let r = self.source(right, &self.alias())?;
                 let body = format!("SELECT * FROM {l} {kw} SELECT * FROM {r}");
-                Ok(Select::from(format!("({body}) AS {}", self.alias())))
+                let a = self.alias();
+                Ok(Select::aliased(format!("({body}) AS {a}"), a))
             }
         }
     }
@@ -262,6 +335,7 @@ pub struct ExprCompiler<'a> {
     pub schema: &'a Schema,
     /// In a projection, a bare reduction is broadcast: `agg(...) OVER ()`.
     pub in_project: bool,
+    rc: &'a RelCompiler<'a>,
 }
 
 impl ExprCompiler<'_> {
@@ -273,6 +347,10 @@ impl ExprCompiler<'_> {
         let d = self.d;
         Ok(match e {
             Expr::Column(n) => d.quote_ident(n),
+            Expr::Field { rel, name } => self.rc.field(rel, name)?,
+            Expr::ScalarSubquery(r) => format!("({})", self.rc.rel(r)?.render(d)),
+            Expr::Exists(r) => format!("(EXISTS ({}))", self.rc.rel(r)?.render(d)),
+            Expr::InSubquery { arg, rel } => format!("({} IN ({}))", self.sql(arg)?, self.rc.rel(rel)?.render(d)),
             Expr::Literal(v, t) => self.literal(v, t)?,
             Expr::Alias(e, _) => self.sql(e)?,
             Expr::Cast(e, t) => match d.cast(self, e, t)? {
@@ -519,7 +597,7 @@ impl ExprCompiler<'_> {
     fn window(&self, f: &Expr, spec: &WindowSpec) -> Result<String> {
         let over = self.over(spec)?;
         // compile the function without the broadcast `OVER ()`
-        let inner = ExprCompiler { d: self.d, schema: self.schema, in_project: false };
+        let inner = ExprCompiler { d: self.d, schema: self.schema, in_project: false, rc: self.rc };
         Ok(match f {
             Expr::Agg { .. } => format!("{} {over}", inner.sql(f)?),
             Expr::Analytic(a, args) => {

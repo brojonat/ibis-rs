@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::process::ExitCode;
 
-use ibis_conformance::{ALL_BACKENDS, Paths, Status, backends, run};
+use ibis_conformance::{ALL_BACKENDS, Paths, Status, backends, run, run_tpch};
 
 const USAGE: &str = "usage: ibis-conformance [--backend duckdb,sqlite] [ID_SUBSTRING]";
 
@@ -46,7 +46,8 @@ fn go(names: &[String], filter: &str) -> ibis_core::Result<bool> {
     let paths = Paths::from_repo_root(&Paths::default_root());
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let bs = backends(&paths, &names)?;
-    let outcomes = run(&paths, &bs, filter)?;
+    let mut outcomes = run(&paths, &bs, filter)?;
+    outcomes.extend(run_tpch(&paths, &names, filter)?);
 
     let mut stdout = std::io::stdout().lock();
     for o in &outcomes {

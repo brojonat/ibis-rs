@@ -43,6 +43,9 @@ impl DataType {
     pub fn is_floating(&self) -> bool {
         matches!(self, DataType::Float32 | DataType::Float64)
     }
+    pub fn is_decimal(&self) -> bool {
+        matches!(self, DataType::Decimal { .. })
+    }
     pub fn is_numeric(&self) -> bool {
         self.is_integer() || self.is_floating() || matches!(self, DataType::Decimal { .. })
     }
@@ -66,6 +69,10 @@ impl DataType {
         Ok(match (a, b) {
             (Null, x) | (x, Null) => x.clone(),
             (x, y) if x == y => x.clone(),
+            // Ibis: the wider of two decimals
+            (Decimal { precision: p1, scale: s1 }, Decimal { precision: p2, scale: s2 }) => {
+                Decimal { precision: *p1.max(p2), scale: *s1.max(s2) }
+            }
             (Float32, Float32) => Float32,
             (x, y) if x.is_floating() || y.is_floating() => Float64,
             (Decimal { .. }, y) | (y, Decimal { .. }) if y.is_integer() => a_or_decimal(a, b),

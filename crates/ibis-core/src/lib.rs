@@ -15,14 +15,14 @@ pub use backend::Backend;
 pub use datatypes::{DataType, Field, Schema};
 pub use error::{Error, Result};
 pub use expr::{AggFunc, Analytic, BinaryOp, Bound, Expr, Frame, Func, SortKey, UnaryOp, WindowSpec};
-pub use table::{GroupedTable, JoinKind, Rel, RelOp, SetKind, Side, Table};
+pub use table::{DerefMap, GroupedTable, JoinKind, JoinPred, Rel, RelOp, SetKind, Side, Table};
 pub use value::Value;
 
 /// Everything needed to write queries.
 pub mod prelude {
     pub use crate::backend::Backend;
     pub use crate::datatypes::{DataType, Schema};
-    pub use crate::expr::{WindowSpec, asc, cases, coalesce, col, count, desc, lit, null, row_number};
+    pub use crate::expr::{Expr, WindowSpec, asc, cases, coalesce, col, count, date, desc, lit, null, row_number};
     pub use crate::table::{JoinKind, Table};
 }
 
@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn join_renames_collisions() {
         let t = alltypes();
-        let j = t.join(&t, &[("id", "id")], JoinKind::Inner).unwrap();
+        let j = t.join(&t, [("id", "id")], JoinKind::Inner).unwrap();
         let names: Vec<_> = j.schema().names().collect();
         assert_eq!(names[..5], ["id", "int_col", "double_col", "string_col", "timestamp_col"]);
         assert_eq!(names[5..], ["int_col_right", "double_col_right", "string_col_right", "timestamp_col_right"]);

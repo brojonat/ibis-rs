@@ -8,8 +8,12 @@ IBIS_TESTING_DATA = "{{config_root}}/ci/ibis-testing-data"
 IBIS_TESTING_POSTGRES_URL = "host={{config_root}}/.pg port=54330 user=postgres dbname=ibis_testing"
 
 [tasks.setup]
-description = "Download Ibis testing data (parquet) into ci/ibis-testing-data/"
-run = "scripts/download-data.sh"
+description = "Download Ibis testing data; generate TPC-H sf=0.01 into DuckDB/SQLite/Postgres"
+depends = ["pg-start"]
+run = [
+  "scripts/download-data.sh",
+  "[ -f ci/tpch/sf0_01/tpch.sqlite ] || uv run -q bench/tpch_data.py 0.01",
+]
 
 [tasks.pg-start]
 description = "Start the local test Postgres (socket in .pg/, port 54330)"
@@ -25,7 +29,7 @@ run = "cargo build --workspace"
 
 [tasks.test]
 description = "Unit tests + conformance on all backends"
-depends = ["setup", "pg-start"]
+depends = ["setup"]
 run = "cargo test --workspace"
 
 [tasks.lint]
@@ -34,7 +38,7 @@ run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets -- -D 
 
 [tasks.conformance]
 description = "Run ported Ibis cases on every backend: JSONL -> logs/conformance.jsonl, matrix -> stderr"
-depends = ["setup", "pg-start"]
+depends = ["setup"]
 run = 'mkdir -p logs; f() { cargo run --quiet -p ibis-conformance -- "$@" > logs/conformance.jsonl 2> >(tee logs/conformance.txt >&2); }; f'
 
 [tasks.goldens]
@@ -45,3 +49,14 @@ run = 'f() { uv run conformance/gen_goldens.py "$@"; }; f'
 [tasks.dev]
 description = "Rerun conformance on every change, tee to logs/dev.log"
 run = 'mkdir -p logs; f() { watchexec -e rs,toml,py,json -r -- mise run conformance "$@" 2>&1 | tee logs/dev.log; }; f'
+
+[tasks.bench]
+description = "TPC-H sf=0.01: Python Ibis vs ibis-rs (release) -> logs/bench-*.jsonl, markdown report on stdout"
+depends = ["setup"]
+run = [
+  "mkdir -p logs",
+  "cargo build --quiet --release -p ibis-conformance --bin tpch-bench",
+  "uv run -q bench/tpch_ibis.py --sf 0.01 > logs/bench-python.jsonl",
+  "target/release/tpch-bench > logs/bench-rust.jsonl",
+  "python3 bench/compare.py logs/bench-python.jsonl logs/bench-rust.jsonl | tee logs/bench.md",
+]
