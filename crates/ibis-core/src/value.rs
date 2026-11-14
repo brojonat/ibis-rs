@@ -23,7 +23,8 @@ impl Value {
         match self {
             Value::Null => DataType::Null,
             Value::Bool(_) => DataType::Boolean,
-            Value::Int(_) => DataType::Int64,
+            // Ibis: the smallest integer type that holds the value
+            Value::Int(i) => DataType::smallest_int(*i as i128),
             Value::Float(_) => DataType::Float64,
             Value::String(_) => DataType::String,
             Value::Binary(_) => DataType::Binary,

@@ -8,7 +8,9 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::process::ExitCode;
 
-use ibis_conformance::{ALL_BACKENDS, Paths, Status, backends, run, run_tpch};
+use ibis_conformance::{
+    ALL_BACKENDS, FixtureData, Paths, SCHEMA, Status, python_ibis_agreement, run, run_tpch, targets, unported,
+};
 
 const USAGE: &str = "usage: ibis-conformance [--backend duckdb,sqlite] [ID_SUBSTRING]";
 
@@ -45,8 +47,9 @@ fn main() -> ExitCode {
 fn go(names: &[String], filter: &str) -> ibis_core::Result<bool> {
     let paths = Paths::from_repo_root(&Paths::default_root());
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
-    let bs = backends(&paths, &names)?;
-    let mut outcomes = run(&paths, &bs, filter)?;
+    let data = FixtureData::read(&paths)?;
+    let ts = targets(&data, &names)?;
+    let mut outcomes = run(&paths, &data, &ts, filter)?;
     outcomes.extend(run_tpch(&paths, &names, filter)?);
 
     let mut stdout = std::io::stdout().lock();
@@ -64,23 +67,32 @@ fn go(names: &[String], filter: &str) -> ibis_core::Result<bool> {
         *totals.entry(&o.backend).or_default().entry(o.status.as_str()).or_default() += 1;
     }
     let mut err = std::io::stderr().lock();
+    let names: Vec<&str> = std::iter::once(SCHEMA).chain(names.iter().copied()).collect();
     let _ = writeln!(
         err,
-        "{:<56}{}",
+        "{:<64}{}",
         "case (non-passing only)",
-        names.iter().map(|n| format!("{n:>11}")).collect::<String>()
+        names.iter().map(|n| format!("{n:>10}")).collect::<String>()
     );
     for (id, row) in &by_id {
         if row.values().all(|s| *s == Status::Pass) {
             continue;
         }
-        let cells: String = names.iter().map(|n| format!("{:>11}", row.get(n).map_or("-", |s| s.as_str()))).collect();
-        let _ = writeln!(err, "{id:<56}{cells}");
+        let cells: String = names.iter().map(|n| format!("{:>10}", row.get(n).map_or("-", |s| s.as_str()))).collect();
+        let _ = writeln!(err, "{id:<64}{cells}");
     }
     for (b, counts) in &totals {
         let pass = counts.get("pass").copied().unwrap_or(0);
         let total: usize = counts.values().sum();
         let _ = writeln!(err, "{b:<8} {pass}/{total} pass  {counts:?}");
     }
-    Ok(!outcomes.iter().any(|o| o.status.is_problem()))
+    // How Python Ibis itself does against its own DuckDB results, for scale.
+    for (b, (same, total)) in python_ibis_agreement(&paths)? {
+        let _ = writeln!(err, "python ibis on {b}: {same}/{total} cases match its duckdb result");
+    }
+    let missing = unported(&paths)?;
+    if !missing.is_empty() && filter.is_empty() {
+        let _ = writeln!(err, "{} cases have goldens but no Rust port: {}", missing.len(), missing.join(", "));
+    }
+    Ok(!outcomes.iter().any(|o| o.status.is_problem()) && (missing.is_empty() || !filter.is_empty()))
 }

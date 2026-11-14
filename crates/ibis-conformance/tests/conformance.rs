@@ -1,13 +1,15 @@
 //! `cargo test` gate: every ported Ibis case passes on every backend (or is
 //! marked notimpl and still fails). Needs `mise run setup` for the fixture data.
 
-use ibis_conformance::{ALL_BACKENDS, Paths, backends, run};
+use ibis_conformance::{ALL_BACKENDS, FixtureData, Paths, run, targets, unported};
 
 #[test]
 fn ibis_parity() {
     let paths = Paths::from_repo_root(&Paths::default_root());
-    let bs = backends(&paths, &ALL_BACKENDS).expect("load fixtures (run `mise run setup`)");
-    let problems: Vec<String> = run(&paths, &bs, "")
+    let data = FixtureData::read(&paths).expect("read fixtures (run `mise run setup`)");
+    let ts = targets(&data, &ALL_BACKENDS).expect("load fixtures");
+    assert_eq!(unported(&paths).unwrap(), Vec::<String>::new(), "cases with goldens but no Rust port");
+    let problems: Vec<String> = run(&paths, &data, &ts, "")
         .expect("run conformance")
         .iter()
         .filter(|o| o.status.is_problem())

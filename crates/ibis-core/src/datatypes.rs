@@ -63,6 +63,32 @@ impl DataType {
         }
     }
 
+    /// Smallest signed integer type holding `v` (Ibis `dt.infer(int)`);
+    /// int64 if nothing does.
+    pub fn smallest_int(v: i128) -> DataType {
+        use DataType::*;
+        [Int8, Int16, Int32]
+            .into_iter()
+            .find(|t| t.int_bounds().is_some_and(|(lo, hi)| lo <= v && v <= hi))
+            .unwrap_or(Int64)
+    }
+
+    /// (min, max) of an integer type.
+    pub fn int_bounds(&self) -> Option<(i128, i128)> {
+        use DataType::*;
+        Some(match self {
+            Int8 => (i8::MIN as i128, i8::MAX as i128),
+            Int16 => (i16::MIN as i128, i16::MAX as i128),
+            Int32 => (i32::MIN as i128, i32::MAX as i128),
+            Int64 => (i64::MIN as i128, i64::MAX as i128),
+            UInt8 => (0, u8::MAX as i128),
+            UInt16 => (0, u16::MAX as i128),
+            UInt32 => (0, u32::MAX as i128),
+            UInt64 => (0, u64::MAX as i128),
+            _ => return None,
+        })
+    }
+
     /// The type both operands of an arithmetic op are promoted to.
     pub fn promote(a: &DataType, b: &DataType) -> Result<DataType> {
         use DataType::*;

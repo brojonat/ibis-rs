@@ -885,8 +885,8 @@ impl Expr {
                     Add if lt == T::String && rt == T::String => T::String,
                     Mul if (lt == T::String && rt.is_integer()) || (lt.is_integer() && rt == T::String) => T::String,
                     Div | Pow => T::Float64,
-                    FloorDiv if lt.is_integer() && rt.is_integer() => T::Int64,
-                    FloorDiv => T::Float64,
+                    FloorDiv => T::Int64,
+                    Add | Sub | Mul | Mod if lt.is_integer() && rt.is_integer() => integral_binop(*op, l, &lt, r, &rt),
                     _ => {
                         if !lt.is_numeric() && lt != T::Null || !rt.is_numeric() && rt != T::Null {
                             return invalid(format!("{op:?} needs numeric operands, got {lt} and {rt}"));
@@ -965,6 +965,39 @@ impl Expr {
             }
         })
     }
+}
+
+/// Ibis's result type for integer arithmetic: wide enough for every value
+/// the operands could produce. A literal contributes its value, anything else
+/// the bounds of its type; the result is at least as wide as both operands.
+/// So `int16_col + 1` is int32 (32767 + 1 overflows int16) but `int16_col % 2`
+/// stays int16.
+fn integral_binop(op: BinaryOp, l: &Expr, lt: &DataType, r: &Expr, rt: &DataType) -> DataType {
+    fn bounds(e: &Expr, t: &DataType) -> Vec<i128> {
+        match e.unaliased() {
+            Expr::Literal(Value::Int(i), _) => vec![*i as i128],
+            _ => t.int_bounds().map(|(lo, hi)| vec![lo, hi]).unwrap_or_default(),
+        }
+    }
+    let width = |t: &DataType| t.int_bounds().map_or(0, |(_, hi)| hi);
+    let mut out = if width(lt) >= width(rt) { lt.clone() } else { rt.clone() };
+    for a in bounds(l, lt) {
+        for b in bounds(r, rt) {
+            let v = match op {
+                BinaryOp::Add => a.checked_add(b),
+                BinaryOp::Sub => a.checked_sub(b),
+                BinaryOp::Mul => a.checked_mul(b),
+                // Python's %: the result takes the divisor's sign
+                BinaryOp::Mod if b != 0 => Some(a.rem_euclid(b) + if b < 0 && a.rem_euclid(b) != 0 { b } else { 0 }),
+                _ => None,
+            };
+            let t = v.map_or(DataType::Int64, DataType::smallest_int);
+            if width(&t) > width(&out) {
+                out = t;
+            }
+        }
+    }
+    out
 }
 
 fn unify(a: &DataType, b: &DataType) -> Result<DataType> {

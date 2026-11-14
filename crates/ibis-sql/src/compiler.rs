@@ -470,7 +470,7 @@ impl ExprCompiler<'_> {
                     self.d.type_name(&DataType::Int64)?
                 )
             }
-            FloorDiv => format!("FLOOR({ls} / {rs})"),
+            FloorDiv => format!("CAST(FLOOR({ls} / {rs}) AS {})", self.d.type_name(&DataType::Int64)?),
             Mod => format!("({ls} % {rs})"),
             Pow => format!("POWER({ls}, {rs})"),
             Eq => format!("({ls} = {rs})"),

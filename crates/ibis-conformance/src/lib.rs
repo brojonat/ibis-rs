@@ -9,19 +9,20 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use arrow_array::RecordBatch;
-use ibis_core::convert::batch_to_rows;
+use ibis_core::convert::{batch_to_rows, rows_to_batch};
 use ibis_core::prelude::*;
 use ibis_core::{Error, Result, Value};
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde_json::{Value as Json, json};
 
-use crate::cases::{Case, Shape};
+use crate::cases::{Case, Fx};
 
-pub const FIXTURE: &str = "functional_alltypes";
+pub const FIXTURES: [&str; 3] = ["functional_alltypes", "batting", "awards_players"];
 
 /// Paths the runner needs, resolved from the repo root.
 pub struct Paths {
     pub golden: PathBuf,
+    pub memtables: PathBuf,
     pub testing_data: PathBuf,
     /// TPC-H databases at scale factor 0.01 (bench/tpch_data.py).
     pub tpch: PathBuf,
@@ -32,7 +33,12 @@ impl Paths {
         let testing_data = std::env::var_os("IBIS_TESTING_DATA")
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("ci/ibis-testing-data"));
-        Paths { golden: root.join("conformance/golden"), testing_data, tpch: root.join("ci/tpch/sf0_01") }
+        Paths {
+            golden: root.join("conformance/golden"),
+            memtables: root.join("conformance/memtables.json"),
+            testing_data,
+            tpch: root.join("ci/tpch/sf0_01"),
+        }
     }
 
     /// Repo root, from this crate's manifest dir.
@@ -49,13 +55,104 @@ pub fn read_parquet(path: &Path) -> Result<Vec<RecordBatch>> {
     Ok(reader.collect::<std::result::Result<Vec<_>, _>>()?)
 }
 
-/// A backend under test, loaded with the Ibis fixture tables.
-pub fn backends(paths: &Paths, names: &[&str]) -> Result<Vec<Box<dyn Backend>>> {
-    let fixture = read_parquet(&paths.testing_data.join(format!("parquet/{FIXTURE}.parquet")))?;
+/// The fixture tables, as Arrow data: the three Ibis parquet files plus the
+/// in-memory tables of conformance/memtables.json.
+pub struct FixtureData {
+    tables: Vec<(String, Vec<RecordBatch>)>,
+    memtables: Vec<String>,
+}
+
+fn dtype_of(name: &str) -> Result<DataType> {
+    Ok(match name {
+        "int64" => DataType::Int64,
+        "float64" => DataType::Float64,
+        "string" => DataType::String,
+        "boolean" => DataType::Boolean,
+        other => return Err(Error::Other(format!("memtables.json: unsupported type {other:?}"))),
+    })
+}
+
+fn json_value(v: &Json) -> Result<Value> {
+    Ok(match v {
+        Json::Null => Value::Null,
+        Json::Bool(b) => Value::Bool(*b),
+        Json::Number(n) if n.is_i64() => Value::Int(n.as_i64().unwrap()),
+        Json::Number(n) => Value::Float(n.as_f64().unwrap()),
+        Json::String(s) => Value::String(s.clone()),
+        other => return Err(Error::Other(format!("memtables.json: unsupported value {other}"))),
+    })
+}
+
+impl FixtureData {
+    pub fn read(paths: &Paths) -> Result<FixtureData> {
+        let mut tables = vec![];
+        for name in FIXTURES {
+            tables.push((name.to_string(), read_parquet(&paths.testing_data.join(format!("parquet/{name}.parquet")))?));
+        }
+        let p = paths.memtables.clone();
+        let text = std::fs::read_to_string(&p).map_err(|e| Error::Other(format!("read {}: {e}", p.display())))?;
+        let spec: BTreeMap<String, Json> =
+            serde_json::from_str(&text).map_err(|e| Error::Other(format!("parse {}: {e}", p.display())))?;
+        let bad = |name: &str| Error::Other(format!("memtables.json: malformed table {name:?}"));
+        let mut memtables = vec![];
+        for (name, t) in &spec {
+            let cols = t["columns"].as_array().ok_or_else(|| bad(name))?;
+            let fields = cols
+                .iter()
+                .map(|c| {
+                    Ok((c[0].as_str().ok_or_else(|| bad(name))?, dtype_of(c[1].as_str().ok_or_else(|| bad(name))?)?))
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let rows = t["rows"]
+                .as_array()
+                .ok_or_else(|| bad(name))?
+                .iter()
+                .map(|r| r.as_array().ok_or_else(|| bad(name))?.iter().map(json_value).collect())
+                .collect::<Result<Vec<Vec<Value>>>>()?;
+            tables.push((name.clone(), vec![rows_to_batch(&Schema::of(&fields), &rows)?]));
+            memtables.push(name.clone());
+        }
+        Ok(FixtureData { tables, memtables })
+    }
+
+    fn fx(&self, table: impl Fn(&str) -> Result<Table>) -> Result<Fx> {
+        Ok(Fx {
+            alltypes: table("functional_alltypes")?,
+            batting: table("batting")?,
+            awards_players: table("awards_players")?,
+            mem: self.memtables.iter().map(|n| Ok((n.clone(), table(n)?))).collect::<Result<_>>()?,
+        })
+    }
+
+    /// Fixtures with the schemas Python Ibis saw, attached to no backend:
+    /// what type inference is checked against.
+    pub fn unbound(&self) -> Result<Fx> {
+        self.fx(|name| {
+            let (_, batches) = self.tables.iter().find(|(n, _)| n == name).expect("known fixture");
+            Ok(Table::named(name, Schema::from_arrow(&batches[0].schema())?))
+        })
+    }
+
+    /// Create every fixture table on `b` and return them as the backend sees them.
+    pub fn load(&self, b: &dyn Backend) -> Result<Fx> {
+        for (name, batches) in &self.tables {
+            b.create_table(name, batches)?;
+        }
+        self.fx(|name| b.table(name))
+    }
+}
+
+/// A backend under test and its fixture tables.
+pub struct Target {
+    pub backend: Box<dyn Backend>,
+    pub fx: Fx,
+}
+
+pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
     names
         .iter()
         .map(|n| {
-            let b: Box<dyn Backend> = match *n {
+            let backend: Box<dyn Backend> = match *n {
                 "duckdb" => Box::new(ibis_duckdb::DuckDb::open_in_memory()?),
                 "sqlite" => Box::new(ibis_sqlite::Sqlite::open_in_memory()?),
                 "postgres" => {
@@ -66,24 +163,17 @@ pub fn backends(paths: &Paths, names: &[&str]) -> Result<Vec<Box<dyn Backend>>> 
                 }
                 other => return Err(Error::Other(format!("unknown backend {other:?}"))),
             };
-            b.create_table(FIXTURE, &fixture)?;
-            Ok(b)
+            let fx = data.load(backend.as_ref())?;
+            Ok(Target { backend, fx })
         })
         .collect()
 }
 
 pub const ALL_BACKENDS: [&str; 3] = ["duckdb", "postgres", "sqlite"];
 
-/// Build the table expression a case executes.
-pub fn build(case: &Case, t: &Table) -> Result<Table> {
-    match &case.shape {
-        Shape::Table(f) => f(t),
-        Shape::Column(f) => {
-            let e = f(t)?.name("tmp");
-            if e.is_reduction() { t.aggregate([e]) } else { t.select([col("id"), e]) }
-        }
-    }
-}
+/// Name of the pseudo-backend that checks output column names and types
+/// against Ibis's, independent of any engine.
+pub const SCHEMA: &str = "schema";
 
 #[derive(Clone, Debug, PartialEq)]
 enum Cell {
@@ -207,7 +297,44 @@ fn load_index(paths: &Paths) -> Result<BTreeMap<String, Json>> {
     serde_json::from_str(&text).map_err(|e| Error::Other(format!("parse {}: {e}", p.display())))
 }
 
-fn run_one(case: &Case, backend: &dyn Backend, index: &BTreeMap<String, Json>, paths: &Paths) -> Outcome {
+/// Column names and Ibis types of the case's output, against Ibis's.
+fn check_schema(case: &Case, fx: &Fx, meta: &Json) -> Outcome {
+    let mut out =
+        Outcome { id: case.id.clone(), backend: SCHEMA.into(), status: Status::Pass, sql: None, detail: Json::Null };
+    let strs = |k: &str| -> Vec<String> {
+        meta[k].as_array().map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect()).unwrap_or_default()
+    };
+    // Ibis timestamps carry a scale ("timestamp(6)"); ours don't yet.
+    let unscaled = |t: String| match t.strip_prefix("timestamp(") {
+        Some(rest) if rest.len() == 2 && rest.ends_with(')') => "timestamp".to_string(),
+        _ => t,
+    };
+    let want: Vec<(String, String)> =
+        strs("columns").into_iter().zip(strs("dtypes").into_iter().map(unscaled)).collect();
+    let passed = match case.build(fx) {
+        Ok(t) => {
+            let got: Vec<(String, String)> =
+                t.schema().fields.iter().map(|f| (f.name.clone(), f.dtype.to_string())).collect();
+            if got != want {
+                out.status = Status::Fail;
+                out.detail = json!({"want": format!("{want:?}"), "got": format!("{got:?}")});
+            }
+            got == want
+        }
+        Err(e) => {
+            out.status = Status::Error;
+            out.detail = json!(e.to_string());
+            false
+        }
+    };
+    if case.notimpl.contains(&SCHEMA) {
+        out.status = if passed { Status::Xpass } else { Status::Xfail };
+    }
+    out
+}
+
+fn run_one(case: &Case, target: &Target, meta: &Json, paths: &Paths) -> Outcome {
+    let backend = target.backend.as_ref();
     let mut out = Outcome {
         id: case.id.clone(),
         backend: backend.name().into(),
@@ -215,14 +342,13 @@ fn run_one(case: &Case, backend: &dyn Backend, index: &BTreeMap<String, Json>, p
         sql: None,
         detail: Json::Null,
     };
-    let Some(file) = index.get(&case.id).and_then(|m| m.get("file")).and_then(Json::as_str) else {
+    let Some(file) = meta.get("file").and_then(Json::as_str) else {
         out.status = Status::NoGolden;
         return out;
     };
     let result = (|| -> Result<Option<Json>> {
-        let t = backend.table(FIXTURE)?;
-        let expr = build(case, &t)?;
-        out.sql = backend.compile(&expr).ok();
+        let expr = case.build(&target.fx)?;
+        out.sql = Some(backend.compile(&expr)?);
         let got = backend.execute(&expr)?;
         let want = read_parquet(&paths.golden.join(file))?;
         Ok(diff(&canon(&want, case.ordered)?, &canon(&got, case.ordered)?))
@@ -240,22 +366,67 @@ fn run_one(case: &Case, backend: &dyn Backend, index: &BTreeMap<String, Json>, p
             false
         }
     };
+    if !passed {
+        // context: does Python Ibis itself match its DuckDB result on this backend?
+        if let Some(py) = meta.get("ibis").and_then(|m| m.get(backend.name())) {
+            out.detail = json!({"problem": out.detail, "python_ibis": py});
+        }
+    }
     if case.notimpl.contains(&backend.name()) {
         out.status = if passed { Status::Xpass } else { Status::Xfail };
     }
     out
 }
 
-/// Run every case whose id contains `filter` on every backend.
-pub fn run(paths: &Paths, backends: &[Box<dyn Backend>], filter: &str) -> Result<Vec<Outcome>> {
+/// Run every case whose id contains `filter`: the schema check once, then on
+/// every target.
+pub fn run(paths: &Paths, data: &FixtureData, targets: &[Target], filter: &str) -> Result<Vec<Outcome>> {
     let index = load_index(paths)?;
+    let unbound = data.unbound()?;
     let mut outcomes = vec![];
     for case in cases::all().iter().filter(|c| c.id.contains(filter)) {
-        for b in backends {
-            outcomes.push(run_one(case, b.as_ref(), &index, paths));
+        let Some(meta) = index.get(&case.id).filter(|m| m.get("file").is_some()) else {
+            outcomes.push(Outcome {
+                id: case.id.clone(),
+                backend: SCHEMA.into(),
+                status: Status::NoGolden,
+                sql: None,
+                detail: index.get(&case.id).and_then(|m| m.get("error")).cloned().unwrap_or(Json::Null),
+            });
+            continue;
+        };
+        outcomes.push(check_schema(case, &unbound, meta));
+        for t in targets {
+            outcomes.push(run_one(case, t, meta, paths));
         }
     }
     Ok(outcomes)
+}
+
+/// Case ids in the golden index with no Rust case: ported in Python only.
+pub fn unported(paths: &Paths) -> Result<Vec<String>> {
+    let index = load_index(paths)?;
+    let have: std::collections::BTreeSet<String> = cases::all().into_iter().map(|c| c.id).collect();
+    Ok(index.keys().filter(|k| *k != "_meta" && !have.contains(*k)).cloned().collect())
+}
+
+/// Per backend, how many indexed cases Python Ibis itself answers the same
+/// as on DuckDB: (same, total).
+pub fn python_ibis_agreement(paths: &Paths) -> Result<BTreeMap<String, (usize, usize)>> {
+    let mut out: BTreeMap<String, (usize, usize)> = BTreeMap::new();
+    for (k, meta) in load_index(paths)? {
+        if k == "_meta" {
+            continue;
+        }
+        if let Some(m) = meta.get("ibis").and_then(Json::as_object) {
+            for (backend, v) in m {
+                let e = out.entry(backend.clone()).or_default();
+                e.0 += (v.as_str() == Some("same")) as usize;
+                e.1 += 1;
+            }
+        }
+    }
+    Ok(out)
 }
 
 /// Open the TPC-H database for `name` (generated by `bench/tpch_data.py 0.01`).

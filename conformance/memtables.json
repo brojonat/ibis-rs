@@ -1,0 +1,42 @@
+{
+ "order_nulls": {
+  "columns": [["a", "int64"], ["b", "string"]],
+  "rows": [[1, "foo"], [2, "baz"], [3, null]]
+ },
+ "order_two_cols": {
+  "columns": [["col1", "int64"], ["col2", "string"]],
+  "rows": [[1, "a"], [3, "a"], [2, "B"], [1, "c"], [3, "D"], [1, null], [null, "a"]]
+ },
+ "isnull_eq": {
+  "columns": [["x", "string"], ["y", "string"], ["z", "int64"]],
+  "rows": [["a", "c", 1], ["b", null, 2], [null, null, 3]]
+ },
+ "ids_123": {
+  "columns": [["id", "int64"]],
+  "rows": [[1], [2], [3]]
+ },
+ "ids_12": {
+  "columns": [["id", "int64"]],
+  "rows": [[1], [2]]
+ },
+ "x_one": {
+  "columns": [["x", "int64"]],
+  "rows": [[1]]
+ },
+ "c1_dups": {
+  "columns": [["c1", "int64"]],
+  "rows": [[1], [2], [3], [6], [6]]
+ },
+ "id_col": {
+  "columns": [["id", "int64"], ["col", "string"]],
+  "rows": [[1, "a"], [2, "b"]]
+ },
+ "topk": {
+  "columns": [["x", "int64"]],
+  "rows": [[1], [1], [null]]
+ },
+ "win": {
+  "columns": [["g", "string"], ["x", "int64"], ["y", "int64"]],
+  "rows": [["a", 0, 3], ["a", 1, 2], ["a", 2, 0], ["a", 3, 1], ["a", 4, 1]]
+ }
+}
