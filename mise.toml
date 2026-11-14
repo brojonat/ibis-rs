@@ -5,10 +5,19 @@ uv = "latest"
 [env]
 _.file = { path = ".env", redact = false }
 IBIS_TESTING_DATA = "{{config_root}}/ci/ibis-testing-data"
+IBIS_TESTING_POSTGRES_URL = "host={{config_root}}/.pg port=54330 user=postgres dbname=ibis_testing"
 
 [tasks.setup]
 description = "Download Ibis testing data (parquet) into ci/ibis-testing-data/"
 run = "scripts/download-data.sh"
+
+[tasks.pg-start]
+description = "Start the local test Postgres (socket in .pg/, port 54330)"
+run = "scripts/pg.sh start"
+
+[tasks.pg-stop]
+description = "Stop the local test Postgres"
+run = "scripts/pg.sh stop"
 
 [tasks.build]
 description = "Build the workspace"
@@ -16,7 +25,7 @@ run = "cargo build --workspace"
 
 [tasks.test]
 description = "Unit tests + conformance on all backends"
-depends = ["setup"]
+depends = ["setup", "pg-start"]
 run = "cargo test --workspace"
 
 [tasks.lint]
@@ -25,7 +34,7 @@ run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets -- -D 
 
 [tasks.conformance]
 description = "Run ported Ibis cases on every backend: JSONL -> logs/conformance.jsonl, matrix -> stderr"
-depends = ["setup"]
+depends = ["setup", "pg-start"]
 run = 'mkdir -p logs; f() { cargo run --quiet -p ibis-conformance -- "$@" > logs/conformance.jsonl 2> >(tee logs/conformance.txt >&2); }; f'
 
 [tasks.goldens]

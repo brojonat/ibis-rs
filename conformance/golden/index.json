@@ -1,0 +1,1444 @@
+{
+ "_meta": {
+  "ibis": "12.0.0",
+  "backend": "duckdb"
+ },
+ "test_aggregate[complex_sum]": {
+  "file": "test_aggregation/test_aggregate[complex_sum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_aggregate[max]": {
+  "file": "test_aggregation/test_aggregate[max].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_aggregate[mean]": {
+  "file": "test_aggregation/test_aggregate[mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_aggregate[min]": {
+  "file": "test_aggregation/test_aggregate[min].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_aggregate[timestamp_max]": {
+  "file": "test_aggregation/test_aggregate[timestamp_max].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp(6)"
+  ],
+  "rows": 1
+ },
+ "test_aggregate_grouped[complex_sum]": {
+  "file": "test_aggregation/test_aggregate_grouped[complex_sum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 10
+ },
+ "test_aggregate_grouped[max]": {
+  "file": "test_aggregation/test_aggregate_grouped[max].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 10
+ },
+ "test_aggregate_grouped[mean]": {
+  "file": "test_aggregation/test_aggregate_grouped[mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 10
+ },
+ "test_aggregate_grouped[min]": {
+  "file": "test_aggregation/test_aggregate_grouped[min].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 10
+ },
+ "test_aggregate_grouped[timestamp_max]": {
+  "file": "test_aggregation/test_aggregate_grouped[timestamp_max].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 10
+ },
+ "test_binary_arithmetic_operations[add]": {
+  "file": "test_numeric/test_binary_arithmetic_operations[add].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_binary_arithmetic_operations[floordiv]": {
+  "file": "test_numeric/test_binary_arithmetic_operations[floordiv].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300
+ },
+ "test_binary_arithmetic_operations[mul]": {
+  "file": "test_numeric/test_binary_arithmetic_operations[mul].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_binary_arithmetic_operations[pow]": {
+  "file": "test_numeric/test_binary_arithmetic_operations[pow].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_binary_arithmetic_operations[sub]": {
+  "file": "test_numeric/test_binary_arithmetic_operations[sub].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_binary_arithmetic_operations[truediv]": {
+  "file": "test_numeric/test_binary_arithmetic_operations[truediv].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_complex_math_functions_columns[exp]": {
+  "file": "test_numeric/test_complex_math_functions_columns[exp].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_complex_math_functions_columns[ln]": {
+  "file": "test_numeric/test_complex_math_functions_columns[ln].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_complex_math_functions_columns[log10]": {
+  "file": "test_numeric/test_complex_math_functions_columns[log10].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_complex_math_functions_columns[log2]": {
+  "file": "test_numeric/test_complex_math_functions_columns[log2].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_complex_math_functions_columns[sqrt]": {
+  "file": "test_numeric/test_complex_math_functions_columns[sqrt].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_floating_mod": {
+  "file": "test_numeric/test_floating_mod.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_mod": {
+  "file": "test_numeric/test_mod.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300
+ },
+ "test_reduction_ops[is_in-all]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-all].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-all_negate]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-all_negate].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-any]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-any].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-any_negate]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-any_negate].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-bool_sum]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-bool_sum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-count]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-count].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-count_star]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-count_star].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-max]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-max].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-mean]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-min]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-min].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-nunique]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-nunique].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-std]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-std].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-std_pop]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-std_pop].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-sum]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-sum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-var]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-var].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[is_in-var_pop]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-var_pop].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-all]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-all].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-all_negate]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-all_negate].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-any]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-any].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-any_negate]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-any_negate].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-bool_sum]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-bool_sum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-count]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-count].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-count_star]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-count_star].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-max]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-max].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-mean]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-min]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-min].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-nunique]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-nunique].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-std]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-std].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-std_pop]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-std_pop].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-sum]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-sum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-var]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-var].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_reduction_ops[no_cond-var_pop]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-var_pop].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1
+ },
+ "test_simple_math_functions_columns[abs-neg]": {
+  "file": "test_numeric/test_simple_math_functions_columns[abs-neg].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_simple_math_functions_columns[abs]": {
+  "file": "test_numeric/test_simple_math_functions_columns[abs].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_simple_math_functions_columns[ceil]": {
+  "file": "test_numeric/test_simple_math_functions_columns[ceil].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300
+ },
+ "test_simple_math_functions_columns[floor]": {
+  "file": "test_numeric/test_simple_math_functions_columns[floor].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300
+ },
+ "test_simple_math_functions_columns[sign-negative]": {
+  "file": "test_numeric/test_simple_math_functions_columns[sign-negative].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_simple_math_functions_columns[sign]": {
+  "file": "test_numeric/test_simple_math_functions_columns[sign].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300
+ },
+ "test_string[ascii_str]": {
+  "file": "test_string/test_string[ascii_str].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300
+ },
+ "test_string[complex_like_escape]": {
+  "file": "test_string/test_string[complex_like_escape].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[complex_like_escape_match]": {
+  "file": "test_string/test_string[complex_like_escape_match].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[concat_column_scalar]": {
+  "file": "test_string/test_string[concat_column_scalar].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[concat_columns]": {
+  "file": "test_string/test_string[concat_columns].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[concat_scalar_column]": {
+  "file": "test_string/test_string[concat_scalar_column].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[contains]": {
+  "file": "test_string/test_string[contains].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[endswith-simple]": {
+  "file": "test_string/test_string[endswith-simple].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[endswith]": {
+  "file": "test_string/test_string[endswith].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[find]": {
+  "file": "test_string/test_string[find].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300
+ },
+ "test_string[find_start]": {
+  "file": "test_string/test_string[find_start].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300
+ },
+ "test_string[ilike]": {
+  "file": "test_string/test_string[ilike].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[length]": {
+  "file": "test_string/test_string[length].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300
+ },
+ "test_string[like]": {
+  "file": "test_string/test_string[like].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[lower]": {
+  "file": "test_string/test_string[lower].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[lpad]": {
+  "file": "test_string/test_string[lpad].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[lstrip]": {
+  "file": "test_string/test_string[lstrip].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract]": {
+  "file": "test_string/test_string[re_extract].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract_group]": {
+  "file": "test_string/test_string[re_extract_group].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract_group_1]": {
+  "file": "test_string/test_string[re_extract_group_1].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract_group_2]": {
+  "file": "test_string/test_string[re_extract_group_2].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract_group_3]": {
+  "file": "test_string/test_string[re_extract_group_3].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract_group_at_beginning]": {
+  "file": "test_string/test_string[re_extract_group_at_beginning].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract_group_at_end]": {
+  "file": "test_string/test_string[re_extract_group_at_end].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract_posix]": {
+  "file": "test_string/test_string[re_extract_posix].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_extract_whole_group]": {
+  "file": "test_string/test_string[re_extract_whole_group].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_replace]": {
+  "file": "test_string/test_string[re_replace].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_replace_posix]": {
+  "file": "test_string/test_string[re_replace_posix].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_search]": {
+  "file": "test_string/test_string[re_search].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_search_posix]": {
+  "file": "test_string/test_string[re_search_posix].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[re_search_substring]": {
+  "file": "test_string/test_string[re_search_substring].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[repeat_left]": {
+  "file": "test_string/test_string[repeat_left].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[repeat_method]": {
+  "file": "test_string/test_string[repeat_method].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[repeat_right]": {
+  "file": "test_string/test_string[repeat_right].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[replace]": {
+  "file": "test_string/test_string[replace].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[reverse]": {
+  "file": "test_string/test_string[reverse].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[rlike]": {
+  "file": "test_string/test_string[rlike].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[rpad]": {
+  "file": "test_string/test_string[rpad].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[rstrip]": {
+  "file": "test_string/test_string[rstrip].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[startswith-simple]": {
+  "file": "test_string/test_string[startswith-simple].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[startswith]": {
+  "file": "test_string/test_string[startswith].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300
+ },
+ "test_string[strip]": {
+  "file": "test_string/test_string[strip].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_string[upper]": {
+  "file": "test_string/test_string[upper].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_substring[left]": {
+  "file": "test_string/test_substring[left].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_substring[right]": {
+  "file": "test_string/test_substring[right].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_substring[substr-start-only]": {
+  "file": "test_string/test_substring[substr-start-only].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ },
+ "test_substring[substr]": {
+  "file": "test_string/test_substring[substr].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300
+ }
+}

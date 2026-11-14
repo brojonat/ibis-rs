@@ -11,8 +11,10 @@ conformance case is a ported Ibis test (same id), and its expected result comes
 from running the real Python Ibis expression. See [docs/design.md](docs/design.md).
 
 Status: pre-alpha. Working: core IR + API, SQL compiler, DuckDB and SQLite
-backends, conformance runner. Not yet: Postgres, DataFusion, Polars backends,
-most of the Ibis op surface. See [TODO.md](TODO.md).
+backends, conformance runner. **108 ported Ibis test cases** (from
+`test_string`, `test_numeric`, `test_aggregation`) pass on both backends. Not
+yet: Postgres, DataFusion, Polars backends; most of the Ibis op surface. See
+[TODO.md](TODO.md).
 
 ## Usage
 
@@ -34,7 +36,8 @@ let batches = con.execute(&expr)?;            // Vec<arrow RecordBatch>
 ```
 
 Swap `ibis_duckdb::DuckDb` for `ibis_sqlite::Sqlite` and the same `expr` runs
-there.
+there. This example is compiled: `cargo run -p ibis-duckdb --example readme`
+(after `mise run setup`).
 
 ## Layout
 

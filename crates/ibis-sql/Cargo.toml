@@ -1,6 +1,9 @@
 [package]
 name = "ibis-sql"
+description = "IR -> SQL compiler for ibis-rs; the Dialect trait is the SQL backend plugin seam"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [dependencies]
+ibis-core.workspace = true

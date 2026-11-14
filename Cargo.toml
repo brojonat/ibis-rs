@@ -16,8 +16,10 @@ arrow-array = "60.1"
 arrow-schema = "60.1"
 arrow-cast = "60.1"
 parquet = { version = "60.1", default-features = false, features = ["arrow", "snap", "zstd"] }
-duckdb = { version = "1.20000.1", features = ["bundled"] }
-rusqlite = { version = "0.42", features = ["bundled"] }
+duckdb = { version = "1.20000.1", features = ["bundled", "appender-arrow"] }
+rusqlite = { version = "0.42", features = ["bundled", "functions"] }
+regex = "1"
+postgres = { version = "0.19", features = ["with-chrono-0_4"] }
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -27,3 +29,9 @@ ibis-core = { path = "crates/ibis-core" }
 ibis-sql = { path = "crates/ibis-sql" }
 ibis-duckdb = { path = "crates/ibis-duckdb" }
 ibis-sqlite = { path = "crates/ibis-sqlite" }
+ibis-postgres = { path = "crates/ibis-postgres" }
+
+# Optimize dependencies (DuckDB, SQLite, regex, parquet) even in dev builds;
+# our own crates stay fast to compile. Debug-built DuckDB/SQLite are very slow.
+[profile.dev.package."*"]
+opt-level = 2

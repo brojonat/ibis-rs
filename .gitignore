@@ -6,3 +6,5 @@ ci/ibis-testing-data/
 __pycache__/
 .agents/
 .claude/skills/
+.pg/
+ci/tpch/
