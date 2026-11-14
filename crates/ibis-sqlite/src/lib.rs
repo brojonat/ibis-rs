@@ -83,6 +83,10 @@ impl Dialect for SqliteDialect {
         })
     }
 
+    fn supports_intersect_except_all(&self) -> bool {
+        false
+    }
+
     /// SQLite has no bare OFFSET: `LIMIT -1` means no limit.
     fn limit_offset(&self, limit: Option<u64>, offset: u64) -> String {
         match (limit, offset) {

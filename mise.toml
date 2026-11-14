@@ -60,3 +60,7 @@ run = [
   "target/release/tpch-bench > logs/bench-rust.jsonl",
   "python3 bench/compare.py logs/bench-python.jsonl logs/bench-rust.jsonl | tee logs/bench.md",
 ]
+
+[tasks.check-ids]
+description = "Check every conformance case id is a real Ibis pytest id (collects Ibis's tests)"
+run = "uv run -q conformance/check_ids.py"

@@ -585,6 +585,86 @@
    "postgres": "same"
   }
  },
+ "test_difference[all]": {
+  "file": "test_set_ops/test_difference[all].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_difference[distinct]": {
+  "file": "test_set_ops/test_difference[distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_drop_null_table[empty-all]": {
   "file": "test_generic/test_drop_null_table[empty-all].parquet",
   "kind": "table",
@@ -1121,6 +1201,122 @@
    "postgres": "same"
   }
  },
+ "test_filtering_join[anti]": {
+  "file": "test_join/test_filtering_join[anti].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID",
+   "stint",
+   "teamID",
+   "lgID",
+   "G",
+   "AB",
+   "R",
+   "H",
+   "X2B",
+   "X3B",
+   "HR",
+   "RBI",
+   "SB",
+   "CS",
+   "BB",
+   "SO",
+   "IBB",
+   "HBP",
+   "SH",
+   "SF",
+   "GIDP"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64"
+  ],
+  "rows": 1385,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_filtering_join[semi]": {
+  "file": "test_join/test_filtering_join[semi].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID",
+   "stint",
+   "teamID",
+   "lgID",
+   "G",
+   "AB",
+   "R",
+   "H",
+   "X2B",
+   "X3B",
+   "HR",
+   "RBI",
+   "SB",
+   "CS",
+   "BB",
+   "SO",
+   "IBB",
+   "HBP",
+   "SH",
+   "SF",
+   "GIDP"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64"
+  ],
+  "rows": 101,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_floating_mod": {
   "file": "test_numeric/test_floating_mod.parquet",
   "kind": "column",
@@ -1134,6 +1330,154 @@
    "float64"
   ],
   "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ibis_cases_column": {
+  "file": "test_conditionals/test_ibis_cases_column.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 101332,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ibis_cases_scalar": {
+  "file": "test_conditionals/test_ibis_cases_scalar.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ifelse_column": {
+  "file": "test_conditionals/test_ifelse_column.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ifelse_select": {
+  "file": "test_conditionals/test_ifelse_select.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "int_col",
+   "where_col"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_intersect[all]": {
+  "file": "test_set_ops/test_intersect[all].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_intersect[distinct]": {
+  "file": "test_set_ops/test_intersect[distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 4,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -1671,6 +2015,1084 @@
    "postgres": "same"
   }
  },
+ "test_join_conflicting_columns": {
+  "file": "test_join/test_join_conflicting_columns.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y",
+   "z",
+   "y_right",
+   "z_right"
+  ],
+  "dtypes": [
+   "int64",
+   "int64",
+   "string",
+   "int64",
+   "string"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_then_filter_no_column_overlap": {
+  "file": "test_join/test_join_then_filter_no_column_overlap.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "year",
+   "RBI",
+   "playerID",
+   "awardID",
+   "yearID",
+   "lgID",
+   "tie",
+   "notes"
+  ],
+  "dtypes": [
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "string",
+   "string",
+   "string"
+  ],
+  "rows": 368,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-false-false-const-expr-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-false-false-const-expr-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-false-false-expr-const-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-false-false-expr-const-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-false-false-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-false-false-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-false-false-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-false-false-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-false-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-false-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-false-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-false-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-false-literal]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-false-literal].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-false]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-false].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-true-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-true-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-true-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-true-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-true-literal]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-true-literal].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-true-true-const-expr-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-true-true-const-expr-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-true-true-expr-const-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-true-true-expr-const-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-true-true-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-true-true-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-true-true-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-true-true-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[inner-true]": {
+  "file": "test_join/test_join_with_trivial_predicate[inner-true].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-false-false-const-expr-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-false-false-const-expr-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-false-false-expr-const-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-false-false-expr-const-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-false-false-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-false-false-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-false-false-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-false-false-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-false-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-false-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-false-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-false-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-false-literal]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-false-literal].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-false]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-false].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-true-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-true-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-true-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-true-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-true-literal]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-true-literal].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-true-true-const-expr-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-true-true-const-expr-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-true-true-expr-const-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-true-true-expr-const-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-true-true-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-true-true-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-true-true-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-true-true-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[left-true]": {
+  "file": "test_join/test_join_with_trivial_predicate[left-true].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-false-false-const-expr-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-false-false-const-expr-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-false-false-expr-const-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-false-false-expr-const-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-false-false-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-false-false-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-false-false-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-false-false-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-false-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-false-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-false-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-false-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-false-literal]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-false-literal].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-false]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-false].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-true-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-true-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-true-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-true-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-true-literal]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-true-literal].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-true-true-const-expr-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-true-true-const-expr-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-true-true-expr-const-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-true-true-expr-const-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-true-true-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-true-true-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-true-true-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-true-true-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[outer-true]": {
+  "file": "test_join/test_join_with_trivial_predicate[outer-true].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-false-false-const-expr-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-false-false-const-expr-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-false-false-expr-const-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-false-false-expr-const-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-false-false-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-false-false-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-false-false-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-false-false-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-false-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-false-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-false-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-false-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-false-literal]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-false-literal].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-false]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-false].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-true-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-true-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-true-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-true-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-true-literal]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-true-literal].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-true-true-const-expr-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-true-true-const-expr-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-true-true-expr-const-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-true-true-expr-const-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-true-true-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-true-true-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-true-true-literal-list]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-true-true-literal-list].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_join_with_trivial_predicate[right-true]": {
+  "file": "test_join/test_join_with_trivial_predicate[right-true].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_literal_na[bool]": {
   "file": "test_generic/test_literal_na[bool].parquet",
   "kind": "scalar",
@@ -1992,6 +3414,284 @@
    "int32"
   ],
   "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_mutate_then_join_no_column_overlap": {
+  "file": "test_join/test_mutate_then_join_no_column_overlap.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_mutating_join[inner]": {
+  "file": "test_join/test_mutating_join[inner].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID",
+   "stint",
+   "teamID",
+   "lgID",
+   "G",
+   "AB",
+   "R",
+   "H",
+   "X2B",
+   "X3B",
+   "HR",
+   "RBI",
+   "SB",
+   "CS",
+   "BB",
+   "SO",
+   "IBB",
+   "HBP",
+   "SH",
+   "SF",
+   "GIDP",
+   "awardID",
+   "tie",
+   "notes"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "string"
+  ],
+  "rows": 278,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_mutating_join[left]": {
+  "file": "test_join/test_mutating_join[left].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID",
+   "stint",
+   "teamID",
+   "lgID",
+   "G",
+   "AB",
+   "R",
+   "H",
+   "X2B",
+   "X3B",
+   "HR",
+   "RBI",
+   "SB",
+   "CS",
+   "BB",
+   "SO",
+   "IBB",
+   "HBP",
+   "SH",
+   "SF",
+   "GIDP",
+   "playerID_right",
+   "awardID",
+   "tie",
+   "notes"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "string",
+   "string"
+  ],
+  "rows": 1663,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_mutating_join[outer]": {
+  "file": "test_join/test_mutating_join[outer].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID",
+   "stint",
+   "teamID",
+   "lgID",
+   "G",
+   "AB",
+   "R",
+   "H",
+   "X2B",
+   "X3B",
+   "HR",
+   "RBI",
+   "SB",
+   "CS",
+   "BB",
+   "SO",
+   "IBB",
+   "HBP",
+   "SH",
+   "SF",
+   "GIDP",
+   "playerID_right",
+   "awardID",
+   "tie",
+   "notes"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "string",
+   "string"
+  ],
+  "rows": 3789,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_mutating_join[right]": {
+  "file": "test_join/test_mutating_join[right].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID",
+   "stint",
+   "teamID",
+   "lgID",
+   "G",
+   "AB",
+   "R",
+   "H",
+   "X2B",
+   "X3B",
+   "HR",
+   "RBI",
+   "SB",
+   "CS",
+   "BB",
+   "SO",
+   "IBB",
+   "HBP",
+   "SH",
+   "SF",
+   "GIDP",
+   "playerID_right",
+   "awardID",
+   "tie",
+   "notes"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "string",
+   "string"
+  ],
+  "rows": 2404,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -2534,6 +4234,114 @@
    "string"
   ],
   "rows": 7,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_outer_join_nullability[left-x]": {
+  "file": "test_join/test_outer_join_nullability[left-x].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "x_right"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_outer_join_nullability[left-xy]": {
+  "file": "test_join/test_outer_join_nullability[left-xy].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_outer_join_nullability[outer-x]": {
+  "file": "test_join/test_outer_join_nullability[outer-x].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "x_right"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_outer_join_nullability[outer-xy]": {
+  "file": "test_join/test_outer_join_nullability[outer-xy].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_outer_join_nullability[right-x]": {
+  "file": "test_join/test_outer_join_nullability[right-x].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "x_right"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_outer_join_nullability[right-xy]": {
+  "file": "test_join/test_outer_join_nullability[right-xy].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 1,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -4509,6 +6317,24 @@
    "postgres": "same"
   }
  },
+ "test_substitute": {
+  "file": "test_conditionals/test_substitute.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "subs",
+   "subs_count"
+  ],
+  "dtypes": [
+   "string",
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_substring[left]": {
   "file": "test_string/test_substring[left].parquet",
   "kind": "column",
@@ -4703,6 +6529,198 @@
    "postgres": "same"
   }
  },
+ "test_top_level_intersect_difference[False-difference-False]": {
+  "file": "test_set_ops/test_top_level_intersect_difference[False-difference-False].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_intersect_difference[False-difference-True]": {
+  "file": "test_set_ops/test_top_level_intersect_difference[False-difference-True].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_intersect_difference[False-intersect-False]": {
+  "file": "test_set_ops/test_top_level_intersect_difference[False-intersect-False].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_intersect_difference[False-intersect-True]": {
+  "file": "test_set_ops/test_top_level_intersect_difference[False-intersect-True].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_intersect_difference[True-difference-False]": {
+  "file": "test_set_ops/test_top_level_intersect_difference[True-difference-False].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_intersect_difference[True-difference-True]": {
+  "file": "test_set_ops/test_top_level_intersect_difference[True-difference-True].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_intersect_difference[True-intersect-False]": {
+  "file": "test_set_ops/test_top_level_intersect_difference[True-intersect-False].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_intersect_difference[True-intersect-True]": {
+  "file": "test_set_ops/test_top_level_intersect_difference[True-intersect-True].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_union[False-False]": {
+  "file": "test_set_ops/test_top_level_union[False-False].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_union[False-True]": {
+  "file": "test_set_ops/test_top_level_union[False-True].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_union[True-False]": {
+  "file": "test_set_ops/test_top_level_union[True-False].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_top_level_union[True-True]": {
+  "file": "test_set_ops/test_top_level_union[True-True].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_topk_counts_null": {
   "file": "test_generic/test_topk_counts_null.parquet",
   "kind": "tables",
@@ -4732,6 +6750,190 @@
    "int64"
   ],
   "rows": 1384,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_union[all]": {
+  "file": "test_set_ops/test_union[all].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "timestamp_col",
+   "date_string_col",
+   "float_col",
+   "year",
+   "smallint_col",
+   "double_col",
+   "month",
+   "bigint_col",
+   "tinyint_col",
+   "int_col",
+   "string_col",
+   "bool_col"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)",
+   "string",
+   "float32",
+   "int64",
+   "int16",
+   "float64",
+   "int64",
+   "int64",
+   "int8",
+   "int32",
+   "string",
+   "boolean"
+  ],
+  "rows": 22,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_union[distinct]": {
+  "file": "test_set_ops/test_union[distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "timestamp_col",
+   "date_string_col",
+   "float_col",
+   "year",
+   "smallint_col",
+   "double_col",
+   "month",
+   "bigint_col",
+   "tinyint_col",
+   "int_col",
+   "string_col",
+   "bool_col"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)",
+   "string",
+   "float32",
+   "int64",
+   "int16",
+   "float64",
+   "int64",
+   "int64",
+   "int8",
+   "int32",
+   "string",
+   "boolean"
+  ],
+  "rows": 16,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_union_mixed_distinct": {
+  "file": "test_set_ops/test_union_mixed_distinct.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "timestamp_col",
+   "date_string_col",
+   "float_col",
+   "year",
+   "smallint_col",
+   "double_col",
+   "month",
+   "bigint_col",
+   "tinyint_col",
+   "int_col",
+   "string_col",
+   "bool_col"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)",
+   "string",
+   "float32",
+   "int64",
+   "int16",
+   "float64",
+   "int64",
+   "int64",
+   "int8",
+   "int32",
+   "string",
+   "boolean"
+  ],
+  "rows": 24,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_value_cases_column": {
+  "file": "test_conditionals/test_value_cases_column.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 101332,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_value_cases_null": {
+  "file": "test_conditionals/test_value_cases_null.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_value_cases_scalar[fallthrough]": {
+  "file": "test_conditionals/test_value_cases_scalar[fallthrough].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_value_cases_scalar[one_kwarg]": {
+  "file": "test_conditionals/test_value_cases_scalar[one_kwarg].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"

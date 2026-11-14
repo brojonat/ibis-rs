@@ -6,8 +6,11 @@
 //! known not to pass yet. A marked case that passes is reported as `xpass`.
 
 mod aggregation;
+mod conditionals;
 mod generic;
+mod join;
 mod numeric;
+mod set_ops;
 mod string;
 
 use std::collections::BTreeMap;
@@ -106,5 +109,8 @@ pub fn all() -> Vec<Case> {
     numeric::register(&mut v);
     aggregation::register(&mut v);
     generic::register(&mut v);
+    conditionals::register(&mut v);
+    join::register(&mut v);
+    set_ops::register(&mut v);
     v
 }

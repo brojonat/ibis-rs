@@ -225,15 +225,18 @@ impl RelCompiler<'_> {
     }
 
     /// `alias."column"` for a column of relation `rel` visible in scope.
+    /// A relation in scope under its own identity wins over one that merely
+    /// derives from `rel`: in `a.join(a.filter(..))` both sides carry `a`'s
+    /// columns, and `a.x` must mean the left side.
     fn field(&self, rel: &Rel, name: &str) -> Result<String> {
-        for sc in self.scopes.borrow().iter().rev() {
-            let col = if sc.id == rel.id {
-                Some(name.to_string())
-            } else {
-                sc.deref.get(&(rel.id, name.to_string())).cloned()
-            };
-            if let Some(c) = col {
-                return Ok(format!("{}.{}", sc.alias, self.d.quote_ident(&c)));
+        let scopes = self.scopes.borrow();
+        let q = |alias: &str, col: &str| format!("{alias}.{}", self.d.quote_ident(col));
+        if let Some(sc) = scopes.iter().rev().find(|sc| sc.id == rel.id) {
+            return Ok(q(&sc.alias, name));
+        }
+        for sc in scopes.iter().rev() {
+            if let Some(c) = sc.deref.get(&(rel.id, name.to_string())) {
+                return Ok(q(&sc.alias, c));
             }
         }
         Err(Error::Invalid(format!("column {name:?} belongs to a table that isn't part of this query")))
@@ -406,7 +409,19 @@ impl RelCompiler<'_> {
                 // parenthesized compound members.
                 let l = self.source(left, &self.alias())?;
                 let r = self.source(right, &self.alias())?;
-                let body = format!("SELECT * FROM {l} {kw} SELECT * FROM {r}");
+                let body = if !distinct && *kind != SetKind::Union && !self.d.supports_intersect_except_all() {
+                    // Number each row among its duplicates on both sides; the
+                    // DISTINCT operator over (row, number) then keeps or
+                    // cancels duplicates one for one, which is what ALL means.
+                    let cols = left.schema.names().map(q).collect::<Vec<_>>().join(", ");
+                    let numbered = |src: &str| {
+                        format!("SELECT {cols}, ROW_NUMBER() OVER (PARTITION BY {cols}) AS \"_n\" FROM {src}")
+                    };
+                    let kw = kw.trim_end_matches(" ALL");
+                    format!("SELECT {cols} FROM ({} {kw} {}) AS {}", numbered(&l), numbered(&r), self.alias())
+                } else {
+                    format!("SELECT * FROM {l} {kw} SELECT * FROM {r}")
+                };
                 let a = self.alias();
                 Ok(Select::aliased(format!("({body}) AS {a}"), a))
             }

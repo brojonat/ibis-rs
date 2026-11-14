@@ -40,6 +40,12 @@ pub trait Dialect: Send + Sync {
         Ok(None)
     }
 
+    /// Whether the engine has `INTERSECT ALL` and `EXCEPT ALL`. If not they
+    /// are emulated with `ROW_NUMBER()`.
+    fn supports_intersect_except_all(&self) -> bool {
+        true
+    }
+
     /// `LIMIT`/`OFFSET` clause. SQLite needs `LIMIT -1` to use a bare OFFSET.
     fn limit_offset(&self, limit: Option<u64>, offset: u64) -> String {
         let mut s = String::new();

@@ -627,24 +627,32 @@ impl Table {
         self.join(right, on, JoinKind::Left)
     }
 
+    /// Columns are matched by name, as in Ibis: `other` may list them in a
+    /// different order. The result uses this table's order.
     fn set_op(&self, other: &Table, kind: SetKind, distinct: bool) -> Result<Table> {
         let (a, b) = (self.schema(), other.schema());
-        let same =
-            a.len() == b.len() && a.fields.iter().zip(&b.fields).all(|(x, y)| x.name == y.name && x.dtype == y.dtype);
+        let same = a.len() == b.len() && a.fields.iter().all(|x| b.field(&x.name).is_some_and(|y| x.dtype == y.dtype));
         if !same {
             return invalid(format!("set operation schemas differ: ({a}) vs ({b})"));
         }
+        let other =
+            if a.names().eq(b.names()) { other.clone() } else { other.select(a.names().collect::<Vec<_>>())? };
         Ok(self.wrap(RelOp::SetOp { kind, distinct, left: self.rel.clone(), right: other.rel.clone() }, a.clone()))
     }
 
+    /// Rows of both tables; `distinct` removes duplicates (SQL `UNION` vs `UNION ALL`).
     pub fn union(&self, other: &Table, distinct: bool) -> Result<Table> {
         self.set_op(other, SetKind::Union, distinct)
     }
-    pub fn intersect(&self, other: &Table) -> Result<Table> {
-        self.set_op(other, SetKind::Intersect, true)
+    /// Rows present in both tables. Without `distinct`, a row appears as
+    /// often as in the table where it is rarer (`INTERSECT ALL`).
+    pub fn intersect(&self, other: &Table, distinct: bool) -> Result<Table> {
+        self.set_op(other, SetKind::Intersect, distinct)
     }
-    pub fn difference(&self, other: &Table) -> Result<Table> {
-        self.set_op(other, SetKind::Difference, true)
+    /// Rows of this table that aren't in `other`. Without `distinct`, each
+    /// row of `other` cancels one occurrence (`EXCEPT ALL`).
+    pub fn difference(&self, other: &Table, distinct: bool) -> Result<Table> {
+        self.set_op(other, SetKind::Difference, distinct)
     }
 }
 

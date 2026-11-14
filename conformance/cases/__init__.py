@@ -32,6 +32,9 @@ MODULES = [
     "test_numeric",
     "test_aggregation",
     "test_generic",
+    "test_conditionals",
+    "test_join",
+    "test_set_ops",
 ]
 
 
