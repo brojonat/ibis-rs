@@ -207,6 +207,27 @@ pub enum Func {
     DateFromYmd,
     /// `timestamp_from_ymdhms(year, month, day, hour, minute, second)`
     TimestampFromYmdhms,
+    /// Smallest / largest of the arguments, row by row.
+    Least,
+    Greatest,
+    /// `log(x, base)`
+    Log,
+    Radians,
+    Degrees,
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
+    Atan,
+    /// `atan2(y, x)`
+    Atan2,
+    Cot,
+    /// True for +/- infinity.
+    IsInf,
+    /// `clip(x, lower, upper)`: limit `x` to the bounds; a NULL bound is no
+    /// bound, a NULL `x` stays NULL. Keeps `x`'s type.
+    Clip,
 }
 
 /// Units `Expr::truncate` accepts.
@@ -307,6 +328,26 @@ pub fn timestamp(s: &str) -> Expr {
         Some(us) => Expr::Literal(Value::Timestamp(us), t),
         None => null(t),
     }
+}
+
+/// Smallest of the arguments, row by row (Ibis `ibis.least`).
+pub fn least(args: impl IntoIterator<Item = impl Into<Expr>>) -> Expr {
+    func(Func::Least, args.into_iter().map(Into::into).collect())
+}
+
+/// Largest of the arguments, row by row (Ibis `ibis.greatest`).
+pub fn greatest(args: impl IntoIterator<Item = impl Into<Expr>>) -> Expr {
+    func(Func::Greatest, args.into_iter().map(Into::into).collect())
+}
+
+/// The constant pi (Ibis `ibis.pi`).
+pub fn pi() -> Expr {
+    lit(std::f64::consts::PI)
+}
+
+/// Euler's number (Ibis `ibis.e`).
+pub fn e() -> Expr {
+    lit(std::f64::consts::E)
 }
 
 /// A date from year, month and day expressions (Ibis `ibis.date(y, m, d)`).
@@ -529,6 +570,50 @@ impl Expr {
     }
     pub fn isnan(self) -> Expr {
         func(Func::IsNan, vec![self])
+    }
+    pub fn isinf(self) -> Expr {
+        func(Func::IsInf, vec![self])
+    }
+    /// Logarithm in the given base.
+    pub fn log(self, base: impl Into<Expr>) -> Expr {
+        func(Func::Log, vec![self, base.into()])
+    }
+    pub fn radians(self) -> Expr {
+        func(Func::Radians, vec![self])
+    }
+    pub fn degrees(self) -> Expr {
+        func(Func::Degrees, vec![self])
+    }
+    pub fn sin(self) -> Expr {
+        func(Func::Sin, vec![self])
+    }
+    pub fn cos(self) -> Expr {
+        func(Func::Cos, vec![self])
+    }
+    pub fn tan(self) -> Expr {
+        func(Func::Tan, vec![self])
+    }
+    pub fn asin(self) -> Expr {
+        func(Func::Asin, vec![self])
+    }
+    pub fn acos(self) -> Expr {
+        func(Func::Acos, vec![self])
+    }
+    pub fn atan(self) -> Expr {
+        func(Func::Atan, vec![self])
+    }
+    /// `atan2(self, x)`: the angle of the point (x, self).
+    pub fn atan2(self, x: impl Into<Expr>) -> Expr {
+        func(Func::Atan2, vec![self, x.into()])
+    }
+    pub fn cot(self) -> Expr {
+        func(Func::Cot, vec![self])
+    }
+    /// Limit to `[lower, upper]`; `None` leaves that side open. NULL stays
+    /// NULL and the type doesn't change (Ibis `clip`).
+    pub fn clip(self, lower: Option<Expr>, upper: Option<Expr>) -> Expr {
+        let open = || null(DataType::Null);
+        func(Func::Clip, vec![self, lower.unwrap_or_else(open), upper.unwrap_or_else(open)])
     }
     pub fn fill_null(self, v: impl Into<Expr>) -> Expr {
         coalesce([self, v.into()])
@@ -1243,6 +1328,15 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
                 _ => T::Int32,
             }
         }
+        Least | Greatest => ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?,
+        Log | Radians | Degrees | Sin | Cos | Tan | Asin | Acos | Atan | Atan2 | Cot => {
+            if let Some(t) = ts.iter().find(|t| !t.is_numeric() && **t != T::Null) {
+                return invalid(format!("{f:?} needs numeric arguments, got {t}"));
+            }
+            T::Float64
+        }
+        IsInf => T::Boolean,
+        Clip => first,
         DateFromYmd | TimestampFromYmdhms => {
             if let Some(t) = ts.iter().find(|t| !t.is_numeric()) {
                 return invalid(format!("{f:?} needs numeric fields, got {t}"));

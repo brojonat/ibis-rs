@@ -173,6 +173,114 @@
    "postgres": "same"
   }
  },
+ "test_backend_specific_numerics[greatest-all-columns]": {
+  "file": "test_numeric/test_backend_specific_numerics[greatest-all-columns].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_backend_specific_numerics[greatest-scalar]": {
+  "file": "test_numeric/test_backend_specific_numerics[greatest-scalar].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_backend_specific_numerics[least-all-columns]": {
+  "file": "test_numeric/test_backend_specific_numerics[least-all-columns].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_backend_specific_numerics[least-scalar]": {
+  "file": "test_numeric/test_backend_specific_numerics[least-scalar].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_backend_specific_numerics[round-with-param]": {
+  "file": "test_numeric/test_backend_specific_numerics[round-with-param].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_backend_specific_numerics[round]": {
+  "file": "test_numeric/test_backend_specific_numerics[round].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "differs"
+  }
+ },
  "test_between": {
   "file": "test_generic/test_between.parquet",
   "kind": "column",
@@ -405,6 +513,150 @@
    "postgres": "same"
   }
  },
+ "test_clip[lower-float]": {
+  "file": "test_numeric/test_clip[lower-float].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_clip[lower-int]": {
+  "file": "test_numeric/test_clip[lower-int].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_clip[lower-upper-expr]": {
+  "file": "test_numeric/test_clip[lower-upper-expr].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_clip[lower-upper-float]": {
+  "file": "test_numeric/test_clip[lower-upper-float].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_clip[lower-upper-int]": {
+  "file": "test_numeric/test_clip[lower-upper-int].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_clip[null-lower]": {
+  "file": "test_numeric/test_clip[null-lower].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_clip[null-upper]": {
+  "file": "test_numeric/test_clip[null-upper].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_clip[upper-int]": {
+  "file": "test_numeric/test_clip[upper-int].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_coalesce[generic]": {
   "file": "test_generic/test_coalesce[generic].parquet",
   "kind": "scalar",
@@ -577,6 +829,54 @@
   ],
   "dtypes": [
    "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_constants[e]": {
+  "file": "test_numeric/test_constants[e].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_constants[pi]": {
+  "file": "test_numeric/test_constants[pi].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_cotangent": {
+  "file": "test_numeric/test_cotangent.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
    "float64"
   ],
   "rows": 7300,
@@ -1225,6 +1525,222 @@
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
+  }
+ },
+ "test_divide_by_zero[bigint_col-0.0]": {
+  "file": "test_numeric/test_divide_by_zero[bigint_col-0.0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[bigint_col-0]": {
+  "file": "test_numeric/test_divide_by_zero[bigint_col-0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[double_col-0.0]": {
+  "file": "test_numeric/test_divide_by_zero[double_col-0.0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[double_col-0]": {
+  "file": "test_numeric/test_divide_by_zero[double_col-0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[float_col-0.0]": {
+  "file": "test_numeric/test_divide_by_zero[float_col-0.0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[float_col-0]": {
+  "file": "test_numeric/test_divide_by_zero[float_col-0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[int_col-0.0]": {
+  "file": "test_numeric/test_divide_by_zero[int_col-0.0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[int_col-0]": {
+  "file": "test_numeric/test_divide_by_zero[int_col-0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[smallint_col-0.0]": {
+  "file": "test_numeric/test_divide_by_zero[smallint_col-0.0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[smallint_col-0]": {
+  "file": "test_numeric/test_divide_by_zero[smallint_col-0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[tinyint_col-0.0]": {
+  "file": "test_numeric/test_divide_by_zero[tinyint_col-0.0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
+  }
+ },
+ "test_divide_by_zero[tinyint_col-0]": {
+  "file": "test_numeric/test_divide_by_zero[tinyint_col-0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "differs",
+   "postgres": "error: DivisionByZero"
   }
  },
  "test_drop_null_table[empty-all]": {
@@ -1925,6 +2441,22 @@
    "postgres": "same"
   }
  },
+ "test_floor_divide_precedence": {
+  "file": "test_numeric/test_floor_divide_precedence.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_grouped_bounded_expanding_window[count]": {
   "file": "test_window/test_grouped_bounded_expanding_window[count].parquet",
   "kind": "table",
@@ -2587,6 +3119,22 @@
    "postgres": "same"
   }
  },
+ "test_integer_truediv": {
+  "file": "test_numeric/test_integer_truediv.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_intersect[all]": {
   "file": "test_set_ops/test_intersect[all].parquet",
   "kind": "table",
@@ -3180,6 +3728,206 @@
   "rows": 7300,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isinf--inf-literal]": {
+  "file": "test_numeric/test_isnan_isinf[isinf--inf-literal].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isinf-double-column]": {
+  "file": "test_numeric/test_isnan_isinf[isinf-double-column].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isinf-float-column]": {
+  "file": "test_numeric/test_isnan_isinf[isinf-float-column].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isinf-float-literal]": {
+  "file": "test_numeric/test_isnan_isinf[isinf-float-literal].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isinf-inf-literal]": {
+  "file": "test_numeric/test_isnan_isinf[isinf-inf-literal].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isinf-nan-literal]": {
+  "file": "test_numeric/test_isnan_isinf[isinf-nan-literal].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isnan--inf-literal]": {
+  "file": "test_numeric/test_isnan_isinf[isnan--inf-literal].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isnan-double-column]": {
+  "file": "test_numeric/test_isnan_isinf[isnan-double-column].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isnan-float-column]": {
+  "file": "test_numeric/test_isnan_isinf[isnan-float-column].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isnan-float-literal]": {
+  "file": "test_numeric/test_isnan_isinf[isnan-float-literal].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isnan-inf-literal]": {
+  "file": "test_numeric/test_isnan_isinf[isnan-inf-literal].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isnan_isinf[isnan-nan-literal]": {
+  "file": "test_numeric/test_isnan_isinf[isnan-nan-literal].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
    "postgres": "same"
   }
  },
@@ -4583,6 +5331,470 @@
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[abs-neg]": {
+  "file": "test_numeric/test_math_functions_literals[abs-neg].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[abs]": {
+  "file": "test_numeric/test_math_functions_literals[abs].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[ceil]": {
+  "file": "test_numeric/test_math_functions_literals[ceil].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[degrees0]": {
+  "file": "test_numeric/test_math_functions_literals[degrees0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[degrees1]": {
+  "file": "test_numeric/test_math_functions_literals[degrees1].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[degrees2]": {
+  "file": "test_numeric/test_math_functions_literals[degrees2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[exp]": {
+  "file": "test_numeric/test_math_functions_literals[exp].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_math_functions_literals[floor]": {
+  "file": "test_numeric/test_math_functions_literals[floor].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[greatest]": {
+  "file": "test_numeric/test_math_functions_literals[greatest].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[least]": {
+  "file": "test_numeric/test_math_functions_literals[least].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[ln0]": {
+  "file": "test_numeric/test_math_functions_literals[ln0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_math_functions_literals[ln1]": {
+  "file": "test_numeric/test_math_functions_literals[ln1].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_math_functions_literals[log-base]": {
+  "file": "test_numeric/test_math_functions_literals[log-base].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[log10_0]": {
+  "file": "test_numeric/test_math_functions_literals[log10_0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_math_functions_literals[log10_1]": {
+  "file": "test_numeric/test_math_functions_literals[log10_1].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_math_functions_literals[log10_2]": {
+  "file": "test_numeric/test_math_functions_literals[log10_2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_math_functions_literals[log2]": {
+  "file": "test_numeric/test_math_functions_literals[log2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[mod0]": {
+  "file": "test_numeric/test_math_functions_literals[mod0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[mod1]": {
+  "file": "test_numeric/test_math_functions_literals[mod1].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[mod2]": {
+  "file": "test_numeric/test_math_functions_literals[mod2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[radians0]": {
+  "file": "test_numeric/test_math_functions_literals[radians0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[radians1]": {
+  "file": "test_numeric/test_math_functions_literals[radians1].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[radians2]": {
+  "file": "test_numeric/test_math_functions_literals[radians2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[round-digits]": {
+  "file": "test_numeric/test_math_functions_literals[round-digits].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[round]": {
+  "file": "test_numeric/test_math_functions_literals[round].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[sign-neg]": {
+  "file": "test_numeric/test_math_functions_literals[sign-neg].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_math_functions_literals[sign-pos]": {
+  "file": "test_numeric/test_math_functions_literals[sign-pos].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_math_functions_literals[sign-zero]": {
+  "file": "test_numeric/test_math_functions_literals[sign-zero].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_math_functions_literals[sqrt]": {
+  "file": "test_numeric/test_math_functions_literals[sqrt].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
   }
  },
  "test_mod": {
@@ -8594,6 +9806,246 @@
   ],
   "dtypes": [
    "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_columns[acos]": {
+  "file": "test_numeric/test_trig_functions_columns[acos].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_columns[asin]": {
+  "file": "test_numeric/test_trig_functions_columns[asin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_columns[atan2]": {
+  "file": "test_numeric/test_trig_functions_columns[atan2].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_columns[atan]": {
+  "file": "test_numeric/test_trig_functions_columns[atan].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_columns[cos]": {
+  "file": "test_numeric/test_trig_functions_columns[cos].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_columns[sin]": {
+  "file": "test_numeric/test_trig_functions_columns[sin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_columns[tan]": {
+  "file": "test_numeric/test_trig_functions_columns[tan].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_literals[acos]": {
+  "file": "test_numeric/test_trig_functions_literals[acos].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_literals[asin]": {
+  "file": "test_numeric/test_trig_functions_literals[asin].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_literals[atan2]": {
+  "file": "test_numeric/test_trig_functions_literals[atan2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_literals[atan]": {
+  "file": "test_numeric/test_trig_functions_literals[atan].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_literals[cos]": {
+  "file": "test_numeric/test_trig_functions_literals[cos].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_literals[cot]": {
+  "file": "test_numeric/test_trig_functions_literals[cot].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_literals[sin]": {
+  "file": "test_numeric/test_trig_functions_literals[sin].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_trig_functions_literals[tan]": {
+  "file": "test_numeric/test_trig_functions_literals[tan].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
   ],
   "rows": 1,
   "ibis": {

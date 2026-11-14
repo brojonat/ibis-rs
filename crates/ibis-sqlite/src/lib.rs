@@ -64,6 +64,9 @@ impl Dialect for SqliteDialect {
     fn literal(&self, v: &Value, _t: &DataType) -> Result<Option<String>> {
         Ok(match v {
             Value::Bool(b) => Some((*b as i32).to_string()),
+            // SQLite has no NaN (it becomes NULL); infinities are out-of-range literals
+            Value::Float(f) if f.is_nan() => Some("NULL".into()),
+            Value::Float(f) if f.is_infinite() => Some(if *f > 0.0 { "9e999" } else { "-9e999" }.into()),
             Value::Date(d) => Some(quote_str(&format_date(*d))),
             Value::Timestamp(t) => Some(quote_str(&format_timestamp(*t))),
             _ => None,
@@ -98,6 +101,17 @@ impl Dialect for SqliteDialect {
     }
 
     fn binary(&self, c: &ExprCompiler, op: BinaryOp, l: &Expr, r: &Expr) -> Result<Option<String>> {
+        // SQLite gives NULL for x / 0. Ibis's `/` follows IEEE 754; SQLite has
+        // infinities but no NaN, so 0 / 0 stays NULL.
+        if op == BinaryOp::Div
+            && !matches!(r, Expr::Literal(v, _) if !matches!(v, Value::Int(0)) && *v != Value::Float(0.0))
+        {
+            let (ls, rs) = (c.sql(l)?, c.sql(r)?);
+            return Ok(Some(format!(
+                "CASE WHEN {rs} = 0 THEN CASE WHEN {ls} > 0 THEN 9e999 WHEN {ls} < 0 THEN -9e999 END \
+                 ELSE CAST({ls} AS REAL) / {rs} END"
+            )));
+        }
         // `%` on REAL operands truncates them to integers in SQLite.
         if op == BinaryOp::Mod && (c.dtype(l)?.is_floating() || c.dtype(r)?.is_floating()) {
             return Ok(Some(format!("FMOD({}, {})", c.sql(l)?, c.sql(r)?)));
@@ -135,6 +149,28 @@ impl Dialect for SqliteDialect {
             Func::Minute => extract("%M")?,
             Func::Second => extract("%S")?,
             Func::DayOfWeekIndex => Some(format!("((CAST(STRFTIME('%w', {}) AS INTEGER) + 6) % 7)", a(0)?)),
+            Func::IsInf => Some(format!("(ABS({}) = 9e999)", a(0)?)),
+            Func::Radians => Some(format!("({} * 0.017453292519943295)", a(0)?)),
+            Func::Degrees => Some(format!("({} * 57.29577951308232)", a(0)?)),
+            // SQLite's scalar MIN/MAX: NULL if any argument is NULL
+            Func::Least => {
+                Some(format!("MIN({})", args.iter().map(|x| c.sql(x)).collect::<Result<Vec<_>>>()?.join(", ")))
+            }
+            Func::Greatest => {
+                Some(format!("MAX({})", args.iter().map(|x| c.sql(x)).collect::<Result<Vec<_>>>()?.join(", ")))
+            }
+            Func::Clip => {
+                let open = |e: &Expr| matches!(e, Expr::Literal(Value::Null, _));
+                let x = a(0)?;
+                let mut s = x.clone();
+                if !open(&args[1]) {
+                    s = format!("MAX({s}, {})", a(1)?);
+                }
+                if !open(&args[2]) {
+                    s = format!("MIN({s}, {})", a(2)?);
+                }
+                Some(format!("CASE WHEN {x} IS NULL THEN NULL ELSE {s} END"))
+            }
             Func::DayOfYear => extract("%j")?,
             Func::WeekOfYear => extract("%V")?,
             Func::Quarter => Some(format!("((CAST(STRFTIME('%m', {}) AS INTEGER) + 2) / 3)", a(0)?)),

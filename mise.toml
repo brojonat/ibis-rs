@@ -42,9 +42,9 @@ depends = ["setup"]
 run = 'mkdir -p logs; f() { cargo run --quiet -p ibis-conformance -- "$@" > logs/conformance.jsonl 2> >(tee logs/conformance.txt >&2); }; f'
 
 [tasks.goldens]
-description = "Regenerate conformance/golden/*.json by running conformance/cases.py on Python Ibis + DuckDB"
+description = "Regenerate conformance/golden by running conformance/cases on Python Ibis (DuckDB; SQLite and Postgres for the cross-check)"
 depends = ["setup"]
-run = 'f() { uv run conformance/gen_goldens.py "$@"; }; f'
+run = 'f() { uv run -q conformance/gen_goldens.py "$@"; }; f'
 
 [tasks.dev]
 description = "Rerun conformance on every change, tee to logs/dev.log"

@@ -42,6 +42,18 @@ impl Dialect for PostgresDialect {
     }
 
     fn binary(&self, c: &ExprCompiler, op: BinaryOp, l: &Expr, r: &Expr) -> Result<Option<String>> {
+        // Postgres raises on division by zero; Ibis's `/` follows IEEE 754:
+        // x / 0 is +/-Infinity, 0 / 0 is NaN.
+        if op == BinaryOp::Div
+            && !matches!(r, Expr::Literal(v, _) if !matches!(v, Value::Int(0)) && *v != Value::Float(0.0))
+        {
+            let (ls, rs) = (c.sql(l)?, c.sql(r)?);
+            let f = "DOUBLE PRECISION";
+            return Ok(Some(format!(
+                "CASE WHEN {rs} = 0 THEN CAST(CASE WHEN {ls} IS NULL THEN NULL WHEN {ls} > 0 THEN 'Infinity' \
+                 WHEN {ls} < 0 THEN '-Infinity' ELSE 'NaN' END AS {f}) ELSE CAST({ls} AS {f}) / {rs} END"
+            )));
+        }
         // `%` isn't defined for DOUBLE PRECISION.
         if op == BinaryOp::Mod && (c.dtype(l)?.is_floating() || c.dtype(r)?.is_floating()) {
             return Ok(Some(format!(
@@ -70,6 +82,12 @@ impl Dialect for PostgresDialect {
             }
             // Postgres orders NaN as equal to itself (and above everything)
             Func::IsNan => Some(format!("({} = CAST('NaN' AS DOUBLE PRECISION))", a(0)?)),
+            Func::IsInf => {
+                let x = a(0)?;
+                Some(format!(
+                    "({x} = CAST('Infinity' AS DOUBLE PRECISION) OR {x} = CAST('-Infinity' AS DOUBLE PRECISION))"
+                ))
+            }
             Func::DayOfWeekName => Some(format!("TRIM(TO_CHAR({}, 'Day'))", a(0)?)),
             Func::Strftime => {
                 let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {

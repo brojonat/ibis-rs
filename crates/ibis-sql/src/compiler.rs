@@ -727,6 +727,35 @@ impl ExprCompiler<'_> {
                 if self.dtype(&args[0])? == DataType::Date { format!("CAST({s} AS DATE)") } else { s }
             }
             Strftime => format!("STRFTIME({x}, {})", a[1]),
+            Least => format!("LEAST({})", a.join(", ")),
+            Greatest => format!("GREATEST({})", a.join(", ")),
+            // spelled with LN so it doesn't depend on LOG's argument order
+            // or on which numeric types an engine's LOG accepts
+            Log => format!("(LN({x}) / LN({}))", a[1]),
+            Radians => format!("RADIANS({x})"),
+            Degrees => format!("DEGREES({x})"),
+            Sin => format!("SIN({x})"),
+            Cos => format!("COS({x})"),
+            Tan => format!("TAN({x})"),
+            Asin => format!("ASIN({x})"),
+            Acos => format!("ACOS({x})"),
+            Atan => format!("ATAN({x})"),
+            Atan2 => format!("ATAN2({x}, {})", a[1]),
+            Cot => format!("COT({x})"),
+            IsInf => format!("ISINF({x})"),
+            Clip => {
+                let open = |e: &Expr| matches!(e, Expr::Literal(Value::Null, _));
+                let mut s = x.clone();
+                if !open(&args[1]) {
+                    s = format!("GREATEST({s}, {})", a[1]);
+                }
+                if !open(&args[2]) {
+                    s = format!("LEAST({s}, {})", a[2]);
+                }
+                // LEAST/GREATEST skip NULLs on some engines; a NULL input must stay NULL
+                let t = self.d.type_name(&self.dtype(&args[0])?)?;
+                format!("CASE WHEN {x} IS NULL THEN NULL ELSE CAST({s} AS {t}) END")
+            }
             DateFromYmd => format!("MAKE_DATE({})", a.join(", ")),
             TimestampFromYmdhms => format!("MAKE_TIMESTAMP({})", a.join(", ")),
         })
