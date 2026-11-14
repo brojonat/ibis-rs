@@ -4,7 +4,7 @@ use ibis_core::prelude::*;
 
 use super::{Case, c, column};
 
-pub fn cases(v: &mut Vec<Case>) {
+pub fn register(v: &mut Vec<Case>) {
     let s = |id: &str| format!("test_string[{id}]");
     v.push(column(&s("contains"), |_| Ok(c("string_col").contains("6"))));
     v.push(column(&s("like"), |_| Ok(c("string_col").like("6%"))));

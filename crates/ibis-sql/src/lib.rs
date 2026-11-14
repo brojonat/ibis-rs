@@ -26,7 +26,7 @@ mod tests {
     #[test]
     fn filter_project_merge_into_one_select() {
         let q = t().filter([col("a").gt(1)]).unwrap().select([col("s").upper().name("u")]).unwrap();
-        assert_eq!(sql(&q), r#"SELECT UPPER("s") AS "u" FROM "t" AS t0 WHERE ("a" > 1)"#);
+        assert_eq!(sql(&q), r#"SELECT UPPER(t0."s") AS "u" FROM "t" AS t0 WHERE (t0."a" > 1)"#);
     }
 
     #[test]
@@ -34,14 +34,14 @@ mod tests {
         let q = t().group_by(["s"]).agg([count().name("n")]).unwrap().filter([col("n").gt(1)]).unwrap();
         assert_eq!(
             sql(&q),
-            r#"SELECT * FROM (SELECT "s" AS "s", COUNT(*) AS "n" FROM "t" AS t0 GROUP BY "s") AS t1 WHERE ("n" > 1)"#
+            r#"SELECT * FROM (SELECT t0."s" AS "s", COUNT(*) AS "n" FROM "t" AS t0 GROUP BY t0."s") AS t1 WHERE (t1."n" > 1)"#
         );
     }
 
     #[test]
     fn order_then_limit_stay_together() {
         let q = t().order_by([desc("a")]).unwrap().limit(5, 2);
-        assert_eq!(sql(&q), r#"SELECT * FROM "t" AS t0 ORDER BY "a" DESC NULLS LAST LIMIT 5 OFFSET 2"#);
+        assert_eq!(sql(&q), r#"SELECT * FROM "t" AS t0 ORDER BY t0."a" DESC NULLS LAST LIMIT 5 OFFSET 2"#);
     }
 
     #[test]
@@ -55,7 +55,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             sql(&q),
-            r#"SELECT (CAST("a" AS DOUBLE) / 2) AS "div", (ROW_NUMBER() OVER (ORDER BY "a" ASC NULLS LAST) - 1) AS "rn", AVG("a") OVER () AS "broadcast" FROM "t" AS t0"#
+            r#"SELECT (CAST(t0."a" AS DOUBLE) / 2) AS "div", (ROW_NUMBER() OVER (ORDER BY t0."a" ASC NULLS LAST) - 1) AS "rn", AVG(t0."a") OVER () AS "broadcast" FROM "t" AS t0"#
         );
     }
 
@@ -67,7 +67,10 @@ mod tests {
     fn correlated_exists_from_any_over_another_table() {
         let (t, u) = (t(), u());
         let q = t.filter([u.col("a").eq(t.col("a")).any()]).unwrap();
-        assert_eq!(sql(&q), r#"SELECT * FROM "t" AS t0 WHERE (EXISTS (SELECT * FROM "u" AS t1 WHERE ("a" = t0."a")))"#);
+        assert_eq!(
+            sql(&q),
+            r#"SELECT * FROM "t" AS t0 WHERE (EXISTS (SELECT * FROM "u" AS t1 WHERE (t1."a" = t0."a")))"#
+        );
     }
 
     #[test]
@@ -76,7 +79,7 @@ mod tests {
         let q = t.filter([t.col("a").gt(u.filter([u.col("a").eq(t.col("a"))]).unwrap().col("b").mean())]).unwrap();
         assert_eq!(
             sql(&q),
-            r#"SELECT * FROM "t" AS t0 WHERE ("a" > (SELECT AVG("b") AS "_" FROM "u" AS t1 WHERE ("a" = t0."a")))"#
+            r#"SELECT * FROM "t" AS t0 WHERE (t0."a" > (SELECT AVG(t1."b") AS "_" FROM "u" AS t1 WHERE (t1."a" = t0."a")))"#
         );
     }
 
@@ -88,7 +91,31 @@ mod tests {
         let q = j.select([t.col("s"), v.col("s").name("s2")]).unwrap();
         assert_eq!(
             sql(&q),
-            r#"SELECT "s" AS "s", "s_right" AS "s2" FROM (SELECT t0."a" AS "a", t0."s" AS "s", t1."s" AS "s_right" FROM "t" AS t0 INNER JOIN "t" AS t1 ON (t0."a" = t1."a")) AS t2"#
+            r#"SELECT t2."s" AS "s", t2."s_right" AS "s2" FROM (SELECT t0."a" AS "a", t0."s" AS "s", t1."s" AS "s_right" FROM "t" AS t0 INNER JOIN "t" AS t1 ON (t0."a" = t1."a")) AS t2"#
         );
+    }
+
+    #[test]
+    fn ordering_survives_later_operations() {
+        // sort, then filter + select + distinct: DISTINCT goes inside, the
+        // ordering is rewritten over the output and stays outermost
+        let q = t().order_by([desc("a")]).unwrap().filter([col("a").gt(1)]).unwrap().select(["a"]).unwrap().distinct();
+        assert_eq!(
+            sql(&q),
+            r#"SELECT * FROM (SELECT DISTINCT t0."a" AS "a" FROM "t" AS t0 WHERE (t0."a" > 1)) AS t1 ORDER BY t1."a" DESC NULLS LAST"#
+        );
+    }
+
+    #[test]
+    fn later_sort_keys_take_precedence() {
+        let q = t().order_by(["a"]).unwrap().order_by([desc("s")]).unwrap();
+        assert_eq!(sql(&q), r#"SELECT * FROM "t" AS t0 ORDER BY t0."s" DESC NULLS LAST, t0."a" ASC NULLS LAST"#);
+    }
+
+    #[test]
+    fn sort_keys_cant_be_captured_by_output_aliases() {
+        // ORDER BY must mean the input column "a", not the output alias "a"
+        let q = t().order_by(["a"]).unwrap().mutate([(-col("a")).name("a")]).unwrap();
+        assert_eq!(sql(&q), r#"SELECT (-t0."a") AS "a", t0."s" AS "s" FROM "t" AS t0 ORDER BY t0."a" ASC NULLS LAST"#);
     }
 }

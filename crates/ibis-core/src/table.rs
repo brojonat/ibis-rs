@@ -113,6 +113,15 @@ pub enum JoinKind {
     Anti,
 }
 
+/// Which rows `Table::drop_null` drops.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum How {
+    /// Rows where any of the columns is NULL.
+    Any,
+    /// Rows where all of the columns are NULL.
+    All,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Side {
     Left,
@@ -340,6 +349,16 @@ impl Table {
                 let agg = Expr::Agg { func, arg, filter };
                 Ok(Expr::ScalarSubquery(src.aggregate([agg.name("_")])?.rel))
             }
+            Expr::InColumn { arg, column } => {
+                let arg = self.bind_with(*arg, ctx, d)?;
+                let src = match column.field_rels().as_slice() {
+                    [] => self.clone(),
+                    [r] => Table::from_arc(r.clone()),
+                    _ => return invalid("isin: the column expression uses more than one table"),
+                };
+                let name = column.output_name();
+                Ok(Expr::InSubquery { arg: Box::new(arg), rel: src.select([column.name(&name)])?.rel })
+            }
             Expr::Window(..) if ctx == Ctx::Filter => invalid("window function in filter (mutate first)"),
             e => e.map_children(&mut |c| self.bind_with(c, ctx, d)),
         }
@@ -449,6 +468,58 @@ impl Table {
 
     pub fn limit(&self, n: u64, offset: u64) -> Table {
         self.wrap(RelOp::Limit { input: self.rel.clone(), n: Some(n), offset }, self.schema().clone())
+    }
+
+    /// Skip the first `n` rows (Ibis `t.limit(None, offset=n)`, `t[n:]`).
+    pub fn offset(&self, n: u64) -> Table {
+        self.wrap(RelOp::Limit { input: self.rel.clone(), n: None, offset: n }, self.schema().clone())
+    }
+
+    /// Replace NULLs in the named columns (Ibis `t.fill_null({col: value})`).
+    /// Column types don't change.
+    pub fn fill_null<'a>(&self, replacements: impl IntoIterator<Item = (&'a str, crate::Value)>) -> Result<Table> {
+        let mut exprs = vec![];
+        for (name, value) in replacements {
+            let Some(f) = self.schema().field(name) else {
+                return invalid(format!("no column {name:?} in {}", self.schema()));
+            };
+            let t = value.dtype();
+            if !(f.dtype.is_numeric() && t.is_numeric()) && f.dtype != t {
+                return invalid(format!("can't fill {name}: {} with a {t} value", f.dtype));
+            }
+            exprs.push(crate::expr::col(name).fill_null(crate::expr::lit(value)).cast(f.dtype.clone()).name(name));
+        }
+        if exprs.is_empty() { Ok(self.clone()) } else { self.mutate(exprs) }
+    }
+
+    /// Replace NULLs in every column with `value`, which must suit each
+    /// column's type (Ibis `t.fill_null(value)`).
+    pub fn fill_null_with(&self, value: impl Into<crate::Value>) -> Result<Table> {
+        let value = value.into();
+        self.fill_null(self.schema().names().map(|n| (n, value.clone())).collect::<Vec<_>>())
+    }
+
+    /// Drop rows with NULLs in `subset` (`None`: any column): rows where any
+    /// of those columns is NULL, or only rows where all are (Ibis `drop_null`).
+    pub fn drop_null(&self, subset: Option<&[&str]>, how: How) -> Result<Table> {
+        let cols: Vec<&str> = match subset {
+            Some(s) => s.to_vec(),
+            None => self.schema().names().collect(),
+        };
+        let mut notnull = cols.iter().map(|c| crate::expr::col(c).notnull());
+        let Some(first) = notnull.next() else {
+            // No columns: "any is NULL" holds for no row, "all are NULL" for
+            // every row (vacuously), as in Ibis and pandas.
+            return match how {
+                How::Any => Ok(self.clone()),
+                How::All => self.filter([crate::expr::lit(false)]),
+            };
+        };
+        let keep = notnull.fold(first, |acc, e| match how {
+            How::Any => acc.and(e),
+            How::All => acc.or(e),
+        });
+        self.filter([keep])
     }
 
     pub fn head(&self, n: u64) -> Table {

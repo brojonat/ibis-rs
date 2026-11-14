@@ -2,7 +2,7 @@
 
 use super::{Case, c, column};
 
-pub fn cases(v: &mut Vec<Case>) {
+pub fn register(v: &mut Vec<Case>) {
     let m = |id: &str| format!("test_simple_math_functions_columns[{id}]");
     v.push(column(&m("abs-neg"), |_| Ok((-c("double_col")).abs())));
     v.push(column(&m("abs"), |_| Ok(c("double_col").abs())));

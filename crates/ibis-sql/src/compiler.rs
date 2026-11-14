@@ -5,6 +5,7 @@
 //! a derived table and the op applies to that. Correctness over pretty SQL.
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 
 use ibis_core::{
     AggFunc, Analytic, BinaryOp, Bound, DataType, DerefMap, Error, Expr, Func, JoinKind, Rel, RelOp, Result, Schema,
@@ -46,9 +47,29 @@ struct Select {
     alias: Option<String>,
     wheres: Vec<String>,
     group_by: Vec<String>,
-    order_by: Vec<String>,
+    /// Sort keys, most significant first, over the FROM source's columns.
+    order: Vec<SortKey>,
+    /// `order`, compiled.
+    order_sql: Vec<String>,
+    /// With `items`: FROM column -> output column, for columns passed through
+    /// unchanged. Lets `order` be rewritten over the output when wrapping.
+    passthrough: HashMap<String, String>,
     limit: Option<u64>,
     offset: u64,
+}
+
+/// `e` with its columns renamed through `map`; None if one isn't in it.
+fn rename_columns(e: &Expr, map: &HashMap<String, String>) -> Option<Expr> {
+    fn go(e: Expr, map: &HashMap<String, String>) -> Result<Expr> {
+        match e {
+            Expr::Column(n) => match map.get(&n) {
+                Some(m) => Ok(Expr::Column(m.clone())),
+                None => Err(Error::Invalid(String::new())),
+            },
+            e => e.map_children(&mut |c| go(c, map)),
+        }
+    }
+    go(e.clone(), map).ok()
 }
 
 impl Select {
@@ -63,6 +84,27 @@ impl Select {
     /// No projection, grouping, distinct or limit: a WHERE/SELECT list can still be added.
     fn is_plain(&self) -> bool {
         self.items.is_none() && self.group_by.is_empty() && !self.distinct && self.limit.is_none() && self.offset == 0
+    }
+
+    /// The ordering written over this select's output columns, if it can
+    /// be: every column the keys use must be passed through unchanged.
+    /// A LIMIT pins the ordering to this select (it picks the rows).
+    fn output_order(&self) -> Option<Vec<SortKey>> {
+        if self.order.is_empty() || self.limit.is_some() || self.offset > 0 {
+            return None;
+        }
+        if self.items.is_none() {
+            return Some(self.order.clone());
+        }
+        self.order
+            .iter()
+            .map(|k| Some(SortKey { expr: rename_columns(&k.expr, &self.passthrough)?, ..k.clone() }))
+            .collect()
+    }
+
+    fn clear_order(&mut self) {
+        self.order.clear();
+        self.order_sql.clear();
     }
 
     fn render(&self, d: &dyn Dialect) -> String {
@@ -84,9 +126,9 @@ impl Select {
             s.push_str(" GROUP BY ");
             s.push_str(&self.group_by.join(", "));
         }
-        if !self.order_by.is_empty() {
+        if !self.order_sql.is_empty() {
             s.push_str(" ORDER BY ");
-            s.push_str(&self.order_by.join(", "));
+            s.push_str(&self.order_sql.join(", "));
         }
         s.push_str(&d.limit_offset(self.limit, self.offset));
         s
@@ -115,13 +157,48 @@ impl RelCompiler<'_> {
         format!("t{n}")
     }
 
-    fn wrap(&self, s: Select) -> Select {
+    /// `s` as a derived table. `schema` is its output schema. Its ordering
+    /// moves to the outer query when possible: a table stays sorted through
+    /// later filters, projections and distincts, as in Ibis.
+    fn wrap(&self, mut s: Select, schema: &Schema) -> Result<Select> {
+        let order = s.output_order();
+        if order.is_some() {
+            s.clear_order();
+        }
         let a = self.alias();
-        Select::aliased(format!("({}) AS {a}", s.render(self.d)), a)
+        let mut out = Select::aliased(format!("({}) AS {a}", s.render(self.d)), a);
+        if let Some(keys) = order {
+            self.push_order(&mut out, schema, keys)?;
+        }
+        Ok(out)
     }
 
-    fn exprs<'s>(&'s self, schema: &'s Schema, in_project: bool) -> ExprCompiler<'s> {
-        ExprCompiler { d: self.d, schema, in_project, rc: self }
+    /// Sort `s` by `keys` (over `schema`, the columns of its FROM source),
+    /// ahead of any ordering it already has: later sorts take precedence and
+    /// earlier ones break ties, as in Ibis.
+    fn push_order(&self, s: &mut Select, schema: &Schema, keys: Vec<SortKey>) -> Result<()> {
+        let c = self.exprs(schema, false, &s.alias);
+        let mut order: Vec<SortKey> = vec![];
+        let mut sql = vec![];
+        for k in keys {
+            if !order.iter().any(|o| o.expr == k.expr) {
+                sql.push(c.sort_key(&k)?);
+                order.push(k);
+            }
+        }
+        for (k, ksql) in std::mem::take(&mut s.order).into_iter().zip(std::mem::take(&mut s.order_sql)) {
+            if !order.iter().any(|o| o.expr == k.expr) {
+                order.push(k);
+                sql.push(ksql);
+            }
+        }
+        s.order = order;
+        s.order_sql = sql;
+        Ok(())
+    }
+
+    fn exprs<'s>(&'s self, schema: &'s Schema, in_project: bool, qual: &Option<String>) -> ExprCompiler<'s> {
+        ExprCompiler { d: self.d, schema, in_project, qual: qual.clone(), rc: self }
     }
 
     /// Run `f` with `rels` (relation, alias) in scope.
@@ -140,8 +217,8 @@ impl RelCompiler<'_> {
     }
 
     /// Scope for expressions over `input`, compiled into `s`.
-    fn in_scope<T>(&self, input: &Rel, s: &Select, f: impl FnOnce() -> Result<T>) -> Result<T> {
-        match &s.alias {
+    fn in_scope<T>(&self, input: &Rel, alias: &Option<String>, f: impl FnOnce() -> Result<T>) -> Result<T> {
+        match alias {
             Some(a) => self.scoped(&[(input, a)], f),
             None => f(),
         }
@@ -184,10 +261,10 @@ impl RelCompiler<'_> {
             RelOp::Filter { input, predicates } => {
                 let mut s = self.rel(input)?;
                 if !s.is_plain() {
-                    s = self.wrap(s);
+                    s = self.wrap(s, &input.schema)?;
                 }
-                let c = self.exprs(&input.schema, false);
-                let wheres = self.in_scope(input, &s, || {
+                let c = self.exprs(&input.schema, false, &s.alias);
+                let wheres = self.in_scope(input, &s.alias, || {
                     predicates
                         .iter()
                         .map(|p| {
@@ -205,24 +282,31 @@ impl RelCompiler<'_> {
             RelOp::Project { input, exprs } => {
                 let mut s = self.rel(input)?;
                 if !s.is_plain() {
-                    s = self.wrap(s);
+                    s = self.wrap(s, &input.schema)?;
                 }
-                let c = self.exprs(&input.schema, true);
-                let items = self.in_scope(input, &s, || {
+                let c = self.exprs(&input.schema, true, &s.alias);
+                let items = self.in_scope(input, &s.alias, || {
                     exprs.iter().map(|(n, e)| Ok(format!("{} AS {}", c.sql(e)?, q(n)))).collect::<Result<Vec<_>>>()
                 })?;
                 s.items = Some(items);
+                for (n, e) in exprs {
+                    if let Expr::Column(c) = e {
+                        s.passthrough.entry(c.clone()).or_insert_with(|| n.clone());
+                    }
+                }
                 Ok(s)
             }
 
             RelOp::Aggregate { input, groups, metrics } => {
                 let mut s = self.rel(input)?;
                 if !s.is_plain() {
-                    s = self.wrap(s);
+                    s = self.wrap(s, &input.schema)?;
                 }
-                s.order_by.clear();
-                let c = self.exprs(&input.schema, false);
-                let (items, group_by) = self.in_scope(input, &s, || {
+                // row order doesn't survive aggregation (an ordering under a
+                // LIMIT stayed inside the wrap above, where it picks the rows)
+                s.clear_order();
+                let c = self.exprs(&input.schema, false, &s.alias);
+                let (items, group_by) = self.in_scope(input, &s.alias, || {
                     let (mut items, mut group_by) = (vec![], vec![]);
                     for (n, e) in groups {
                         let sql = c.sql(e)?;
@@ -242,17 +326,16 @@ impl RelCompiler<'_> {
             RelOp::Sort { input, keys } => {
                 let mut s = self.rel(input)?;
                 if !s.is_plain() {
-                    s = self.wrap(s);
+                    s = self.wrap(s, &input.schema)?;
                 }
-                let c = self.exprs(&input.schema, false);
-                s.order_by = self.in_scope(input, &s, || keys.iter().map(|k| c.sort_key(k)).collect::<Result<_>>())?;
+                self.in_scope(input, &s.alias.clone(), || self.push_order(&mut s, &input.schema, keys.clone()))?;
                 Ok(s)
             }
 
             RelOp::Limit { input, n, offset } => {
                 let mut s = self.rel(input)?;
                 if s.limit.is_some() || s.offset > 0 {
-                    s = self.wrap(s);
+                    s = self.wrap(s, &input.schema)?;
                 }
                 s.limit = *n;
                 s.offset = *offset;
@@ -261,17 +344,27 @@ impl RelCompiler<'_> {
 
             RelOp::Distinct { input } => {
                 let mut s = self.rel(input)?;
-                if !s.group_by.is_empty() || s.distinct || s.limit.is_some() || s.offset > 0 || !s.order_by.is_empty() {
-                    s = self.wrap(s);
+                // DISTINCT goes under the ordering: engines reject
+                // `SELECT DISTINCT ... ORDER BY <expr not selected>`.
+                let order = s.output_order();
+                if order.is_some() {
+                    s.clear_order();
+                }
+                if !s.group_by.is_empty() || s.distinct || s.limit.is_some() || s.offset > 0 || !s.order.is_empty() {
+                    s = self.wrap(s, &input.schema)?;
                 }
                 s.distinct = true;
+                if let Some(keys) = order {
+                    s = self.wrap(s, &input.schema)?;
+                    self.push_order(&mut s, &input.schema, keys)?;
+                }
                 Ok(s)
             }
 
             RelOp::Join { left, right, how, predicates, outputs } => {
                 let (la, ra) = (self.alias(), self.alias());
                 let col = |side: Side, c: &str| format!("{}.{}", if side == Side::Left { &la } else { &ra }, q(c));
-                let c = self.exprs(&left.schema, false);
+                let c = self.exprs(&left.schema, false, &None);
                 let cond = self.scoped(&[(left, &la), (right, &ra)], || {
                     predicates.iter().map(|p| c.sql(p)).collect::<Result<Vec<_>>>()
                 })?;
@@ -335,6 +428,9 @@ pub struct ExprCompiler<'a> {
     pub schema: &'a Schema,
     /// In a projection, a bare reduction is broadcast: `agg(...) OVER ()`.
     pub in_project: bool,
+    /// Alias of the relation `schema` describes; columns are spelled
+    /// `alias."name"` so they can't be captured by a same-named output alias.
+    qual: Option<String>,
     rc: &'a RelCompiler<'a>,
 }
 
@@ -346,10 +442,16 @@ impl ExprCompiler<'_> {
     pub fn sql(&self, e: &Expr) -> Result<String> {
         let d = self.d;
         Ok(match e {
-            Expr::Column(n) => d.quote_ident(n),
+            Expr::Column(n) => match &self.qual {
+                Some(a) => format!("{a}.{}", d.quote_ident(n)),
+                None => d.quote_ident(n),
+            },
             Expr::Field { rel, name } => self.rc.field(rel, name)?,
             Expr::ScalarSubquery(r) => format!("({})", self.rc.rel(r)?.render(d)),
             Expr::Exists(r) => format!("(EXISTS ({}))", self.rc.rel(r)?.render(d)),
+            Expr::InColumn { .. } => {
+                return Err(Error::Invalid("isin_col outside a table operation (select, filter, ...)".into()));
+            }
             Expr::InSubquery { arg, rel } => format!("({} IN ({}))", self.sql(arg)?, self.rc.rel(rel)?.render(d)),
             Expr::Literal(v, t) => self.literal(v, t)?,
             Expr::Alias(e, _) => self.sql(e)?,
@@ -481,6 +583,7 @@ impl ExprCompiler<'_> {
             Ge => format!("({ls} >= {rs})"),
             And => format!("({ls} AND {rs})"),
             Or => format!("({ls} OR {rs})"),
+            Xor => format!("(({ls} OR {rs}) AND NOT ({ls} AND {rs}))"),
         })
     }
 
@@ -564,6 +667,7 @@ impl ExprCompiler<'_> {
             Minute => int(format!("EXTRACT(MINUTE FROM {x})"))?,
             Second => int(format!("FLOOR(EXTRACT(SECOND FROM {x}))"))?,
             DayOfWeekIndex => int(format!("(EXTRACT(ISODOW FROM {x}) - 1)"))?,
+            IsNan => format!("ISNAN({x})"),
         })
     }
 
@@ -597,7 +701,8 @@ impl ExprCompiler<'_> {
     fn window(&self, f: &Expr, spec: &WindowSpec) -> Result<String> {
         let over = self.over(spec)?;
         // compile the function without the broadcast `OVER ()`
-        let inner = ExprCompiler { d: self.d, schema: self.schema, in_project: false, rc: self.rc };
+        let inner =
+            ExprCompiler { d: self.d, schema: self.schema, in_project: false, qual: self.qual.clone(), rc: self.rc };
         Ok(match f {
             Expr::Agg { .. } => format!("{} {over}", inner.sql(f)?),
             Expr::Analytic(a, args) => {

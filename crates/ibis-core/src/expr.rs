@@ -34,6 +34,14 @@ pub enum Expr {
         arg: Box<Expr>,
         rel: Arc<Rel>,
     },
+    /// `arg` is a member of `column`'s values (Ibis `x.isin(t.col)`), before
+    /// a table operation turns it into `InSubquery`. `column` is an
+    /// expression over one table: the one its bound columns name, else the
+    /// table the expression is applied to.
+    InColumn {
+        arg: Box<Expr>,
+        column: Box<Expr>,
+    },
     Literal(Value, DataType),
     /// Names an expression; only meaningful at the top of a projection.
     Alias(Box<Expr>, String),
@@ -96,6 +104,8 @@ pub enum BinaryOp {
     Ge,
     And,
     Or,
+    /// Exactly one side true.
+    Xor,
 }
 
 impl BinaryOp {
@@ -104,7 +114,7 @@ impl BinaryOp {
         matches!(self, Eq | NotEq | Lt | Le | Gt | Ge)
     }
     pub fn is_logical(self) -> bool {
-        matches!(self, BinaryOp::And | BinaryOp::Or)
+        matches!(self, BinaryOp::And | BinaryOp::Or | BinaryOp::Xor)
     }
 }
 
@@ -174,6 +184,8 @@ pub enum Func {
     Second,
     /// Monday = 0.
     DayOfWeekIndex,
+    /// True for NaN; NULL for NULL.
+    IsNan,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -259,6 +271,11 @@ pub fn date(s: &str) -> Expr {
     }
 }
 
+/// A literal of an explicit type (Ibis `ibis.literal(v, type=...)`).
+pub fn lit_as(v: impl Into<Value>, dtype: DataType) -> Expr {
+    Expr::Literal(v.into(), dtype)
+}
+
 pub fn lit(v: impl Into<Value>) -> Expr {
     let v = v.into();
     let t = v.dtype();
@@ -290,6 +307,17 @@ pub fn asc(e: impl Into<Expr>) -> SortKey {
 
 pub fn desc(e: impl Into<Expr>) -> SortKey {
     SortKey { expr: e.into(), ascending: false, nulls_first: false }
+}
+
+impl SortKey {
+    pub fn nulls_first(mut self) -> SortKey {
+        self.nulls_first = true;
+        self
+    }
+    pub fn nulls_last(mut self) -> SortKey {
+        self.nulls_first = false;
+        self
+    }
 }
 
 impl From<Expr> for SortKey {
@@ -417,30 +445,30 @@ impl Expr {
     pub fn notnull(self) -> Expr {
         Expr::Unary(UnaryOp::NotNull, Box::new(self))
     }
+    /// Membership in a list of values. An empty list is `false` (Ibis), not
+    /// the SQL syntax error `IN ()`.
     pub fn isin(self, list: impl IntoIterator<Item = impl Into<Expr>>) -> Expr {
-        Expr::InList { arg: Box::new(self), list: list.into_iter().map(Into::into).collect(), negated: false }
+        let list: Vec<Expr> = list.into_iter().map(Into::into).collect();
+        if list.is_empty() {
+            return lit(false);
+        }
+        Expr::InList { arg: Box::new(self), list, negated: false }
     }
     pub fn notin(self, list: impl IntoIterator<Item = impl Into<Expr>>) -> Expr {
-        Expr::InList { arg: Box::new(self), list: list.into_iter().map(Into::into).collect(), negated: true }
-    }
-    /// `self IN (SELECT column FROM ...)`: membership in a column of
-    /// another table (Ibis `x.isin(other.col)`). `column` must be built
-    /// from a single table's columns.
-    pub fn isin_col(self, column: Expr) -> Expr {
-        let rel = match &column {
-            Expr::Field { rel, .. } => rel.clone(),
-            e => match e.field_rels().first() {
-                Some(r) => r.clone(),
-                None => return bin(BinaryOp::Eq, self, column),
-            },
-        };
-        let name = column.output_name();
-        let table = crate::table::Table::from_arc(rel);
-        match table.select([column.name(&name)]) {
-            Ok(sub) => Expr::InSubquery { arg: Box::new(self), rel: sub.arc() },
-            // surfaces when the expression is used: dtype() of the bad column errors
-            Err(_) => Expr::InSubquery { arg: Box::new(self), rel: table.arc() },
+        let list: Vec<Expr> = list.into_iter().map(Into::into).collect();
+        if list.is_empty() {
+            return lit(true);
         }
+        Expr::InList { arg: Box::new(self), list, negated: true }
+    }
+    /// Membership in the values of a column (Ibis `x.isin(t.col)`):
+    /// `self IN (SELECT column FROM ...)`. `column` is an expression over one
+    /// table; unbound columns mean the table this expression is applied to.
+    pub fn isin_col(self, column: Expr) -> Expr {
+        Expr::InColumn { arg: Box::new(self), column: Box::new(column) }
+    }
+    pub fn notin_col(self, column: Expr) -> Expr {
+        !self.isin_col(column)
     }
     /// `cond.ifelse(a, b)`
     pub fn ifelse(self, then: impl Into<Expr>, otherwise: impl Into<Expr>) -> Expr {
@@ -450,6 +478,9 @@ impl Expr {
     pub fn cases(self, pairs: impl IntoIterator<Item = (Expr, Expr)>, default: Option<Expr>) -> Expr {
         let branches = pairs.into_iter().map(|(v, r)| (self.clone().eq(v), r));
         cases(branches, default)
+    }
+    pub fn isnan(self) -> Expr {
+        func(Func::IsNan, vec![self])
     }
     pub fn fill_null(self, v: impl Into<Expr>) -> Expr {
         coalesce([self, v.into()])
@@ -639,6 +670,22 @@ impl Expr {
     pub fn all(self) -> Expr {
         agg(AggFunc::All, self)
     }
+    /// No row is true (Ibis `notany`).
+    pub fn notany(self) -> Expr {
+        !self.any()
+    }
+    /// Not every row is true (Ibis `notall`).
+    pub fn notall(self) -> Expr {
+        !self.all()
+    }
+    /// Ascending sort key (NULLs last).
+    pub fn asc(self) -> SortKey {
+        asc(self)
+    }
+    /// Descending sort key (NULLs last).
+    pub fn desc(self) -> SortKey {
+        desc(self)
+    }
     /// Restrict a reduction to rows matching `cond` (Ibis `where=`).
     pub fn filter_where(self, cond: Expr) -> Expr {
         match self {
@@ -707,6 +754,7 @@ op_impl!(Rem, rem, BinaryOp::Mod);
 // Ibis spells boolean AND/OR as `&` / `|`.
 op_impl!(BitAnd, bitand, BinaryOp::And);
 op_impl!(BitOr, bitor, BinaryOp::Or);
+op_impl!(BitXor, bitxor, BinaryOp::Xor);
 
 impl ops::Neg for Expr {
     type Output = Expr;
@@ -755,7 +803,7 @@ impl Expr {
             Expr::Column(_) | Expr::Literal(..) | Expr::Field { .. } | Expr::ScalarSubquery(_) | Expr::Exists(_) => {
                 vec![]
             }
-            Expr::InSubquery { arg, .. } => vec![arg],
+            Expr::InSubquery { arg, .. } | Expr::InColumn { arg, .. } => vec![arg],
             Expr::Alias(e, _) | Expr::Cast(e, _) | Expr::Unary(_, e) => vec![e],
             Expr::Binary(_, l, r) => vec![l, r],
             Expr::Func(_, a) | Expr::Analytic(_, a) => a.iter().collect(),
@@ -785,6 +833,7 @@ impl Expr {
             | Expr::ScalarSubquery(_)
             | Expr::Exists(_)) => e,
             Expr::InSubquery { arg, rel } => Expr::InSubquery { arg: Box::new(f(*arg)?), rel },
+            Expr::InColumn { arg, column } => Expr::InColumn { arg: Box::new(f(*arg)?), column },
             Expr::Alias(e, n) => Expr::Alias(Box::new(f(*e)?), n),
             Expr::Cast(e, t) => Expr::Cast(Box::new(f(*e)?), t),
             Expr::Unary(op, e) => Expr::Unary(op, Box::new(f(*e)?)),
@@ -857,6 +906,10 @@ impl Expr {
                 _ => return invalid(format!("scalar subquery must have one column, has {}", rel.schema.len())),
             },
             Expr::Exists(_) => T::Boolean,
+            Expr::InColumn { arg, .. } => {
+                arg.dtype(schema)?;
+                T::Boolean
+            }
             Expr::InSubquery { arg, rel } => {
                 arg.dtype(schema)?;
                 if rel.schema.len() != 1 {
@@ -1026,7 +1079,7 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
         Upper | Lower | Strip | LStrip | RStrip | Reverse | Repeat | Substring | Right | Replace | RegexExtract
         | RegexReplace | LPad | RPad | Capitalize => T::String,
         Length | Ascii => T::Int32,
-        StartsWith | EndsWith | Contains | Like | ILike | RegexSearch => T::Boolean,
+        StartsWith | EndsWith | Contains | Like | ILike | RegexSearch | IsNan => T::Boolean,
         Find => T::Int64,
         Coalesce => ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?,
         NullIf => first,
@@ -1058,7 +1111,7 @@ impl fmt::Display for Expr {
             Expr::Column(n) | Expr::Field { name: n, .. } => f.write_str(n),
             Expr::ScalarSubquery(_) => f.write_str("ScalarSubquery"),
             Expr::Exists(_) => f.write_str("ExistsSubquery"),
-            Expr::InSubquery { arg, .. } => write!(f, "InSubquery({arg})"),
+            Expr::InSubquery { arg, .. } | Expr::InColumn { arg, .. } => write!(f, "InSubquery({arg})"),
             Expr::Literal(v, _) => match v {
                 Value::Null => f.write_str("None"),
                 Value::Bool(b) => write!(f, "{}", if *b { "True" } else { "False" }),

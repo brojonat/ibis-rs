@@ -31,6 +31,7 @@ MODULES = [
     "test_string",
     "test_numeric",
     "test_aggregation",
+    "test_generic",
 ]
 
 

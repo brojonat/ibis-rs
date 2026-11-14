@@ -15,15 +15,18 @@ pub use backend::Backend;
 pub use datatypes::{DataType, Field, Schema};
 pub use error::{Error, Result};
 pub use expr::{AggFunc, Analytic, BinaryOp, Bound, Expr, Frame, Func, SortKey, UnaryOp, WindowSpec};
-pub use table::{DerefMap, GroupedTable, JoinKind, JoinPred, Rel, RelOp, SetKind, Side, Table};
+pub use table::{DerefMap, GroupedTable, How, JoinKind, JoinPred, Rel, RelOp, SetKind, Side, Table};
 pub use value::Value;
 
 /// Everything needed to write queries.
 pub mod prelude {
     pub use crate::backend::Backend;
     pub use crate::datatypes::{DataType, Schema};
-    pub use crate::expr::{Expr, WindowSpec, asc, cases, coalesce, col, count, date, desc, lit, null, row_number};
-    pub use crate::table::{JoinKind, Table};
+    pub use crate::expr::{
+        Expr, WindowSpec, asc, cases, coalesce, col, count, date, desc, lit, lit_as, null, row_number,
+    };
+    pub use crate::table::{How, JoinKind, Table};
+    pub use crate::value::Value;
 }
 
 #[cfg(test)]

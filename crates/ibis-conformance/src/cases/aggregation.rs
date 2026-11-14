@@ -4,7 +4,7 @@ use ibis_core::prelude::*;
 
 use super::{Case, c, table};
 
-pub fn cases(v: &mut Vec<Case>) {
+pub fn register(v: &mut Vec<Case>) {
     let aggs: Vec<(&str, fn() -> Expr)> = vec![
         ("mean", || c("double_col").mean()),
         ("min", || c("double_col").min()),

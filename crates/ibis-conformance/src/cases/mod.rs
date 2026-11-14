@@ -6,6 +6,7 @@
 //! known not to pass yet. A marked case that passes is reported as `xpass`.
 
 mod aggregation;
+mod generic;
 mod numeric;
 mod string;
 
@@ -54,13 +55,11 @@ impl Case {
     }
 
     /// Rows must come back in the golden's order (the expression ends in a total ordering).
-    #[allow(dead_code)]
     fn ordered(mut self) -> Self {
         self.ordered = true;
         self
     }
 
-    #[allow(dead_code)] // used as cases get marked
     fn notimpl(mut self, backends: &[&'static str]) -> Self {
         self.notimpl.extend(backends);
         self
@@ -85,7 +84,6 @@ fn column(id: &str, f: impl Fn(&Table) -> Result<Expr> + 'static) -> Case {
     Case::new(id, Shape::Column(Box::new(f)))
 }
 
-#[allow(dead_code)]
 fn scalar(id: &str, f: impl Fn() -> Result<Expr> + 'static) -> Case {
     Case::new(id, Shape::Scalar(Box::new(f)))
 }
@@ -94,7 +92,6 @@ fn table(id: &str, f: impl Fn(&Table) -> Result<Table> + 'static) -> Case {
     Case::new(id, Shape::Table(Box::new(f)))
 }
 
-#[allow(dead_code)]
 fn tables(id: &str, f: impl Fn(&Fx) -> Result<Table> + 'static) -> Case {
     Case::new(id, Shape::Tables(Box::new(f)))
 }
@@ -105,8 +102,9 @@ fn c(name: &str) -> Expr {
 
 pub fn all() -> Vec<Case> {
     let mut v = vec![];
-    string::cases(&mut v);
-    numeric::cases(&mut v);
-    aggregation::cases(&mut v);
+    string::register(&mut v);
+    numeric::register(&mut v);
+    aggregation::register(&mut v);
+    generic::register(&mut v);
     v
 }

@@ -83,6 +83,16 @@ impl Dialect for SqliteDialect {
         })
     }
 
+    /// SQLite has no bare OFFSET: `LIMIT -1` means no limit.
+    fn limit_offset(&self, limit: Option<u64>, offset: u64) -> String {
+        match (limit, offset) {
+            (None, 0) => String::new(),
+            (None, o) => format!(" LIMIT -1 OFFSET {o}"),
+            (Some(n), 0) => format!(" LIMIT {n}"),
+            (Some(n), o) => format!(" LIMIT {n} OFFSET {o}"),
+        }
+    }
+
     fn binary(&self, c: &ExprCompiler, op: BinaryOp, l: &Expr, r: &Expr) -> Result<Option<String>> {
         // `%` on REAL operands truncates them to integers in SQLite.
         if op == BinaryOp::Mod && (c.dtype(l)?.is_floating() || c.dtype(r)?.is_floating()) {
@@ -110,6 +120,8 @@ impl Dialect for SqliteDialect {
                     Some(format!("(LOWER({}) LIKE LOWER({}))", a(0)?, a(1)?))
                 }
             }
+            // SQLite stores NaN as NULL, so there is nothing to test for
+            Func::IsNan => return Err(Error::Unsupported { backend: "sqlite".into(), op: "isnan".into() }),
             Func::Ascii => Some(format!("UNICODE({})", a(0)?)),
             Func::Right => Some(format!("SUBSTR({}, -({}))", a(0)?, a(1)?)),
             Func::Year => extract("%Y")?,

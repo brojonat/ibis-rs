@@ -68,6 +68,8 @@ impl Dialect for PostgresDialect {
                     a(2)?
                 ))
             }
+            // Postgres orders NaN as equal to itself (and above everything)
+            Func::IsNan => Some(format!("({} = CAST('NaN' AS DOUBLE PRECISION))", a(0)?)),
             Func::Log2 => Some(format!("(LN({x}) / LN(2.0))", x = a(0)?)),
             Func::Log10 => Some(format!("LOG({})", a(0)?)),
             // ROUND(DOUBLE PRECISION) rounds half to even; NUMERIC rounds half

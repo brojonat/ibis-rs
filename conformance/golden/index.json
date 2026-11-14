@@ -173,6 +173,24 @@
    "postgres": "same"
   }
  },
+ "test_between": {
+  "file": "test_generic/test_between.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_binary_arithmetic_operations[add]": {
   "file": "test_numeric/test_binary_arithmetic_operations[add].parquet",
   "kind": "column",
@@ -281,6 +299,202 @@
    "postgres": "same"
   }
  },
+ "test_case_where": {
+  "file": "test_generic/test_case_where.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month",
+   "new_col"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_cast[float_to_int]": {
+  "file": "test_generic/test_cast[float_to_int].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_cast[int_to_float]": {
+  "file": "test_generic/test_cast[int_to_float].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_cast[string_to_float]": {
+  "file": "test_generic/test_cast[string_to_float].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_cast[string_to_int]": {
+  "file": "test_generic/test_cast[string_to_int].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_coalesce[generic]": {
+  "file": "test_generic/test_coalesce[generic].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_coalesce[non_null_last]": {
+  "file": "test_generic/test_coalesce[non_null_last].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_coalesce[null_start_end]": {
+  "file": "test_generic/test_coalesce[null_start_end].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_column_fill_null[None]": {
+  "file": "test_generic/test_column_fill_null[None].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month",
+   "missing"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_complex_math_functions_columns[exp]": {
   "file": "test_numeric/test_complex_math_functions_columns[exp].parquet",
   "kind": "column",
@@ -371,6 +585,542 @@
    "postgres": "same"
   }
  },
+ "test_drop_null_table[empty-all]": {
+  "file": "test_generic/test_drop_null_table[empty-all].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[empty-any]": {
+  "file": "test_generic/test_drop_null_table[empty-any].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[none-all]": {
+  "file": "test_generic/test_drop_null_table[none-all].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[none-any]": {
+  "file": "test_generic/test_drop_null_table[none-any].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 5840,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[one-and-three-all]": {
+  "file": "test_generic/test_drop_null_table[one-and-three-all].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 6570,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[one-and-three-any]": {
+  "file": "test_generic/test_drop_null_table[one-and-three-any].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 5840,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[one-and-two-all]": {
+  "file": "test_generic/test_drop_null_table[one-and-two-all].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[one-and-two-any]": {
+  "file": "test_generic/test_drop_null_table[one-and-two-any].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 5840,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[single-all]": {
+  "file": "test_generic/test_drop_null_table[single-all].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 6570,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_drop_null_table[single-any]": {
+  "file": "test_generic/test_drop_null_table[single-any].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "col_1",
+   "col_2",
+   "col_3"
+  ],
+  "dtypes": [
+   "int64",
+   "float32",
+   "float32",
+   "float32"
+  ],
+  "rows": 6570,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_exists[any]": {
+  "file": "test_generic/test_exists[any].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID",
+   "stint",
+   "teamID",
+   "lgID",
+   "G",
+   "AB",
+   "R",
+   "H",
+   "X2B",
+   "X3B",
+   "HR",
+   "RBI",
+   "SB",
+   "CS",
+   "BB",
+   "SO",
+   "IBB",
+   "HBP",
+   "SH",
+   "SF",
+   "GIDP"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64"
+  ],
+  "rows": 1894,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_exists[notany]": {
+  "file": "test_generic/test_exists[notany].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID",
+   "stint",
+   "teamID",
+   "lgID",
+   "G",
+   "AB",
+   "R",
+   "H",
+   "X2B",
+   "X3B",
+   "HR",
+   "RBI",
+   "SB",
+   "CS",
+   "BB",
+   "SO",
+   "IBB",
+   "HBP",
+   "SH",
+   "SF",
+   "GIDP"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64"
+  ],
+  "rows": 115,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_filter[and]": {
+  "file": "test_generic/test_filter[and].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 3650,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_filter[negate]": {
+  "file": "test_generic/test_filter[negate].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 3650,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_filter[no_op]": {
+  "file": "test_generic/test_filter[no_op].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 3650,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_filter[or]": {
+  "file": "test_generic/test_filter[or].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 3650,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_filter[xor]": {
+  "file": "test_generic/test_filter[xor].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_floating_mod": {
   "file": "test_numeric/test_floating_mod.parquet",
   "kind": "column",
@@ -389,6 +1139,846 @@
    "postgres": "same"
   }
  },
+ "test_isin[int_col-elements0]": {
+  "file": "test_generic/test_isin[int_col-elements0].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin[int_col-elements1]": {
+  "file": "test_generic/test_isin[int_col-elements1].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin[int_col-elements4]": {
+  "file": "test_generic/test_isin[int_col-elements4].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin[int_col-elements5]": {
+  "file": "test_generic/test_isin[int_col-elements5].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin[string_col-elements2]": {
+  "file": "test_generic/test_isin[string_col-elements2].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin[string_col-elements3]": {
+  "file": "test_generic/test_isin[string_col-elements3].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_notin[isin]": {
+  "file": "test_generic/test_isin_notin[isin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_notin[isin_non_empty]": {
+  "file": "test_generic/test_isin_notin[isin_non_empty].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_notin[notin]": {
+  "file": "test_generic/test_isin_notin[notin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_notin[notin_non_empty]": {
+  "file": "test_generic/test_isin_notin[notin_non_empty].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_notin_column_expr[isin_col]": {
+  "file": "test_generic/test_isin_notin_column_expr[isin_col].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_notin_column_expr[isin_expr]": {
+  "file": "test_generic/test_isin_notin_column_expr[isin_expr].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_notin_column_expr[notin_col]": {
+  "file": "test_generic/test_isin_notin_column_expr[notin_col].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_notin_column_expr[notin_expr]": {
+  "file": "test_generic/test_isin_notin_column_expr[notin_expr].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_uncorrelated": {
+  "file": "test_generic/test_isin_uncorrelated.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "playerID",
+   "yearID",
+   "has_year_id"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "boolean"
+  ],
+  "rows": 101332,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_uncorrelated_filter": {
+  "file": "test_generic/test_isin_uncorrelated_filter.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "playerID",
+   "yearID"
+  ],
+  "dtypes": [
+   "string",
+   "int64"
+  ],
+  "rows": 93370,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isin_uncorrelated_simple": {
+  "file": "test_generic/test_isin_uncorrelated_simple.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "id",
+   "in_a"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isna[nan_col]": {
+  "file": "test_generic/test_isna[nan_col].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "nan_col"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_isna[none_col]": {
+  "file": "test_generic/test_isna[none_col].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "none_col"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_isnull_equality": {
+  "file": "test_generic/test_isnull_equality.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "out"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[bool]": {
+  "file": "test_generic/test_literal_na[bool].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[bytes]": {
+  "file": "test_generic/test_literal_na[bytes].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "binary"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[date]": {
+  "file": "test_generic/test_literal_na[date].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[float32]": {
+  "file": "test_generic/test_literal_na[float32].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[float64]": {
+  "file": "test_generic/test_literal_na[float64].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[float]": {
+  "file": "test_generic/test_literal_na[float].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[int16]": {
+  "file": "test_generic/test_literal_na[int16].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[int32]": {
+  "file": "test_generic/test_literal_na[int32].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[int64]": {
+  "file": "test_generic/test_literal_na[int64].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[int8]": {
+  "file": "test_generic/test_literal_na[int8].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[int]": {
+  "file": "test_generic/test_literal_na[int].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[str]": {
+  "file": "test_generic/test_literal_na[str].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_literal_na[timestamp]": {
+  "file": "test_generic/test_literal_na[timestamp].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_logical_negation_column[identity]": {
+  "file": "test_generic/test_logical_negation_column[identity].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_logical_negation_column[invert]": {
+  "file": "test_generic/test_logical_negation_column[invert].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_logical_negation_literal[false_invert]": {
+  "file": "test_generic/test_logical_negation_literal[false_invert].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_logical_negation_literal[false_noop]": {
+  "file": "test_generic/test_logical_negation_literal[false_noop].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_logical_negation_literal[true_invert]": {
+  "file": "test_generic/test_logical_negation_literal[true_invert].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_logical_negation_literal[true_noop]": {
+  "file": "test_generic/test_logical_negation_literal[true_noop].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_mod": {
   "file": "test_numeric/test_mod.parquet",
   "kind": "column",
@@ -402,6 +1992,548 @@
    "int32"
   ],
   "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_notin[int_col-elements0]": {
+  "file": "test_generic/test_notin[int_col-elements0].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_notin[int_col-elements1]": {
+  "file": "test_generic/test_notin[int_col-elements1].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_notin[int_col-elements4]": {
+  "file": "test_generic/test_notin[int_col-elements4].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_notin[int_col-elements5]": {
+  "file": "test_generic/test_notin[int_col-elements5].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_notin[string_col-elements2]": {
+  "file": "test_generic/test_notin[string_col-elements2].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_notin[string_col-elements3]": {
+  "file": "test_generic/test_notin[string_col-elements3].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_null_isin_null_is_null": {
+  "file": "test_generic/test_null_isin_null_is_null.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by[<lambda>-df_kwargs2]": {
+  "file": "test_generic/test_order_by[<lambda>-df_kwargs2].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 100,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by[id-df_kwargs0]": {
+  "file": "test_generic/test_order_by[id-df_kwargs0].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 100,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by[key1-df_kwargs1]": {
+  "file": "test_generic/test_order_by[key1-df_kwargs1].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 100,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by[key3-df_kwargs3]": {
+  "file": "test_generic/test_order_by[key3-df_kwargs3].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 100,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by[key4-df_kwargs4]": {
+  "file": "test_generic/test_order_by[key4-df_kwargs4].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 100,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by[key5-df_kwargs5]": {
+  "file": "test_generic/test_order_by[key5-df_kwargs5].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 100,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_nulls[asc]": {
+  "file": "test_generic/test_order_by_nulls[asc].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "a",
+   "b"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_nulls[desc]": {
+  "file": "test_generic/test_order_by_nulls[desc].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "a",
+   "b"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_nulls_default[asc]": {
+  "file": "test_generic/test_order_by_nulls_default[asc].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "a",
+   "b"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_nulls_default[desc]": {
+  "file": "test_generic/test_order_by_nulls_default[desc].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "a",
+   "b"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_preservation": {
+  "file": "test_generic/test_order_by_preservation.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "col"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_two_cols_nulls[asc-asc-tf]": {
+  "file": "test_generic/test_order_by_two_cols_nulls[asc-asc-tf].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "col1",
+   "col2"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_two_cols_nulls[asc-asc-tt]": {
+  "file": "test_generic/test_order_by_two_cols_nulls[asc-asc-tt].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "col1",
+   "col2"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_two_cols_nulls[asc-desc-ff]": {
+  "file": "test_generic/test_order_by_two_cols_nulls[asc-desc-ff].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "col1",
+   "col2"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_two_cols_nulls[asc-desc-tf]": {
+  "file": "test_generic/test_order_by_two_cols_nulls[asc-desc-tf].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "col1",
+   "col2"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_order_by_two_cols_nulls[asc-desc-tt]": {
+  "file": "test_generic/test_order_by_two_cols_nulls[asc-desc-tt].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "col1",
+   "col2"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -919,6 +3051,390 @@
    "postgres": "same"
   }
  },
+ "test_scalar_fill_null_nullif[na_fill_null]": {
+  "file": "test_generic/test_scalar_fill_null_nullif[na_fill_null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_fill_null_nullif[non_na_fill_null]": {
+  "file": "test_generic/test_scalar_fill_null_nullif[non_na_fill_null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_fill_null_nullif[nullif_not_null]": {
+  "file": "test_generic/test_scalar_fill_null_nullif[nullif_not_null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_fill_null_nullif[nullif_null]": {
+  "file": "test_generic/test_scalar_fill_null_nullif[nullif_null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[filter-order_by-select-distinct]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[filter-order_by-select-distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[filter-select-distinct-order_by]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[filter-select-distinct-order_by].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[filter-select-order_by-distinct]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[filter-select-order_by-distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[order_by-filter-select-distinct]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[order_by-filter-select-distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[order_by-select-distinct-filter]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[order_by-select-distinct-filter].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[order_by-select-filter-distinct]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[order_by-select-filter-distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[select-distinct-filter-order_by]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[select-distinct-filter-order_by].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[select-distinct-order_by-filter]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[select-distinct-order_by-filter].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[select-filter-distinct-order_by]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[select-filter-distinct-order_by].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[select-filter-order_by-distinct]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[select-filter-order_by-distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[select-order_by-distinct-filter]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[select-order_by-distinct-filter].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_filter_order_by_commute[select-order_by-filter-distinct]": {
+  "file": "test_generic/test_select_distinct_filter_order_by_commute[select-order_by-filter-distinct].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col",
+   "b"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 132,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_order_by": {
+  "file": "test_generic/test_select_distinct_order_by.parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_distinct_order_by_expr": {
+  "file": "test_generic/test_select_distinct_order_by_expr.parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "int_col"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_filter": {
+  "file": "test_generic/test_select_filter.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "int_col",
+   "string_col"
+  ],
+  "dtypes": [
+   "int32",
+   "string"
+  ],
+  "rows": 730,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_filter_mutate": {
+  "file": "test_generic/test_select_filter_mutate.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "float_col"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 3650,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_select_filter_select": {
+  "file": "test_generic/test_select_filter_select.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "int_col"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 730,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_select_sort_sort": {
+  "file": "test_generic/test_select_sort_sort.parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "bool_col",
+   "year",
+   "id"
+  ],
+  "dtypes": [
+   "boolean",
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_simple_math_functions_columns[abs-neg]": {
   "file": "test_numeric/test_simple_math_functions_columns[abs-neg].parquet",
   "kind": "column",
@@ -1022,6 +3538,166 @@
    "float64"
   ],
   "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[0:0]]": {
+  "file": "test_generic/test_static_table_slice[[0:0]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[0:2]]": {
+  "file": "test_generic/test_static_table_slice[[0:2]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[0:]]": {
+  "file": "test_generic/test_static_table_slice[[0:]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[3:0]]": {
+  "file": "test_generic/test_static_table_slice[[3:0]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[3:2]]": {
+  "file": "test_generic/test_static_table_slice[[3:2]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[3:4]]": {
+  "file": "test_generic/test_static_table_slice[[3:4]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[3:]]": {
+  "file": "test_generic/test_static_table_slice[[3:]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[:0]]": {
+  "file": "test_generic/test_static_table_slice[[:0]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[:2]]": {
+  "file": "test_generic/test_static_table_slice[[:2]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[:]]": {
+  "file": "test_generic/test_static_table_slice[[:]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -1801,6 +4477,38 @@
    "postgres": "same"
   }
  },
+ "test_subsequent_overlapping_order_by#1": {
+  "file": "test_generic/test_subsequent_overlapping_order_by#1.parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_subsequent_overlapping_order_by#2": {
+  "file": "test_generic/test_subsequent_overlapping_order_by#2.parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_substring[left]": {
   "file": "test_string/test_substring[left].parquet",
   "kind": "column",
@@ -1868,6 +4576,264 @@
    "string"
   ],
   "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_table_fill_null_mapping[double-int-str]": {
+  "file": "test_generic/test_table_fill_null_mapping[double-int-str].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "int_col",
+   "double_col",
+   "string_col"
+  ],
+  "dtypes": [
+   "int64",
+   "int32",
+   "float64",
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_table_fill_null_mapping[double-str]": {
+  "file": "test_generic/test_table_fill_null_mapping[double-str].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "int_col",
+   "double_col",
+   "string_col"
+  ],
+  "dtypes": [
+   "int64",
+   "int32",
+   "float64",
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_table_fill_null_mapping[empty]": {
+  "file": "test_generic/test_table_fill_null_mapping[empty].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "int_col",
+   "double_col",
+   "string_col"
+  ],
+  "dtypes": [
+   "int64",
+   "int32",
+   "float64",
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_table_fill_null_mapping[int]": {
+  "file": "test_generic/test_table_fill_null_mapping[int].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "int_col",
+   "double_col",
+   "string_col"
+  ],
+  "dtypes": [
+   "int64",
+   "int32",
+   "float64",
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_table_fill_null_scalar#1": {
+  "file": "test_generic/test_table_fill_null_scalar#1.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "int_col",
+   "double_col"
+  ],
+  "dtypes": [
+   "int32",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_table_fill_null_scalar#2": {
+  "file": "test_generic/test_table_fill_null_scalar#2.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "string_col"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_topk_counts_null": {
+  "file": "test_generic/test_topk_counts_null.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x_count"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_uncorrelated_subquery": {
+  "file": "test_generic/test_uncorrelated_subquery.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "playerID",
+   "yearID"
+  ],
+  "dtypes": [
+   "string",
+   "int64"
+  ],
+  "rows": 1384,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_value_counts_on_tables": {
+  "file": "test_generic/test_value_counts_on_tables.parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "bigint_col",
+   "int_col",
+   "bigint_col_int_col_count"
+  ],
+  "dtypes": [
+   "int64",
+   "int32",
+   "int64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_zero_ifnull_column": {
+  "file": "test_generic/test_zero_ifnull_column.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_zero_ifnull_literals[float64-0.0-1.0]#1": {
+  "file": "test_generic/test_zero_ifnull_literals[float64-0.0-1.0]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_zero_ifnull_literals[float64-0.0-1.0]#2": {
+  "file": "test_generic/test_zero_ifnull_literals[float64-0.0-1.0]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_zero_ifnull_literals[int64-0-1]#1": {
+  "file": "test_generic/test_zero_ifnull_literals[int64-0-1]#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_zero_ifnull_literals[int64-0-1]#2": {
+  "file": "test_generic/test_zero_ifnull_literals[int64-0-1]#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
