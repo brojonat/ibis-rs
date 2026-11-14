@@ -31,9 +31,10 @@ pub trait Dialect: Send + Sync {
     fn binary(&self, _c: &ExprCompiler, _op: BinaryOp, _l: &Expr, _r: &Expr) -> Result<Option<String>> {
         Ok(None)
     }
-    /// `filter` is `""` or ` FILTER (WHERE ...)`; place it directly after the
-    /// aggregate call (not after any expression wrapped around it).
-    fn agg(&self, _c: &ExprCompiler, _f: AggFunc, _arg: Option<&Expr>, _filter: &str) -> Result<Option<String>> {
+    /// `tail` is the call's ` FILTER (WHERE ...)` and ` OVER (...)` clauses
+    /// (either may be absent): place it directly after the aggregate call,
+    /// inside any expression wrapped around it.
+    fn agg(&self, _c: &ExprCompiler, _f: AggFunc, _arg: Option<&Expr>, _tail: &str) -> Result<Option<String>> {
         Ok(None)
     }
     fn cast(&self, _c: &ExprCompiler, _e: &Expr, _to: &DataType) -> Result<Option<String>> {

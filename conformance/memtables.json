@@ -46,5 +46,9 @@
  "xyz2": {
   "columns": [["x", "int64"], ["y", "int64"], ["z", "string"]],
   "rows": [[3, 7, "d"], [2, 8, "e"], [1, 9, "f"]]
+ },
+ "bool_nulls": {
+  "columns": [["bool_col", "boolean"]],
+  "rows": [[true], [false], [false], [null], [true]]
  }
 }

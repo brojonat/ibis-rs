@@ -12,6 +12,7 @@ mod join;
 mod numeric;
 mod set_ops;
 mod string;
+mod window;
 
 use std::collections::BTreeMap;
 
@@ -112,5 +113,6 @@ pub fn all() -> Vec<Case> {
     conditionals::register(&mut v);
     join::register(&mut v);
     set_ops::register(&mut v);
+    window::register(&mut v);
     v
 }

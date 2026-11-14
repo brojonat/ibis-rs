@@ -1317,6 +1317,34 @@
    "postgres": "same"
   }
  },
+ "test_first_last": {
+  "file": "test_window/test_first_last.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "g",
+   "x",
+   "y",
+   "x_first",
+   "x_last",
+   "y_first",
+   "y_last"
+  ],
+  "dtypes": [
+   "string",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64",
+   "int64"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_floating_mod": {
   "file": "test_numeric/test_floating_mod.parquet",
   "kind": "column",
@@ -1324,6 +1352,600 @@
   "columns": [
    "id",
    "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[count]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[count].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cumall]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cumall].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cumany]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cumany].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cume_dist]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cume_dist].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cummax]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cummax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cummean]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cummean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cummin]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cummin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cumnotall]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cumnotall].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cumnotany]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cumnotany].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[cumsum]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[cumsum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[dense_rank]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[dense_rank].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[first]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[first].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[lag]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[lag].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[last]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[last].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[lead]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[lead].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[max]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[max].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[mean]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[min]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[min].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[nth]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[nth].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[ntile]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[ntile].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[percent_rank]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[percent_rank].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[rank]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[rank].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[row_number]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[row_number].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_expanding_window[sum]": {
+  "file": "test_window/test_grouped_bounded_expanding_window[sum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_following_window[none-zero-two]": {
+  "file": "test_window/test_grouped_bounded_following_window[none-zero-two].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_grouped_bounded_following_window[zero-two]": {
+  "file": "test_window/test_grouped_bounded_following_window[zero-two].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_grouped_bounded_preceding_window[large-preceding-1000-following-0]": {
+  "file": "test_window/test_grouped_bounded_preceding_window[large-preceding-1000-following-0].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_preceding_window[large-preceding-999-following-0]": {
+  "file": "test_window/test_grouped_bounded_preceding_window[large-preceding-999-following-0].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_preceding_window[preceding-2-following-0-tuple]": {
+  "file": "test_window/test_grouped_bounded_preceding_window[preceding-2-following-0-tuple].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_preceding_window[preceding-2-following-0]": {
+  "file": "test_window/test_grouped_bounded_preceding_window[preceding-2-following-0].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_bounded_preceding_window[trailing-2]": {
+  "file": "test_window/test_grouped_bounded_preceding_window[trailing-2].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_ordered_window_coalesce": {
+  "file": "test_window/test_grouped_ordered_window_coalesce.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "lagged_value"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_unbounded_window[mean]": {
+  "file": "test_window/test_grouped_unbounded_window[mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
   ],
   "dtypes": [
    "int64",
@@ -3435,6 +4057,24 @@
    "postgres": "same"
   }
  },
+ "test_mutate_window_filter": {
+  "file": "test_window/test_mutate_window_filter.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "int_col",
+   "next_int"
+  ],
+  "dtypes": [
+   "int32",
+   "int32"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_mutating_join[inner]": {
   "file": "test_join/test_mutating_join[inner].parquet",
   "kind": "tables",
@@ -4342,6 +4982,40 @@
    "int64"
   ],
   "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_over_with_scalar_group_by": {
+  "file": "test_window/test_over_with_scalar_group_by.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "x"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_percent_rank_whole_table_no_order_by": {
+  "file": "test_window/test_percent_rank_whole_table_no_order_by.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -5346,6 +6020,60 @@
    "float64"
   ],
   "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_simple_ungrouped_unbound_following_window[mean]": {
+  "file": "test_window/test_simple_ungrouped_unbound_following_window[mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "double_col"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 3650,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_simple_ungrouped_unbound_following_window[min]": {
+  "file": "test_window/test_simple_ungrouped_unbound_following_window[min].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "double_col"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 3650,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_simple_ungrouped_unbound_following_window[sum]": {
+  "file": "test_window/test_simple_ungrouped_unbound_following_window[sum].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "double_col"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 3650,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -6755,6 +7483,96 @@
    "postgres": "same"
   }
  },
+ "test_ungrouped_bounded_expanding_window[mean]": {
+  "file": "test_window/test_ungrouped_bounded_expanding_window[mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ungrouped_unbounded_window[ordered-lag]": {
+  "file": "test_window/test_ungrouped_unbounded_window[ordered-lag].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ungrouped_unbounded_window[ordered-lead]": {
+  "file": "test_window/test_ungrouped_unbounded_window[ordered-lead].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ungrouped_unbounded_window[ordered-mean]": {
+  "file": "test_window/test_ungrouped_unbounded_window[ordered-mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ungrouped_unbounded_window[unordered-mean]": {
+  "file": "test_window/test_ungrouped_unbounded_window[unordered-mean].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "val"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_union[all]": {
   "file": "test_set_ops/test_union[all].parquet",
   "kind": "table",
@@ -6954,6 +7772,24 @@
    "int64"
   ],
   "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_windowed_order_by_sequence_is_preserved": {
+  "file": "test_window/test_windowed_order_by_sequence_is_preserved.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "rank",
+   "bool_col"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 5,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"

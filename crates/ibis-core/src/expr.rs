@@ -222,6 +222,10 @@ pub enum Analytic {
     Lead,
     FirstValue,
     LastValue,
+    /// `ntile(buckets)`, **0-based**.
+    Ntile,
+    /// `nth(x, n)`, `n` **0-based**.
+    NthValue,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -695,11 +699,29 @@ impl Expr {
     }
 
     // analytics
+    //
+    // Ranking functions order by their argument; `.over(w)` puts the window's
+    // own ordering ahead of it, as Ibis does.
+    fn ranked(self, a: Analytic, args: Vec<Expr>) -> Expr {
+        Expr::Window(Box::new(Expr::Analytic(a, args)), WindowSpec::new().order_by([asc(self)]))
+    }
     pub fn rank(self) -> Expr {
-        Expr::Window(Box::new(Expr::Analytic(Analytic::Rank, vec![])), WindowSpec::new().order_by([asc(self)]))
+        self.ranked(Analytic::Rank, vec![])
     }
     pub fn dense_rank(self) -> Expr {
-        Expr::Window(Box::new(Expr::Analytic(Analytic::DenseRank, vec![])), WindowSpec::new().order_by([asc(self)]))
+        self.ranked(Analytic::DenseRank, vec![])
+    }
+    /// `rank / (rows - 1)`, in [0, 1].
+    pub fn percent_rank(self) -> Expr {
+        self.ranked(Analytic::PercentRank, vec![])
+    }
+    pub fn cume_dist(self) -> Expr {
+        self.ranked(Analytic::CumeDist, vec![])
+    }
+    /// Bucket number, **0-based**, when the rows are split into `buckets`
+    /// groups of near-equal size.
+    pub fn ntile(self, buckets: i64) -> Expr {
+        self.ranked(Analytic::Ntile, vec![lit(buckets)])
     }
     pub fn lag(self, offset: Option<i64>) -> Expr {
         let mut a = vec![self];
@@ -717,22 +739,65 @@ impl Expr {
     pub fn last(self) -> Expr {
         Expr::Analytic(Analytic::LastValue, vec![self])
     }
+    /// The `n`th value of the window frame, **0-based**; NULL if the frame is shorter.
+    pub fn nth(self, n: i64) -> Expr {
+        Expr::Analytic(Analytic::NthValue, vec![self, lit(n)])
+    }
+
+    /// Evaluate over a window. Applies to every reduction and analytic
+    /// function in the expression, so `(x - x.mean()).over(w)` and
+    /// `x.any().notany().over(w)` work. An already windowed function keeps
+    /// its frame unless `w` has one, and its ordering after `w`'s.
     pub fn over(self, w: WindowSpec) -> Expr {
-        match self {
-            // re-windowing an already windowed rank keeps its ORDER BY
-            Expr::Window(f, mut spec) => {
-                spec.partition_by = w.partition_by;
-                if !w.order_by.is_empty() {
-                    spec.order_by = w.order_by;
+        fn windowable(e: &Expr) -> bool {
+            matches!(e, Expr::Agg { .. } | Expr::Analytic(..) | Expr::Window(..))
+                || e.children().iter().any(|c| windowable(c))
+        }
+        fn go(e: Expr, w: &WindowSpec) -> Expr {
+            match e {
+                Expr::Window(f, mut spec) => {
+                    if !w.partition_by.is_empty() {
+                        spec.partition_by = w.partition_by.clone();
+                    }
+                    let mut order = w.order_by.clone();
+                    for k in spec.order_by {
+                        if !order.iter().any(|o| o.expr == k.expr) {
+                            order.push(k);
+                        }
+                    }
+                    spec.order_by = order;
+                    spec.frame = w.frame.clone().or(spec.frame);
+                    Expr::Window(f, spec)
                 }
-                spec.frame = w.frame.or(spec.frame);
-                Expr::Window(f, spec)
+                e @ (Expr::Agg { .. } | Expr::Analytic(..)) => Expr::Window(Box::new(e), w.clone()),
+                e if windowable(&e) => e.map_children(&mut |c| Ok(go(c, w))).expect("infallible"),
+                e => e,
             }
-            e => Expr::Window(Box::new(e), w),
+        }
+        if windowable(&self) {
+            go(self, &w)
+        } else {
+            // not a window function: reported when the expression is used
+            Expr::Window(Box::new(self), w)
         }
     }
+
+    fn cumulative(self, order_by: impl IntoIterator<Item = impl Into<SortKey>>) -> Expr {
+        self.over(WindowSpec::new().order_by(order_by).rows(None, Some(0)))
+    }
+    /// Running sum in `order_by` order (Ibis `cumsum`); the ordering can
+    /// also come from a later `.over(window)`.
     pub fn cumsum(self, order_by: impl IntoIterator<Item = impl Into<SortKey>>) -> Expr {
-        self.sum().over(WindowSpec::new().order_by(order_by).rows(None, Some(0)))
+        self.sum().cumulative(order_by)
+    }
+    pub fn cummean(self, order_by: impl IntoIterator<Item = impl Into<SortKey>>) -> Expr {
+        self.mean().cumulative(order_by)
+    }
+    pub fn cummin(self, order_by: impl IntoIterator<Item = impl Into<SortKey>>) -> Expr {
+        self.min().cumulative(order_by)
+    }
+    pub fn cummax(self, order_by: impl IntoIterator<Item = impl Into<SortKey>>) -> Expr {
+        self.max().cumulative(order_by)
     }
 }
 
@@ -976,9 +1041,9 @@ impl Expr {
                 let ts = args.iter().map(|a| a.dtype(schema)).collect::<Result<Vec<_>>>()?;
                 use Analytic::*;
                 match a {
-                    RowNumber | Rank | DenseRank => T::Int64,
+                    RowNumber | Rank | DenseRank | Ntile => T::Int64,
                     PercentRank | CumeDist => T::Float64,
-                    Lag | Lead | FirstValue | LastValue => match ts.first() {
+                    Lag | Lead | FirstValue | LastValue | NthValue => match ts.first() {
                         Some(t) => t.clone(),
                         None => return invalid(format!("{a:?} needs an argument")),
                     },

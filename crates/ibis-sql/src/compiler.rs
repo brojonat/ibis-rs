@@ -492,18 +492,9 @@ impl ExprCompiler<'_> {
                 None => self.default_func(*f, args)?,
             },
             Expr::Agg { func, arg, filter } => {
-                let filter = match filter {
-                    Some(f) => format!(" FILTER (WHERE {})", self.sql(f)?),
-                    None => String::new(),
-                };
-                let mut s = match d.agg(self, *func, arg.as_deref(), &filter)? {
-                    Some(s) => s,
-                    None => self.default_agg(*func, arg.as_deref(), &filter)?,
-                };
-                if self.in_project {
-                    s = format!("{s} OVER ()");
-                }
-                s
+                // in a projection a bare reduction is broadcast over all rows
+                let over = if self.in_project { Some("OVER ()") } else { None };
+                self.agg(*func, arg.as_deref(), filter.as_deref(), over)?
             }
             Expr::Analytic(..) => return unsupported(d, format!("{e} without a window (use .over(...))")),
             Expr::Window(f, spec) => self.window(f, spec)?,
@@ -524,6 +515,23 @@ impl ExprCompiler<'_> {
                 format!("({} {not}IN ({}))", self.sql(arg)?, items.join(", "))
             }
         })
+    }
+
+    /// An aggregate call with its FILTER and OVER clauses. Both must follow
+    /// the call itself, inside anything a dialect wraps around it.
+    fn agg(&self, func: AggFunc, arg: Option<&Expr>, filter: Option<&Expr>, over: Option<&str>) -> Result<String> {
+        let mut tail = match filter {
+            Some(f) => format!(" FILTER (WHERE {})", self.sql(f)?),
+            None => String::new(),
+        };
+        if let Some(o) = over {
+            tail.push(' ');
+            tail.push_str(o);
+        }
+        match self.d.agg(self, func, arg, &tail)? {
+            Some(s) => Ok(s),
+            None => self.default_agg(func, arg, &tail),
+        }
     }
 
     pub fn sort_key(&self, k: &SortKey) -> Result<String> {
@@ -714,12 +722,25 @@ impl ExprCompiler<'_> {
     }
 
     fn window(&self, f: &Expr, spec: &WindowSpec) -> Result<String> {
-        let over = self.over(spec)?;
+        // Ibis: a window with no frame covers the whole partition, ordered
+        // or not. SQL's default with ORDER BY is a running frame, so spell
+        // the frame out. Ranking and offset functions take no frame at all.
+        let framed = match f {
+            Expr::Analytic(a, _) => matches!(a, Analytic::FirstValue | Analytic::LastValue | Analytic::NthValue),
+            _ => true,
+        };
+        let mut spec = spec.clone();
+        if !framed {
+            spec.frame = None;
+        } else if spec.frame.is_none() && !spec.order_by.is_empty() {
+            spec = spec.rows(None, None);
+        }
+        let over = self.over(&spec)?;
         // compile the function without the broadcast `OVER ()`
         let inner =
             ExprCompiler { d: self.d, schema: self.schema, in_project: false, qual: self.qual.clone(), rc: self.rc };
         Ok(match f {
-            Expr::Agg { .. } => format!("{} {over}", inner.sql(f)?),
+            Expr::Agg { func, arg, filter } => inner.agg(*func, arg.as_deref(), filter.as_deref(), Some(&over))?,
             Expr::Analytic(a, args) => {
                 let a_sql = args.iter().map(|x| inner.sql(x)).collect::<Result<Vec<_>>>()?;
                 use Analytic::*;
@@ -734,6 +755,8 @@ impl ExprCompiler<'_> {
                     Lead => format!("LEAD({}) {over}", a_sql.join(", ")),
                     FirstValue => format!("FIRST_VALUE({}) {over}", a_sql[0]),
                     LastValue => format!("LAST_VALUE({}) {over}", a_sql[0]),
+                    Ntile => format!("(NTILE({}) {over} - 1)", a_sql[0]),
+                    NthValue => format!("NTH_VALUE({}, {} + 1) {over}", a_sql[0], a_sql[1]),
                 }
             }
             other => return unsupported(self.d, format!("window over {other}")),
