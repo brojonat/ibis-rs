@@ -47,7 +47,16 @@ run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets --all-
 [tasks.conformance]
 description = "Run ported Ibis cases on every backend: JSONL -> logs/conformance.jsonl, matrix -> stderr"
 depends = ["setup"]
-run = 'mkdir -p logs; f() { cargo run --quiet -p ibis-conformance -- "$@" > logs/conformance.jsonl 2> >(tee logs/conformance.txt >&2); }; f'
+# built with the same flags as `test`, so nothing is compiled twice
+run = [
+  "cargo build --quiet --workspace --all-features --bin ibis-conformance",
+  'mkdir -p logs; f() { target/debug/ibis-conformance "$@" > logs/conformance.jsonl 2> >(tee logs/conformance.txt >&2); }; f',
+]
+
+[tasks.site]
+description = "Build the parity site (coverage of the Ibis test suite) into site/ from a fresh conformance run"
+depends = ["conformance"]
+run = "uv run -q conformance/site.py"
 
 [tasks.goldens]
 description = "Regenerate conformance/golden by running conformance/cases on Python Ibis (DuckDB; SQLite and Postgres for the cross-check)"

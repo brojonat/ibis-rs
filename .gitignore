@@ -8,3 +8,4 @@ __pycache__/
 .claude/skills/
 .pg/
 ci/tpch/
+site/

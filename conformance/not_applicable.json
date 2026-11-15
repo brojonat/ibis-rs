@@ -1,0 +1,13 @@
+{
+  "signature/tests/test_compatible": "Checks the helper Ibis uses to compare Python method signatures.",
+  "sql/test_compiler": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead.",
+  "sql/test_select_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead.",
+  "sql/test_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead.",
+  "test_dataframe_interchange": "Tests the Python dataframe interchange protocol (__dataframe__).",
+  "test_interactive": "Tests Ibis's interactive mode: how expressions print in a Python REPL or notebook.",
+  "test_markers": "Tests the pytest markers of the Ibis suite itself.",
+  "test_signatures": "Checks that every Python backend class has the same method signatures.",
+  "test_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead.",
+  "test_udf": "Tests UDFs written as Python functions.",
+  "test_vectorized_udf": "Tests UDFs written as Python functions over pandas or PyArrow data."
+}
