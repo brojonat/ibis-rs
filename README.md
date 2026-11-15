@@ -11,11 +11,12 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. See
 [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Three backends (DuckDB, Postgres, SQLite), 551
-ported Ibis test cases and Ibis's 22 TPC-H queries:
+Status: pre-alpha. Four backends, 551 ported Ibis test cases and Ibis's 22
+TPC-H queries:
 
 | backend | Ibis cases (551) | TPC-H (22) |
 |---|---|---|
+| Polars (default) | 551 | 22 |
 | DuckDB | 551 | 22 |
 | Postgres | 551 | 22 |
 | SQLite | 530 (21 expected failures: they need NaN, which SQLite cannot store) | 22 |
@@ -29,13 +30,15 @@ Output column names and types match Ibis's on all 551. Ported so far:
 
 ```toml
 [dependencies]
-ibis-rs = { version = "0.1", features = ["sqlite"] }   # backends: duckdb, sqlite, postgres
+ibis-rs = "0.1"                                                   # Polars, in process
+ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }  # more engines: duckdb, sqlite, postgres
 ```
 
 ```rust
 use ibis_rs::prelude::*;
 
-// "duckdb://", "sqlite://app.db", "postgres://user@host/db": same code, different engine
+// "polars://", "duckdb://", "sqlite://app.db", "postgres://user@host/db":
+// same code, different engine
 let con = ibis_rs::connect(&std::env::var("DATABASE_URL")?)?;
 let t = con.table("functional_alltypes")?;
 
@@ -51,13 +54,16 @@ let batches = con.execute(&expr)?;            // Vec<arrow RecordBatch>
 ```
 
 `ibis-rs` is the front door: it re-exports the API and puts each backend behind
-a cargo feature. No backend is on by default yet. `connect` returns a
-`Box<dyn Backend>`; the concrete types (`ibis_rs::sqlite::Sqlite`,
-`ibis_rs::duckdb::DuckDb`, `ibis_rs::postgres::Postgres`) add engine-specific
-methods such as `raw_sql`. The crates behind it (`ibis-core`, `ibis-sql`,
-`ibis-duckdb`, `ibis-sqlite`, `ibis-postgres`) can also be used directly; a
-compiled example of that is `cargo run -p ibis-duckdb --example readme` (after
-`mise run setup`).
+a cargo feature. Polars is the default: it runs in process, needs no server
+and no C++ toolchain, and holds its tables in memory (`create_table` from Arrow
+batches, or `ibis_rs::polars::Polars::register` for a Polars `DataFrame`).
+`connect` returns a `Box<dyn Backend>`; the concrete types
+(`ibis_rs::polars::Polars`, `ibis_rs::sqlite::Sqlite`, `ibis_rs::duckdb::DuckDb`,
+`ibis_rs::postgres::Postgres`) add engine-specific methods such as `raw_sql` or
+`Polars::lazy`, which hands back the Polars `LazyFrame` for a query. The crates
+behind it (`ibis-core`, `ibis-sql`, `ibis-polars`, `ibis-duckdb`, `ibis-sqlite`,
+`ibis-postgres`) can also be used directly; a compiled example of that is
+`cargo run -p ibis-duckdb --example readme` (after `mise run setup`).
 
 Column references come in two forms, as in Ibis: `col("x")` is unbound (Ibis's
 `_.x`) and resolves against whatever table it is used on; `t.col("x")` is bound
@@ -81,6 +87,7 @@ set in `mise.toml`; a bare `cargo test` fails without them.
 | `crates/ibis-rs` | the crate users depend on: re-exports, a feature per backend, `connect(url)` |
 | `crates/ibis-core` | datatypes, schema, IR (`Rel`, `Expr`), `Table`/`Expr` API, `Backend` trait |
 | `crates/ibis-sql` | IR → SQL compiler; the `Dialect` trait is the SQL plugin seam |
+| `crates/ibis-polars` | Polars backend: the IR becomes a `LazyFrame`, no SQL; subqueries are rewritten as joins |
 | `crates/ibis-duckdb` | DuckDB backend (bundled DuckDB, Arrow-native results) |
 | `crates/ibis-postgres` | Postgres backend (`postgres` crate, binary protocol, `COPY` for loads) |
 | `crates/ibis-sqlite` | SQLite backend (bundled SQLite, Rust polyfills for missing functions) |
@@ -107,18 +114,20 @@ set in `mise.toml`; a bare `cargo test` fails without them.
 | `mise run dev` | rerun conformance on every file change, tee to `logs/dev.log` |
 | `mise run pg-start` / `pg-stop` | the local test Postgres |
 
-The first build compiles DuckDB from source (10+ minutes). On a machine short
-of memory, `CARGO_BUILD_JOBS=4`.
+The first build compiles DuckDB from source (10+ minutes) and Polars (about 5).
+On a machine short of memory, `CARGO_BUILD_JOBS=4`. Build with `--workspace`:
+`cargo build -p one-crate` picks a different feature set and compiles DuckDB
+all over again.
 
 ### Conformance runner
 
 ```
-ibis-conformance [--backend duckdb,postgres,sqlite] [ID_SUBSTRING]
+ibis-conformance [--backend duckdb,polars,postgres,sqlite] [ID_SUBSTRING]
 ```
 
 stdout: one JSON object per (case, backend):
-`{"id": "test_string[upper]", "backend": "sqlite", "status": "pass|fail|error|xfail|xpass|no_golden", "detail": ...}`.
-Besides the three engines there is a `schema` pseudo-backend: it checks each
+`{"id": "test_string[upper]", "backend": "sqlite", "status": "pass|fail|error|xfail|xpass|no_golden|unsupported", "detail": ...}`.
+Besides the four engines there is a `schema` pseudo-backend: it checks each
 case's output column names and inferred types against Ibis's, without running
 anything. stderr: a matrix of non-passing cases, per-backend totals, how often
 Python Ibis itself agrees with its own DuckDB result on SQLite and Postgres, and
@@ -133,6 +142,11 @@ How a case is checked:
   tolerance (1e-9 absolute + 1e-6 relative).
 - `notimpl` mirrors Ibis's `pytest.mark.notimpl`: the case must fail on that
   backend, and passing is reported as `xpass`.
+- `unsupported` is for a backend still being built out (listed in `PARTIAL`;
+  today only Polars): it said it cannot run the op yet. That does not fail the
+  run; a wrong answer or any other error does.
+- TPC-H goldens are per backend, from Python Ibis on the same engine and data.
+  Polars shares DuckDB's: it loads the same parquet files.
 
 ### Benchmark
 

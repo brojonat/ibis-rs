@@ -23,6 +23,12 @@ duckdb = { version = "1.20000.1", features = ["bundled", "appender-arrow"] }
 rusqlite = { version = "0.42", features = ["bundled", "functions"] }
 regex = "1"
 postgres = { version = "0.19", features = ["with-chrono-0_4"] }
+# Polars brings its own Arrow implementation (polars-arrow), separate from arrow-rs.
+polars = { version = "0.55.2", default-features = false, features = [
+  "lazy", "fmt", "timezones", "dtype-date", "dtype-datetime", "dtype-i8", "dtype-i16", "dtype-u8", "dtype-u16", "dtype-decimal",
+  "strings", "regex", "temporal", "round_series", "rank", "cum_agg", "is_in", "abs", "sign", "log", "trigonometry",
+  "semi_anti_join", "cross_join", "concat_str", "string_pad", "string_reverse", "coalesce", "range", "dtype-array", "dtype-struct", "string_encoding", "string_to_integer", "dtype-u128", "dtype-i128",
+] }
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -33,7 +39,8 @@ ibis-sql = { path = "crates/ibis-sql", version = "0.1.0" }
 ibis-duckdb = { path = "crates/ibis-duckdb", version = "0.1.0" }
 ibis-sqlite = { path = "crates/ibis-sqlite", version = "0.1.0" }
 ibis-postgres = { path = "crates/ibis-postgres", version = "0.1.0" }
-ibis-rs = { path = "crates/ibis-rs", version = "0.1.0" }
+ibis-polars = { path = "crates/ibis-polars", version = "0.1.0" }
+ibis-rs = { path = "crates/ibis-rs", version = "0.1.1" }
 
 # Optimize dependencies (DuckDB, SQLite, regex, parquet) even in dev builds;
 # our own crates stay fast to compile. Debug-built DuckDB/SQLite are very slow.

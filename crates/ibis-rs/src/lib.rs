@@ -3,20 +3,22 @@
 //! [`Expr`], then run it on whichever engine you connect to.
 //!
 //! This crate is the front door: it re-exports the API from `ibis-core` and
-//! puts each backend behind a cargo feature (`duckdb`, `sqlite`, `postgres`).
+//! puts each backend behind a cargo feature. `polars` is on by default;
+//! `duckdb`, `sqlite` and `postgres` are opt-in.
 //!
 //! ```toml
 //! [dependencies]
-//! ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }
+//! ibis-rs = "0.1"                                                   # Polars
+//! ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }  # more engines
 //! ```
 //!
 //! ```
-//! # #[cfg(feature = "sqlite")]
+//! # #[cfg(feature = "polars")]
 //! # fn main() -> ibis_rs::Result<()> {
 //! use ibis_rs::prelude::*;
 //!
-//! // "sqlite://app.db" for a file; "postgres://user@host/db" runs the same query there.
-//! let con = ibis_rs::connect("sqlite://")?;
+//! // "sqlite://app.db" or "postgres://user@host/db" runs the same query there.
+//! let con = ibis_rs::connect("polars://")?;
 //! # use std::sync::Arc;
 //! # use ibis_rs::arrow_array::{Float64Array, RecordBatch, StringArray};
 //! # let batch = RecordBatch::try_from_iter([
@@ -32,18 +34,19 @@
 //!     .agg([col("amount").sum().name("total"), count().name("n")])?
 //!     .order_by([desc("total")])?;
 //!
-//! println!("{}", con.compile(&expr)?); // the SQL this backend will run
+//! println!("{}", con.compile(&expr)?); // the SQL (or Polars plan) this backend will run
 //! let batches = con.execute(&expr)?; // Arrow record batches
 //! # assert_eq!(batches.iter().map(|b| b.num_rows()).sum::<usize>(), 2);
 //! # Ok(())
 //! # }
-//! # #[cfg(not(feature = "sqlite"))]
+//! # #[cfg(not(feature = "polars"))]
 //! # fn main() {}
 //! ```
 //!
-//! Backend-specific methods (`raw_sql`, `execute_batch`, opening from an
-//! existing connection) live on the concrete types: [`sqlite::Sqlite`],
-//! [`duckdb::DuckDb`], [`postgres::Postgres`].
+//! Backend-specific methods (`raw_sql`, registering a Polars `DataFrame`,
+//! opening from an existing connection) live on the concrete types:
+//! [`polars::Polars`], [`sqlite::Sqlite`], [`duckdb::DuckDb`],
+//! [`postgres::Postgres`].
 
 pub use ibis_core::*;
 
@@ -55,6 +58,8 @@ pub use arrow_array;
 
 #[cfg(feature = "duckdb")]
 pub use ibis_duckdb as duckdb;
+#[cfg(feature = "polars")]
+pub use ibis_polars as polars;
 #[cfg(feature = "postgres")]
 pub use ibis_postgres as postgres;
 #[cfg(feature = "sqlite")]
@@ -64,6 +69,7 @@ pub use ibis_sqlite as sqlite;
 ///
 /// | URL | backend | feature |
 /// |---|---|---|
+/// | `polars://` (in memory) | Polars | `polars` (default) |
 /// | `duckdb://` (in memory), `duckdb://path/to/file.db` | DuckDB | `duckdb` |
 /// | `sqlite://` (in memory), `sqlite://path/to/file.db` | SQLite | `sqlite` |
 /// | `postgres://user:pass@host:5432/db`, `postgresql://...` | Postgres | `postgres` |
@@ -76,15 +82,16 @@ pub use ibis_sqlite as sqlite;
 pub fn connect(url: &str) -> Result<Box<dyn Backend>> {
     let Some((scheme, rest)) = url.split_once("://") else {
         return Err(Error::Other(format!(
-            "connect: `{url}` is not a URL; expected duckdb://, sqlite:// or postgres://"
+            "connect: `{url}` is not a URL; expected polars://, duckdb://, sqlite:// or postgres://"
         )));
     };
     match scheme {
+        "polars" => polars_at(rest),
         "duckdb" => duckdb_at(rest),
         "sqlite" => sqlite_at(rest),
         "postgres" | "postgresql" => postgres_at(url),
         other => Err(Error::Other(format!(
-            "connect: unknown backend `{other}` in `{url}`; expected duckdb://, sqlite:// or postgres://"
+            "connect: unknown backend `{other}` in `{url}`; expected polars://, duckdb://, sqlite:// or postgres://"
         ))),
     }
 }
@@ -100,6 +107,18 @@ fn disabled(backend: &str) -> Result<Box<dyn Backend>> {
 #[allow(dead_code)]
 fn in_memory(path: &str) -> bool {
     path.is_empty() || path == ":memory:"
+}
+
+#[cfg(feature = "polars")]
+fn polars_at(rest: &str) -> Result<Box<dyn Backend>> {
+    if !rest.is_empty() {
+        return Err(Error::Other(format!("connect: polars:// takes no path (got `{rest}`); tables live in memory")));
+    }
+    Ok(Box::new(polars::Polars::new()))
+}
+#[cfg(not(feature = "polars"))]
+fn polars_at(_: &str) -> Result<Box<dyn Backend>> {
+    disabled("polars")
 }
 
 #[cfg(feature = "duckdb")]
@@ -195,6 +214,13 @@ mod tests {
     fn sqlite_in_memory() {
         assert_eq!(totals("sqlite://").unwrap(), expected());
         assert_eq!(totals("sqlite://:memory:").unwrap(), expected());
+    }
+
+    #[cfg(feature = "polars")]
+    #[test]
+    fn polars_in_memory() {
+        assert_eq!(totals("polars://").unwrap(), expected());
+        assert!(err("polars://some/path").contains("takes no path"));
     }
 
     #[cfg(feature = "duckdb")]

@@ -1,7 +1,7 @@
 # TODO
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
-Current: 551 Ibis cases + 22 TPC-H queries. DuckDB 551, Postgres 551, SQLite 530 (21 need NaN).
+Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, SQLite 530 (21 need NaN).
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -15,7 +15,9 @@ Current: 551 Ibis cases + 22 TPC-H queries. DuckDB 551, Postgres 551, SQLite 530
 - [x] Output dtype parity (`schema` pseudo-backend)
 - [x] Case ids verified against `pytest --collect-only` (`mise run check-ids`)
 - [x] Ported: test_generic, test_numeric, test_string, test_aggregation (part), test_temporal (tier 1), test_join, test_window, test_set_ops, test_conditionals
-- [x] TPC-H: Ibis's 22 queries on all three backends, benchmark against Python Ibis (`mise run bench`)
+- [x] ibis-polars backend (IR -> LazyFrame): 551/551 and 22/22; default backend of the facade
+- [x] Facade crate `ibis-rs`: feature per backend, `connect(url)`
+- [x] TPC-H: Ibis's 22 queries on all four backends, benchmark against Python Ibis (`mise run bench`)
 
 ## Next: parity
 - [ ] Parity report: all Ibis test ids vs ported ids, per module (check_ids.py already collects them)
@@ -28,6 +30,13 @@ Current: 551 Ibis cases + 22 TPC-H queries. DuckDB 551, Postgres 551, SQLite 530
 - [ ] SQLite `least`/`greatest`: scalar MIN/MAX return NULL if any argument is NULL; Ibis skips NULLs
 - [ ] Float literals are read as DECIMAL by DuckDB and NUMERIC by Postgres; emit typed literals
 - [ ] Ordering is lost through a wrap when the sort column is dropped or a LIMIT sits between
+
+## Next: Polars
+- [ ] Arrow in and out through the C Data Interface. Today `create_table` and results go through rows of `Value`, which is slow and memory-hungry on large tables
+- [ ] `polars://path`: scan a directory of parquet/CSV files lazily instead of holding tables in memory
+- [ ] Add Polars to `mise run bench` (Rust side, and Python Ibis's Polars backend as the baseline)
+- [ ] Not supported yet (reported as `Error::Unsupported`): RANGE window frames, min/max over frames wider than 256 rows, std/var over a frame, outer joins on non-equality conditions, correlated scalar subqueries outside a filter or correlated by a non-equality, uncorrelated EXISTS
+- [ ] Run the conformance suite under a memory cap in `mise run test` (an unbounded Polars plan took 25 GB and triggered the OOM killer once)
 
 ## Next: performance
 - [ ] Cache `Rel::deref_map()`; it is recomputed recursively, so join-chain queries take 1-3 ms to compile (TPC-H Q5, Q7, Q8, Q9)
@@ -50,16 +59,15 @@ Steps are in dependency order.
 - [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
 - [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body
 - [x] First publish: 0.1.0 of the five library crates is on crates.io (2026-11-14), tagged `v0.1.0`
-- [ ] Publish the facade crate `ibis-rs` (one dependency, a cargo feature per backend) before someone else takes the name
+- [x] Facade `ibis-rs` published (0.1.0 without a default backend, 0.1.1 with Polars as the default)
 - [ ] Configure trusted publishing per crate (repo, workflow file `release.yml`, environment `release`) so CI needs no stored token
 - [ ] After 0.1.0 is on crates.io: `cargo-semver-checks` job in CI
 - [ ] When there is a user-facing binary: `dist` (cargo-dist) for cross-platform binaries and installers on the same tags
 - [ ] Alternative to the tag flow if release PRs are preferred: release-plz (needs a PAT or GitHub App, and its generated changelog turned off)
 
 ## Later
-- [ ] Facade crate (`ibis-rs`; `ibis` is taken on crates.io) with cargo features + `connect(url, &registry)`
+- [ ] `connect` with a registry, so third-party backends can add URL schemes
 - [ ] ibis-datafusion backend: IR -> LogicalPlan; arrow 59 vs 60 needs C Data Interface hop
-- [ ] ibis-polars backend: IR -> LazyFrame (proves the IR isn't SQL-shaped)
 - [ ] More SQL backends: BigQuery, Snowflake, Trino, ClickHouse, MySQL (dialect + driver each)
 - [ ] Upstream DataFusion unparser bug reports from spikes/unparser/FINDINGS.md
 - [ ] Selectors (s.numeric(), s.matches(...)), deferred-style sugar, typed derive layer

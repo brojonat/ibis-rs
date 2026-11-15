@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [ibis-rs 0.1.1, ibis-polars 0.1.0] - 2026-11-15
+
+### Added
+- `ibis-polars`: Polars backend. The IR is translated to a Polars `LazyFrame` (no SQL) with casts to the Ibis output types. `EXISTS` and correlated scalar subqueries are rewritten as joins; window frames, ranks and `ntile` are computed from prefix sums and row positions. Passes all 551 Ibis cases and the 22 TPC-H queries. `Polars::register` takes a `DataFrame`; `Polars::lazy` returns the query as a `LazyFrame`.
+- `ibis-rs`: `polars` feature and `connect("polars://")`.
+- Conformance: Polars as a fourth backend; an `unsupported` status for backends still being built out (`PARTIAL`), which does not fail the run.
+
+### Changed
+- `ibis-rs`: `polars` is now the default feature (0.1.0 had no default backend).
+
+## [ibis-rs 0.1.0] - 2026-11-14
+
 ### Added
 - `ibis-rs` 0.1.0: the facade crate. Re-exports the API, one cargo feature per backend (`duckdb`, `sqlite`, `postgres`; none on by default), and `connect(url)` returning a `Box<dyn Backend>`.
 

@@ -161,6 +161,7 @@ pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
                     })?;
                     Box::new(ibis_postgres::Postgres::connect(&url)?)
                 }
+                "polars" => Box::new(ibis_polars::Polars::new()),
                 other => return Err(Error::Other(format!("unknown backend {other:?}"))),
             };
             let fx = data.load(backend.as_ref())?;
@@ -169,7 +170,12 @@ pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
         .collect()
 }
 
-pub const ALL_BACKENDS: [&str; 3] = ["duckdb", "postgres", "sqlite"];
+pub const ALL_BACKENDS: [&str; 4] = ["duckdb", "polars", "postgres", "sqlite"];
+
+/// Backends still being built out. When one of these says it does not support
+/// an op (`Error::Unsupported`), the case is reported as `unsupported` and
+/// does not fail the run; a wrong answer or any other error still does.
+pub const PARTIAL: [&str; 1] = ["polars"];
 
 /// Name of the pseudo-backend that checks output column names and types
 /// against Ibis's, independent of any engine.
@@ -258,6 +264,8 @@ pub enum Status {
     Error,
     /// No golden for this id (Ibis itself failed, or goldens not regenerated).
     NoGolden,
+    /// A backend in [`PARTIAL`] reported the op as not supported yet.
+    Unsupported,
 }
 
 impl Status {
@@ -269,6 +277,7 @@ impl Status {
             Status::Fail => "fail",
             Status::Error => "error",
             Status::NoGolden => "no_golden",
+            Status::Unsupported => "unsupported",
         }
     }
     /// Whether this outcome should fail the suite.
@@ -333,6 +342,14 @@ fn check_schema(case: &Case, fx: &Fx, meta: &Json) -> Outcome {
     out
 }
 
+fn error_status(backend: &str, e: &Error) -> Status {
+    if matches!(e, Error::Unsupported { .. }) && PARTIAL.contains(&backend) {
+        Status::Unsupported
+    } else {
+        Status::Error
+    }
+}
+
 fn run_one(case: &Case, target: &Target, meta: &Json, paths: &Paths) -> Outcome {
     let backend = target.backend.as_ref();
     let mut out = Outcome {
@@ -361,7 +378,7 @@ fn run_one(case: &Case, target: &Target, meta: &Json, paths: &Paths) -> Outcome 
             false
         }
         Err(e) => {
-            out.status = Status::Error;
+            out.status = error_status(backend.name(), &e);
             out.detail = json!(e.to_string());
             false
         }
@@ -448,6 +465,13 @@ pub fn tpch_backend(paths: &Paths, name: &str) -> Result<Box<dyn Backend>> {
             })?;
             Box::new(ibis_postgres::Postgres::connect(&format!("{url} dbname=tpch_sf0_01"))?)
         }
+        "polars" => {
+            let b = ibis_polars::Polars::new();
+            for t in ["customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier"] {
+                b.create_table(t, &read_parquet(Path::new(&file(&format!("{t}.parquet"))?))?)?;
+            }
+            Box::new(b)
+        }
         other => return Err(Error::Other(format!("unknown backend {other:?}"))),
     })
 }
@@ -476,7 +500,9 @@ pub fn run_tpch(paths: &Paths, names: &[&str], filter: &str) -> Result<Vec<Outco
                 detail: Json::Null,
             };
             // per backend: parity with Python Ibis on the same engine and data
-            let golden = paths.golden.join(format!("tpch/{name}/{q}.parquet"));
+            // Polars reads the same parquet files DuckDB was built from, so it shares DuckDB's goldens
+            let golden_dir = if *name == "polars" { "duckdb" } else { name };
+            let golden = paths.golden.join(format!("tpch/{golden_dir}/{q}.parquet"));
             if !golden.exists() {
                 out.status = Status::NoGolden;
                 outcomes.push(out);
@@ -496,7 +522,7 @@ pub fn run_tpch(paths: &Paths, names: &[&str], filter: &str) -> Result<Vec<Outco
                     out.detail = d;
                 }
                 Err(e) => {
-                    out.status = Status::Error;
+                    out.status = error_status(name, &e);
                     out.detail = json!(e.to_string());
                 }
             }

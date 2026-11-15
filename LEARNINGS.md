@@ -167,3 +167,46 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
 - **What:** `IBIS_TESTING_POSTGRES_URL` and `IBIS_TESTING_DATA` come from `mise.toml`;
   a bare `cargo test` fails on the Postgres target.
 - **Avoid:** `mise run test`, or `mise exec -- cargo test ...` for a single test.
+
+## An unbounded query plan can take the whole machine down
+- **What:** The first Polars conformance run used 25 GB; the kernel OOM killer fired and took
+  the terminal session (and unrelated processes) with it. The cause was `isin` over a
+  subquery translated as one OR per value, thousands deep.
+- **Why surprising:** The SQL backends push such plans to an engine that streams. An
+  in-process engine materializes whatever plan it is handed, inside the test process.
+- **Avoid:** Run new backends under a cap: `prlimit --as=8000000000 timeout 300 target/debug/ibis-conformance --backend polars`.
+  The runner prints results only at the end, so to find a crashing case run one test
+  function per process (filter by id) and collect.
+
+## Polars is not SQL: where the semantics differ
+- **What:** `sum` of no rows is 0 (SQL: NULL); `any`/`all` of no rows are false/true (SQL:
+  NULL); `int32 + int32` stays `int32` and overflows (Ibis: `int64`); `%` takes the
+  divisor's sign (SQL engines: the dividend's); `rank` gives NULL for NULLs; padding does not
+  truncate; a regex that does not match extracts NULL (SQL engines: empty string).
+- **Avoid:** Translate each op to Ibis's meaning and cast to the Ibis dtype
+  (`crates/ibis-polars/src/expr.rs`). Use max/min of booleans for any/all.
+
+## Polars window functions
+- **What:** `over` orders by one direction for all keys, packs the keys into a struct (needs
+  the `dtype-struct` feature, and key names must be unique), and has no frames.
+- **Avoid:** Alias window keys (`__w0`, `__p0`); compute frames as differences of prefix
+  sums, and ranks from "does any key change from the previous row" in window order.
+
+## A cross join plus a filter is cheap in Polars; a join on a constant key is not
+- **What:** TPC-H Q9 joins on `(a == b) & (c == d)`. Treated as one opaque predicate it became
+  a join on a constant key and ran out of memory. Polars's optimizer turns `cross_join` +
+  `filter` into a real join, but cannot see through a constant key.
+- **Avoid:** Split AND-ed conditions first, so each equality becomes a join key.
+
+## Polars feature flags are not self-consistent
+- **What:** With `default-features = false`, Polars 0.55 fails to compile for several
+  feature sets: `dtype-datetime` needs `timezones`, `range` needs `dtype-array`,
+  `string_to_integer` needs `dtype-u128`. Multi-key window ordering panics at run time
+  without `dtype-struct`.
+- **Avoid:** The working set is in the workspace `Cargo.toml`. Add features one at a time
+  and expect a 4-minute rebuild each.
+
+## `cargo build -p crate` rebuilds DuckDB
+- **What:** Selecting packages with `-p` resolves a different feature set for shared
+  dependencies than `--workspace`, so bundled DuckDB (10+ minutes) compiles again.
+- **Avoid:** Build and test with `--workspace` (`mise run test`, `mise run lint`).

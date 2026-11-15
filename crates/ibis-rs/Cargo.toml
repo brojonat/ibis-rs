@@ -1,7 +1,8 @@
 [package]
 name = "ibis-rs"
-description = "Portable lazy dataframe API for Rust, modeled on Python Ibis: write a query once, run it on DuckDB, SQLite or Postgres"
-version.workspace = true
+description = "Portable lazy dataframe API for Rust, modeled on Python Ibis: write a query once, run it on Polars, DuckDB, SQLite or Postgres"
+# ahead of the workspace version: 0.1.1 added the polars feature and made it the default
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -9,9 +10,10 @@ readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
-# One feature per backend. None is on by default yet: pick the engines you use.
+# One feature per backend. Polars is the default: in process, no server, no C++ build.
 [features]
-default = []
+default = ["polars"]
+polars = ["dep:ibis-polars"]
 duckdb = ["dep:ibis-duckdb"]
 sqlite = ["dep:ibis-sqlite"]
 postgres = ["dep:ibis-postgres"]
@@ -19,6 +21,7 @@ postgres = ["dep:ibis-postgres"]
 [dependencies]
 ibis-core.workspace = true
 ibis-sql.workspace = true
+ibis-polars = { workspace = true, optional = true }
 ibis-duckdb = { workspace = true, optional = true }
 ibis-sqlite = { workspace = true, optional = true }
 ibis-postgres = { workspace = true, optional = true }
@@ -26,4 +29,4 @@ arrow-array.workspace = true
 
 # docs.rs cannot build bundled DuckDB within its limits; document the rest.
 [package.metadata.docs.rs]
-features = ["sqlite", "postgres"]
+features = ["polars", "sqlite", "postgres"]
