@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Adapted from Ibis (https://github.com/ibis-project/ibis), Copyright 2015 Ibis developers.
+# Modified for ibis-rs; see NOTICE at the repository root.
+
 """ibis/backends/tests/test_set_ops.py
 
 The `union_subsets` fixture shuffles each table's columns (random.seed(89)):

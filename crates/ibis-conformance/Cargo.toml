@@ -3,7 +3,8 @@ name = "ibis-conformance"
 description = "Runs ported Ibis backend tests against every ibis-rs backend"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license = "Apache-2.0" # adapted from Ibis tests; see NOTICE
+publish = false
 default-run = "ibis-conformance"
 
 [dependencies]

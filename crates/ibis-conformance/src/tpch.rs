@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// Adapted from Ibis (https://github.com/ibis-project/ibis), Copyright 2015 Ibis developers.
+// Modified for ibis-rs; see NOTICE at the repository root.
+
 //! Ibis's TPC-H queries (ibis/backends/tests/tpc/h/test_queries.py), ported
 //! line for line. Keep them shaped like the Python so a diff against Ibis is
 //! easy to read: `t.col("x")` is Ibis `t.x`; `add_date(...)` calls are

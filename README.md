@@ -155,3 +155,12 @@ libraries emit different SQL.
   `crates/ibis-conformance/src/lib.rs`, to the fixture loaders in
   `conformance/gen_goldens.py` (for the Python Ibis cross-check), and to
   `bench/tpch_data.py`.
+
+## License
+
+The library crates are licensed under either of [MIT](LICENSE-MIT) or
+[Apache-2.0](LICENSE-APACHE), at your option. The conformance suite
+(`conformance/`, `crates/ibis-conformance/`) is Apache-2.0 only: its cases are
+adapted from Ibis's Apache-2.0 test suite. Details in [NOTICE](NOTICE).
+
+ibis-rs is an independent project, not affiliated with the Ibis project.

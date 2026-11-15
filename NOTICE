@@ -1,0 +1,30 @@
+ibis-rs
+Copyright (c) 2026 Jon Brown
+
+The library crates (crates/ibis-core, crates/ibis-sql, crates/ibis-duckdb,
+crates/ibis-postgres, crates/ibis-sqlite) and everything else not listed below
+are licensed under either of the MIT license (LICENSE-MIT) or the Apache
+License, Version 2.0 (LICENSE-APACHE), at your option.
+
+The conformance suite is licensed under the Apache License, Version 2.0 only
+(LICENSE-APACHE):
+
+  conformance/
+  crates/ibis-conformance/
+
+It contains test cases adapted from Ibis (https://github.com/ibis-project/ibis),
+Copyright 2015 Ibis developers, licensed under the Apache License, Version 2.0:
+
+  conformance/cases/test_*.py and crates/ibis-conformance/src/cases/*.rs
+      adapted from ibis/backends/tests/test_*.py
+  crates/ibis-conformance/src/tpch.rs
+      adapted from ibis/backends/tests/tpc/h/test_queries.py
+  conformance/memtables.json
+      in-memory tables taken from those tests
+
+These files were modified from the Ibis originals: the Python cases were
+reduced to the expression each test checks, and the Rust files are ports of
+them to the ibis-rs API. Each file carries a notice to that effect.
+
+ibis-rs is an independent project. It is not affiliated with or endorsed by the
+Ibis project.

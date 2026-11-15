@@ -39,8 +39,9 @@ Plan: lockstep versions (one `workspace.package.version`), hand-written CHANGELO
 Steps are in dependency order.
 - [ ] Decide when the repo goes public (publishing to crates.io makes the source public either way)
 - [ ] Check crates.io name availability: ibis-core, ibis-sql, ibis-duckdb, ibis-sqlite, ibis-postgres, and `ibis` for the facade (`cargo search ibis`). Not checked yet; a taken name means renaming every crate
-- [ ] Add LICENSE (Apache-2.0 is declared in Cargo.toml; no license file exists)
-- [ ] Manifests: `repository.workspace = true`, `readme`, `keywords`, `categories`, `rust-version` in each crate; `publish = false` on ibis-conformance
+- [x] Licensing: library crates `MIT OR Apache-2.0`, conformance suite Apache-2.0 (adapted from Ibis), LICENSE files + NOTICE
+- [ ] Ask the Ibis maintainers about the name before publishing (`ibis-rs`, a crate called `ibis`); the Apache license grants no trademark rights
+- [ ] Manifests: `repository.workspace = true`, `readme`, `keywords`, `categories`, `rust-version` in each crate
 - [ ] Internal deps need versions: `ibis-core = { path = "crates/ibis-core", version = "0.1.0" }` etc. `cargo package --workspace` fails on ibis-sql without it
 - [ ] Features: make `bundled` an opt-out default feature of ibis-duckdb and ibis-sqlite, so users can link a system library; check the docs.rs build of ibis-duckdb fits its time limit
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV

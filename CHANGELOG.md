@@ -5,6 +5,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ## [Unreleased]
 
 ### Added
+- `LICENSE-MIT`, `LICENSE-APACHE` (linked into each crate so packages ship them) and `NOTICE` with the Ibis attribution.
 - `ibis-postgres`: Postgres backend (`postgres` crate, binary protocol including NUMERIC, `COPY` for table loads, server error detail surfaced). `scripts/pg.sh` and `mise run pg-start` / `pg-stop` run a throwaway local cluster.
 - Bound column references: `t.col("x")` (Ibis `t.x`) next to unbound `col("x")` (Ibis `_.x`). Correlated subqueries, `EXISTS` (`.any()` over another table), scalar subqueries, `isin_col` / `notin_col`.
 - Joins: all six kinds, general predicates, self joins through `view()`, Ibis's `_right` collision renaming. Set operations: `union` / `intersect` / `difference` with `distinct`.
@@ -24,6 +25,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Cargo workspace scaffold, `mise.toml` front door, `install-skills.sh`.
 
 ### Changed
+- License: library crates are now `MIT OR Apache-2.0` (was Apache-2.0). `ibis-conformance` and `conformance/` stay Apache-2.0 because their cases are adapted from Ibis; see `NOTICE`. `ibis-conformance` is `publish = false`.
 - Integer typing follows Ibis: integer literals take the smallest integer type, `+ - * %` widen by value bounds, `//` is always `int64`.
 - Division follows IEEE 754 on every backend: `x / 0` is infinity and `0 / 0` is NaN (NULL on SQLite, which has no NaN). Postgres raised an error before.
 - A sorted table stays sorted through later `filter` / `select` / `distinct`; a later `order_by` takes precedence and earlier keys break ties.
