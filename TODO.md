@@ -41,14 +41,17 @@ Steps are in dependency order.
 - [x] crates.io names checked 2026-11-14: ibis-core, ibis-sql, ibis-duckdb, ibis-sqlite, ibis-postgres and ibis-rs are free. `ibis` is taken (a 1.5 KB "WIP" placeholder published 2026-09-27, no repository), so the facade needs another name (`ibis-rs`) or a request to that owner. Names are held only once published
 - [x] Licensing: library crates `MIT OR Apache-2.0`, conformance suite Apache-2.0 (adapted from Ibis), LICENSE files + NOTICE
 - [ ] Ask the Ibis maintainers about the name before publishing (`ibis-rs`, a crate called `ibis`); the Apache license grants no trademark rights
-- [ ] Manifests: `repository.workspace = true`, `readme`, `keywords`, `categories`, `rust-version` in each crate
-- [ ] Internal deps need versions: `ibis-core = { path = "crates/ibis-core", version = "0.1.0" }` etc. `cargo package --workspace` fails on ibis-sql without it
+- [x] Manifests: `repository`, `readme`, `keywords`, `categories` in each crate
+- [ ] `rust-version` (MSRV) in each crate; needs older toolchains to verify
+- [x] Internal deps carry versions; `cargo publish --workspace --dry-run` passes
 - [ ] Features: make `bundled` an opt-out default feature of ibis-duckdb and ibis-sqlite, so users can link a system library; check the docs.rs build of ibis-duckdb fits its time limit
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
 - [ ] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run test`. Needs Postgres binaries on PATH for scripts/pg.sh, mise + uv, a cache for `ci/` data, and `Swatinem/rust-cache` (cold DuckDB build is 10+ min). Private-repo Actions minutes are limited
 - [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
 - [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body
-- [ ] First publish of each crate by hand (crates.io requires it), then configure trusted publishing per crate (repo, workflow file `release.yml`, environment `release`) so CI needs no stored token
+- [x] First publish: 0.1.0 of the five library crates is on crates.io (2026-11-14), tagged `v0.1.0`
+- [ ] Publish the facade crate `ibis-rs` (one dependency, a cargo feature per backend) before someone else takes the name
+- [ ] Configure trusted publishing per crate (repo, workflow file `release.yml`, environment `release`) so CI needs no stored token
 - [ ] After 0.1.0 is on crates.io: `cargo-semver-checks` job in CI
 - [ ] When there is a user-facing binary: `dist` (cargo-dist) for cross-platform binaries and installers on the same tags
 - [ ] Alternative to the tag flow if release PRs are preferred: release-plz (needs a PAT or GitHub App, and its generated changelog turned off)
