@@ -1,5 +1,8 @@
 //! ibis-conformance [--backend duckdb,sqlite] [ID_SUBSTRING]
 //!
+//! Without --backend, every backend that is up is run and the rest are skipped
+//! with a note; a backend named with --backend must be up.
+//!
 //! stdout: one JSON object per (case, backend).
 //! stderr: a pass matrix of non-passing cases and per-backend totals.
 //! Exit 1 if any outcome is a problem (fail, error, xpass, no_golden).
@@ -9,14 +12,15 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use ibis_conformance::{
-    ALL_BACKENDS, FixtureData, Paths, SCHEMA, Status, python_ibis_agreement, run, run_tpch, targets, unported,
+    ALL_BACKENDS, FixtureData, Paths, SCHEMA, Status, available, python_ibis_agreement, run, run_tpch, targets,
+    unported,
 };
 
 const USAGE: &str = "usage: ibis-conformance [--backend duckdb,sqlite] [ID_SUBSTRING]";
 
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
-    let mut names: Vec<String> = ALL_BACKENDS.iter().map(|s| s.to_string()).collect();
+    let mut names: Option<Vec<String>> = None;
     let mut filter = String::new();
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -25,7 +29,7 @@ fn main() -> ExitCode {
                 return ExitCode::SUCCESS;
             }
             "--backend" => match args.next() {
-                Some(v) => names = v.split(',').map(String::from).collect(),
+                Some(v) => names = Some(v.split(',').map(String::from).collect()),
                 None => {
                     eprintln!("{USAGE}");
                     return ExitCode::from(2);
@@ -34,7 +38,9 @@ fn main() -> ExitCode {
             _ => filter = a,
         }
     }
-    match go(&names, &filter) {
+    let strict = names.is_some();
+    let names = names.unwrap_or_else(|| ALL_BACKENDS.iter().map(|s| s.to_string()).collect());
+    match go(&names, strict, &filter) {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::FAILURE,
         Err(e) => {
@@ -44,9 +50,10 @@ fn main() -> ExitCode {
     }
 }
 
-fn go(names: &[String], filter: &str) -> ibis_core::Result<bool> {
+fn go(names: &[String], strict: bool, filter: &str) -> ibis_core::Result<bool> {
     let paths = Paths::from_repo_root(&Paths::default_root());
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
+    let names = available(&names, strict)?;
     let data = FixtureData::read(&paths)?;
     let ts = targets(&data, &names)?;
     let mut outcomes = run(&paths, &data, &ts, filter)?;

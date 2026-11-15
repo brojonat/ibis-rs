@@ -1,0 +1,26 @@
+# Backends the conformance suite runs against, one service per backend.
+#   mise run up [service...]    start (all services if none named) and wait until healthy
+#   mise run down               stop and delete their data
+# Everything here is throwaway test data: ports bind to localhost only and
+# there are no credentials worth protecting.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      # C locale: strings order bytewise, like DuckDB and the goldens
+      POSTGRES_INITDB_ARGS: --no-locale -E UTF8
+      POSTGRES_DB: ibis_testing
+    ports: ["127.0.0.1:54330:5432"]
+    volumes:
+      - postgres:/var/lib/postgresql
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # over TCP: the socket is up during init, before the server is ready for us
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "ibis_testing"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
+volumes:
+  postgres:

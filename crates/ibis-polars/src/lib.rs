@@ -9,9 +9,12 @@
 //! Ibis output type where Polars would infer something else (Polars keeps
 //! `int32 + int32` in `int32`; Ibis widens to `int64`).
 //!
-//! Not supported yet: correlated subqueries (`EXISTS`, column references to
-//! an outer table), window frames other than "whole partition" and "running",
-//! and outer joins on anything but equalities. Those return
+//! Polars has no subqueries, so correlated ones (`EXISTS`, a scalar subquery
+//! that refers to the outer table) are rewritten as joins.
+//!
+//! Not supported yet: `RANGE` window frames, min/max over a frame wider than
+//! 256 rows, outer joins on anything but equalities, and correlated scalar
+//! subqueries outside a filter. Those return
 //! [`ibis_core::Error::Unsupported`].
 
 mod expr;

@@ -155,12 +155,7 @@ pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
             let backend: Box<dyn Backend> = match *n {
                 "duckdb" => Box::new(ibis_duckdb::DuckDb::open_in_memory()?),
                 "sqlite" => Box::new(ibis_sqlite::Sqlite::open_in_memory()?),
-                "postgres" => {
-                    let url = std::env::var("IBIS_TESTING_POSTGRES_URL").map_err(|_| {
-                        Error::Other("postgres: set IBIS_TESTING_POSTGRES_URL (mise run pg-start does it)".into())
-                    })?;
-                    Box::new(ibis_postgres::Postgres::connect(&url)?)
-                }
+                "postgres" => Box::new(ibis_postgres::Postgres::connect(&postgres_url()?)?),
                 "polars" => Box::new(ibis_polars::Polars::new()),
                 other => return Err(Error::Other(format!("unknown backend {other:?}"))),
             };
@@ -171,6 +166,42 @@ pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
 }
 
 pub const ALL_BACKENDS: [&str; 4] = ["duckdb", "polars", "postgres", "sqlite"];
+
+fn postgres_url() -> Result<String> {
+    std::env::var("IBIS_TESTING_POSTGRES_URL").map_err(|_| {
+        Error::Other(
+            "postgres: set IBIS_TESTING_POSTGRES_URL (mise.toml does; `mise run up postgres` starts the server)".into(),
+        )
+    })
+}
+
+/// Why `name` cannot be tested right now, if it cannot: its server is not
+/// running. In-process backends are always available.
+fn unavailable(name: &str) -> Option<String> {
+    match name {
+        "postgres" => {
+            postgres_url().and_then(|url| ibis_postgres::Postgres::connect(&url)).err().map(|e| e.to_string())
+        }
+        _ => None,
+    }
+}
+
+/// The backends in `names` that are up. One that is not is skipped with a
+/// note on stderr, so the suite runs with whichever containers are started
+/// (`mise run up <backend>`). With `strict`, or `IBIS_TESTING_STRICT` set (CI
+/// does), a backend that is down is an error instead.
+pub fn available<'a>(names: &[&'a str], strict: bool) -> Result<Vec<&'a str>> {
+    let strict = strict || std::env::var_os("IBIS_TESTING_STRICT").is_some_and(|v| !v.is_empty());
+    let mut up = vec![];
+    for name in names {
+        match unavailable(name) {
+            None => up.push(*name),
+            Some(why) if strict => return Err(Error::Other(format!("{name} is not available: {why}"))),
+            Some(why) => eprintln!("{name}: skipped, not available (`mise run up {name}`): {why}"),
+        }
+    }
+    Ok(up)
+}
 
 /// Backends still being built out. When one of these says it does not support
 /// an op (`Error::Unsupported`), the case is reported as `unsupported` and
@@ -459,12 +490,7 @@ pub fn tpch_backend(paths: &Paths, name: &str) -> Result<Box<dyn Backend>> {
     Ok(match name {
         "duckdb" => Box::new(ibis_duckdb::DuckDb::open(&file("tpch.duckdb")?)?),
         "sqlite" => Box::new(ibis_sqlite::Sqlite::open(&file("tpch.sqlite")?)?),
-        "postgres" => {
-            let url = std::env::var("IBIS_TESTING_POSTGRES_URL").map_err(|_| {
-                Error::Other("postgres: set IBIS_TESTING_POSTGRES_URL (mise run pg-start does it)".into())
-            })?;
-            Box::new(ibis_postgres::Postgres::connect(&format!("{url} dbname=tpch_sf0_01"))?)
-        }
+        "postgres" => Box::new(ibis_postgres::Postgres::connect(&format!("{} dbname=tpch_sf0_01", postgres_url()?))?),
         "polars" => {
             let b = ibis_polars::Polars::new();
             for t in ["customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier"] {

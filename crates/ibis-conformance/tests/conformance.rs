@@ -1,13 +1,15 @@
 //! `cargo test` gate: every ported Ibis case passes on every backend (or is
 //! marked notimpl and still fails). Needs `mise run setup` for the fixture data.
+//! A backend whose server is not running is skipped, unless
+//! `IBIS_TESTING_STRICT` is set.
 
-use ibis_conformance::{ALL_BACKENDS, FixtureData, Paths, run, targets, unported};
+use ibis_conformance::{ALL_BACKENDS, FixtureData, Paths, available, run, targets, unported};
 
 #[test]
 fn ibis_parity() {
     let paths = Paths::from_repo_root(&Paths::default_root());
     let data = FixtureData::read(&paths).expect("read fixtures (run `mise run setup`)");
-    let ts = targets(&data, &ALL_BACKENDS).expect("load fixtures");
+    let ts = targets(&data, &available(&ALL_BACKENDS, false).unwrap()).expect("load fixtures");
     assert_eq!(unported(&paths).unwrap(), Vec::<String>::new(), "cases with goldens but no Rust port");
     let problems: Vec<String> = run(&paths, &data, &ts, "")
         .expect("run conformance")
@@ -21,7 +23,7 @@ fn ibis_parity() {
 #[test]
 fn tpch_parity() {
     let paths = Paths::from_repo_root(&Paths::default_root());
-    let problems: Vec<String> = ibis_conformance::run_tpch(&paths, &ALL_BACKENDS, "")
+    let problems: Vec<String> = ibis_conformance::run_tpch(&paths, &available(&ALL_BACKENDS, false).unwrap(), "")
         .expect("run TPC-H (run `mise run setup`)")
         .iter()
         .filter(|o| o.status.is_problem())

@@ -5,23 +5,23 @@ uv = "latest"
 [env]
 _.file = { path = ".env", redact = false }
 IBIS_TESTING_DATA = "{{config_root}}/ci/ibis-testing-data"
-IBIS_TESTING_POSTGRES_URL = "host={{config_root}}/.pg port=54330 user=postgres dbname=ibis_testing"
+IBIS_TESTING_POSTGRES_URL = "host=127.0.0.1 port=54330 user=postgres dbname=ibis_testing"
+
+[tasks.up]
+description = "Start backend containers and wait until they are healthy: mise run up [service...] (default: all in compose.yaml)"
+run = 'f() { docker compose up --detach --wait --quiet-pull "$@"; }; f'
+
+[tasks.down]
+description = "Stop backend containers and delete their data"
+run = "docker compose down --volumes"
 
 [tasks.setup]
-description = "Download Ibis testing data; generate TPC-H sf=0.01 into DuckDB/SQLite/Postgres"
-depends = ["pg-start"]
+description = "Start Postgres; download Ibis testing data; generate TPC-H sf=0.01 into DuckDB/SQLite/Postgres"
 run = [
+  "docker compose up --detach --wait --quiet-pull postgres",
   "scripts/download-data.sh",
-  "[ -f ci/tpch/sf0_01/tpch.sqlite ] || uv run -q bench/tpch_data.py 0.01",
+  "uv run -q bench/tpch_data.py 0.01",
 ]
-
-[tasks.pg-start]
-description = "Start the local test Postgres (socket in .pg/, port 54330)"
-run = "scripts/pg.sh start"
-
-[tasks.pg-stop]
-description = "Stop the local test Postgres"
-run = "scripts/pg.sh stop"
 
 [tasks.build]
 description = "Build the workspace"
@@ -30,7 +30,15 @@ run = "cargo build --workspace"
 [tasks.test]
 description = "Unit tests + conformance on all backends"
 depends = ["setup"]
-run = "cargo test --workspace --all-features"
+# Build first, then run the test binaries under a 12 GB address-space cap: the
+# engines run in this process, and one runaway query plan once took the machine
+# down. Doctests are compiled when they run, and the linker needs more than the
+# cap allows, so they go last, uncapped.
+run = [
+  "cargo test --workspace --all-features --no-run",
+  "ulimit -v 12000000; cargo test --workspace --all-features --lib --bins --tests --examples",
+  "cargo test --workspace --all-features --doc",
+]
 
 [tasks.lint]
 description = "rustfmt check + clippy"

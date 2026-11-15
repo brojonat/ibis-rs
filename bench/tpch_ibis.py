@@ -21,7 +21,7 @@ stdout: one JSON object per (backend, query):
 Usage: tpch_ibis.py [--sf 0.01] [--backend duckdb,sqlite,postgres] [--repeat 3]
                     [--goldens DIR] [QUERY_SUBSTRING]
   --goldens DIR   also write each result to DIR/<backend>/<query>.parquet
-Env: IBIS_TESTING_POSTGRES_URL  libpq keyword string, e.g. "host=/x/.pg port=54330 user=postgres"
+Env: IBIS_TESTING_POSTGRES_URL  libpq keyword string, e.g. "host=127.0.0.1 port=54330 user=postgres"
 """
 
 from __future__ import annotations
