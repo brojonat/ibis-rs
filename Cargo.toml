@@ -33,6 +33,7 @@ ibis-sql = { path = "crates/ibis-sql", version = "0.1.0" }
 ibis-duckdb = { path = "crates/ibis-duckdb", version = "0.1.0" }
 ibis-sqlite = { path = "crates/ibis-sqlite", version = "0.1.0" }
 ibis-postgres = { path = "crates/ibis-postgres", version = "0.1.0" }
+ibis-rs = { path = "crates/ibis-rs", version = "0.1.0" }
 
 # Optimize dependencies (DuckDB, SQLite, regex, parquet) even in dev builds;
 # our own crates stay fast to compile. Debug-built DuckDB/SQLite are very slow.

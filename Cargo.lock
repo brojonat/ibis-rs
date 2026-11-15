@@ -779,6 +779,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ibis-rs"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "ibis-core",
+ "ibis-duckdb",
+ "ibis-postgres",
+ "ibis-sql",
+ "ibis-sqlite",
+]
+
+[[package]]
 name = "ibis-sql"
 version = "0.1.0"
 dependencies = [

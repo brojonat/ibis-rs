@@ -30,11 +30,11 @@ run = "cargo build --workspace"
 [tasks.test]
 description = "Unit tests + conformance on all backends"
 depends = ["setup"]
-run = "cargo test --workspace"
+run = "cargo test --workspace --all-features"
 
 [tasks.lint]
 description = "rustfmt check + clippy"
-run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets -- -D warnings"]
+run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets --all-features -- -D warnings"]
 
 [tasks.conformance]
 description = "Run ported Ibis cases on every backend: JSONL -> logs/conformance.jsonl, matrix -> stderr"

@@ -27,19 +27,16 @@ Output column names and types match Ibis's on all 551. Ported so far:
 
 ## Usage
 
-One crate for the API, plus one per backend you use:
-
 ```toml
 [dependencies]
-ibis-core = "0.1"
-ibis-sqlite = "0.1"      # and/or ibis-duckdb, ibis-postgres
+ibis-rs = { version = "0.1", features = ["sqlite"] }   # backends: duckdb, sqlite, postgres
 ```
 
 ```rust
-use ibis_core::prelude::*;
+use ibis_rs::prelude::*;
 
-let con = ibis_duckdb::DuckDb::open_in_memory()?;
-con.raw_sql("CREATE TABLE functional_alltypes AS FROM 'ci/ibis-testing-data/parquet/functional_alltypes.parquet'")?;
+// "duckdb://", "sqlite://app.db", "postgres://user@host/db": same code, different engine
+let con = ibis_rs::connect(&std::env::var("DATABASE_URL")?)?;
 let t = con.table("functional_alltypes")?;
 
 let expr = t
@@ -53,9 +50,13 @@ println!("{}", con.compile(&expr)?);          // the SQL, like ibis.to_sql()
 let batches = con.execute(&expr)?;            // Vec<arrow RecordBatch>
 ```
 
-Swap `ibis_duckdb::DuckDb` for `ibis_sqlite::Sqlite` or
-`ibis_postgres::Postgres::connect(params)` and the same `expr` runs there. This
-example is compiled: `cargo run -p ibis-duckdb --example readme` (after
+`ibis-rs` is the front door: it re-exports the API and puts each backend behind
+a cargo feature. No backend is on by default yet. `connect` returns a
+`Box<dyn Backend>`; the concrete types (`ibis_rs::sqlite::Sqlite`,
+`ibis_rs::duckdb::DuckDb`, `ibis_rs::postgres::Postgres`) add engine-specific
+methods such as `raw_sql`. The crates behind it (`ibis-core`, `ibis-sql`,
+`ibis-duckdb`, `ibis-sqlite`, `ibis-postgres`) can also be used directly; a
+compiled example of that is `cargo run -p ibis-duckdb --example readme` (after
 `mise run setup`).
 
 Column references come in two forms, as in Ibis: `col("x")` is unbound (Ibis's
@@ -77,6 +78,7 @@ set in `mise.toml`; a bare `cargo test` fails without them.
 
 | path | what |
 |---|---|
+| `crates/ibis-rs` | the crate users depend on: re-exports, a feature per backend, `connect(url)` |
 | `crates/ibis-core` | datatypes, schema, IR (`Rel`, `Expr`), `Table`/`Expr` API, `Backend` trait |
 | `crates/ibis-sql` | IR → SQL compiler; the `Dialect` trait is the SQL plugin seam |
 | `crates/ibis-duckdb` | DuckDB backend (bundled DuckDB, Arrow-native results) |

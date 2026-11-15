@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- `ibis-rs` 0.1.0: the facade crate. Re-exports the API, one cargo feature per backend (`duckdb`, `sqlite`, `postgres`; none on by default), and `connect(url)` returning a `Box<dyn Backend>`.
+
 ## [0.1.0] - 2026-11-14
 
 First release on crates.io: `ibis-core`, `ibis-sql`, `ibis-duckdb`, `ibis-postgres`, `ibis-sqlite`.
