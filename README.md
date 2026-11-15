@@ -11,7 +11,7 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. See
 [docs/design.md](docs/design.md).
 
-Status: pre-alpha, unpublished. Three backends (DuckDB, Postgres, SQLite), 551
+Status: pre-alpha. Three backends (DuckDB, Postgres, SQLite), 551
 ported Ibis test cases and Ibis's 22 TPC-H queries:
 
 | backend | Ibis cases (551) | TPC-H (22) |
@@ -26,6 +26,14 @@ Output column names and types match Ibis's on all 551. Ported so far:
 `test_conditionals`. What's next is in [TODO.md](TODO.md).
 
 ## Usage
+
+One crate for the API, plus one per backend you use:
+
+```toml
+[dependencies]
+ibis-core = "0.1"
+ibis-sqlite = "0.1"      # and/or ibis-duckdb, ibis-postgres
+```
 
 ```rust
 use ibis_core::prelude::*;

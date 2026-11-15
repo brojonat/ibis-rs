@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-14
+
+First release on crates.io: `ibis-core`, `ibis-sql`, `ibis-duckdb`, `ibis-postgres`, `ibis-sqlite`.
+
 ### Added
 - `LICENSE-MIT`, `LICENSE-APACHE` (linked into each crate so packages ship them) and `NOTICE` with the Ibis attribution.
 - `ibis-postgres`: Postgres backend (`postgres` crate, binary protocol including NUMERIC, `COPY` for table loads, server error detail surfaced). `scripts/pg.sh` and `mise run pg-start` / `pg-stop` run a throwaway local cluster.
