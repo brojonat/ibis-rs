@@ -2,7 +2,7 @@
 //! spells differently; everything else falls through to the defaults in
 //! `compiler.rs` (DuckDB/Postgres-flavored ANSI SQL).
 
-use ibis_core::{AggFunc, BinaryOp, DataType, Expr, Func, Result, Value};
+use ibis_core::{AggFunc, Analytic, BinaryOp, DataType, Expr, Func, Result, Value};
 
 use crate::compiler::ExprCompiler;
 
@@ -35,6 +35,11 @@ pub trait Dialect: Send + Sync {
     /// (either may be absent): place it directly after the aggregate call,
     /// inside any expression wrapped around it.
     fn agg(&self, _c: &ExprCompiler, _f: AggFunc, _arg: Option<&Expr>, _tail: &str) -> Result<Option<String>> {
+        Ok(None)
+    }
+    /// A ranking or offset function over a window. `args` are already
+    /// compiled and `over` is the whole `OVER (...)` clause.
+    fn analytic(&self, _f: Analytic, _args: &[String], _over: &str) -> Result<Option<String>> {
         Ok(None)
     }
     fn cast(&self, _c: &ExprCompiler, _e: &Expr, _to: &DataType) -> Result<Option<String>> {

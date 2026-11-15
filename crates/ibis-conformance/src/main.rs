@@ -5,15 +5,16 @@
 //!
 //! stdout: one JSON object per (case, backend).
 //! stderr: a pass matrix of non-passing cases and per-backend totals.
-//! Exit 1 if any outcome is a problem (fail, error, xpass, no_golden).
+//! Exit 1 if any outcome is a problem (fail, error, xpass, no_golden) on a
+//! backend that is not experimental.
 
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::process::ExitCode;
 
 use ibis_conformance::{
-    ALL_BACKENDS, FixtureData, Paths, SCHEMA, Status, available, python_ibis_agreement, run, run_tpch, targets,
-    unported,
+    ALL_BACKENDS, EXPERIMENTAL, FixtureData, Paths, SCHEMA, Status, available, python_ibis_agreement, run, run_tpch,
+    targets, unported,
 };
 
 const USAGE: &str = "usage: ibis-conformance [--backend duckdb,sqlite] [ID_SUBSTRING]";
@@ -101,5 +102,6 @@ fn go(names: &[String], strict: bool, filter: &str) -> ibis_core::Result<bool> {
     if !missing.is_empty() && filter.is_empty() {
         let _ = writeln!(err, "{} cases have goldens but no Rust port: {}", missing.len(), missing.join(", "));
     }
-    Ok(!outcomes.iter().any(|o| o.status.is_problem()) && (missing.is_empty() || !filter.is_empty()))
+    let gated = |o: &&ibis_conformance::Outcome| !EXPERIMENTAL.contains(&o.backend.as_str());
+    Ok(!outcomes.iter().filter(gated).any(|o| o.status.is_problem()) && (missing.is_empty() || !filter.is_empty()))
 }

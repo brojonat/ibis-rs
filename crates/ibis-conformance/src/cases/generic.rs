@@ -391,9 +391,13 @@ pub fn register(v: &mut Vec<Case>) {
             .filter([c("x").isnull()])?
             .select(["x_count"])
     }));
-    v.push(tables("test_null_isin_null_is_null", |fx| {
-        fx.mem("x_one")?.select([c("x").isin([untyped_null()]).name("tmp")])
-    }));
+    // Ibis marks this notyet on ClickHouse: it returns false for `x IN (NULL)`.
+    v.push(
+        tables("test_null_isin_null_is_null", |fx| {
+            fx.mem("x_one")?.select([c("x").isin([untyped_null()]).name("tmp")])
+        })
+        .notimpl(&["clickhouse"]),
+    );
     // t.value_counts(): group by every column, count as "<cols joined by _>_count"
     v.push(
         table("test_value_counts_on_tables", |t| {

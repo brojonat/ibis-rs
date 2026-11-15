@@ -810,6 +810,9 @@ impl ExprCompiler<'_> {
             Expr::Agg { func, arg, filter } => inner.agg(*func, arg.as_deref(), filter.as_deref(), Some(&over))?,
             Expr::Analytic(a, args) => {
                 let a_sql = args.iter().map(|x| inner.sql(x)).collect::<Result<Vec<_>>>()?;
+                if let Some(s) = self.d.analytic(*a, &a_sql, &over)? {
+                    return Ok(s);
+                }
                 use Analytic::*;
                 match a {
                     // Ibis ranks are 0-based

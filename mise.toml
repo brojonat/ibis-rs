@@ -6,6 +6,8 @@ uv = "latest"
 _.file = { path = ".env", redact = false }
 IBIS_TESTING_DATA = "{{config_root}}/ci/ibis-testing-data"
 IBIS_TESTING_POSTGRES_URL = "host=127.0.0.1 port=54330 user=postgres dbname=ibis_testing"
+# not a secret: the throwaway test container in compose.yaml
+IBIS_TESTING_CLICKHOUSE_URL = "clickhouse://ibis:ibis@127.0.0.1:18123/ibis_testing"
 
 [tasks.up]
 description = "Start backend containers and wait until they are healthy: mise run up [service...] (default: all in compose.yaml)"
@@ -48,6 +50,7 @@ run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets --all-
 description = "Run ported Ibis cases on every backend: JSONL -> logs/conformance.jsonl, matrix -> stderr"
 depends = ["setup"]
 # built with the same flags as `test`, so nothing is compiled twice
+shell = "bash -c" # process substitution below; sh is dash on Debian and Ubuntu
 run = [
   "cargo build --quiet --workspace --all-features --bin ibis-conformance",
   'mkdir -p logs; f() { target/debug/ibis-conformance "$@" > logs/conformance.jsonl 2> >(tee logs/conformance.txt >&2); }; f',

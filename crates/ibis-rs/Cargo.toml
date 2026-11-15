@@ -17,6 +17,7 @@ polars = ["dep:ibis-polars"]
 duckdb = ["dep:ibis-duckdb"]
 sqlite = ["dep:ibis-sqlite"]
 postgres = ["dep:ibis-postgres"]
+clickhouse = ["dep:ibis-clickhouse"]
 
 [dependencies]
 ibis-core.workspace = true
@@ -25,8 +26,9 @@ ibis-polars = { workspace = true, optional = true }
 ibis-duckdb = { workspace = true, optional = true }
 ibis-sqlite = { workspace = true, optional = true }
 ibis-postgres = { workspace = true, optional = true }
+ibis-clickhouse = { workspace = true, optional = true }
 arrow-array.workspace = true
 
 # docs.rs cannot build bundled DuckDB within its limits; document the rest.
 [package.metadata.docs.rs]
-features = ["polars", "sqlite", "postgres"]
+features = ["polars", "sqlite", "postgres", "clickhouse"]

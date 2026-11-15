@@ -13,6 +13,7 @@ ibis-duckdb.workspace = true
 ibis-sqlite.workspace = true
 ibis-postgres.workspace = true
 ibis-polars.workspace = true
+ibis-clickhouse.workspace = true
 arrow-array.workspace = true
 parquet.workspace = true
 serde_json.workspace = true

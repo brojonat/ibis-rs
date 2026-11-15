@@ -22,5 +22,25 @@ services:
       timeout: 5s
       retries: 60
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.10
+    environment:
+      CLICKHOUSE_DB: ibis_testing
+      CLICKHOUSE_USER: ibis
+      CLICKHOUSE_PASSWORD: ibis
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports: ["127.0.0.1:18123:8123"]
+    ulimits:
+      nofile: 262144
+    volumes:
+      - clickhouse:/var/lib/clickhouse
+    healthcheck:
+      # by container address: during init the server only listens on localhost
+      test: ["CMD-SHELL", "wget -qO- http://$$(hostname -i):8123/ping"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
 volumes:
   postgres:
+  clickhouse:

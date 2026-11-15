@@ -4,7 +4,7 @@
 //!
 //! This crate is the front door: it re-exports the API from `ibis-core` and
 //! puts each backend behind a cargo feature. `polars` is on by default;
-//! `duckdb`, `sqlite` and `postgres` are opt-in.
+//! `duckdb`, `sqlite`, `postgres` and `clickhouse` are opt-in.
 //!
 //! ```toml
 //! [dependencies]
@@ -46,7 +46,7 @@
 //! Backend-specific methods (`raw_sql`, registering a Polars `DataFrame`,
 //! opening from an existing connection) live on the concrete types:
 //! [`polars::Polars`], [`sqlite::Sqlite`], [`duckdb::DuckDb`],
-//! [`postgres::Postgres`].
+//! [`postgres::Postgres`], [`clickhouse::ClickHouse`].
 
 pub use ibis_core::*;
 
@@ -56,6 +56,8 @@ pub use ibis_sql as sql;
 /// Arrow arrays, the type of query results. Re-exported so one dependency is enough.
 pub use arrow_array;
 
+#[cfg(feature = "clickhouse")]
+pub use ibis_clickhouse as clickhouse;
 #[cfg(feature = "duckdb")]
 pub use ibis_duckdb as duckdb;
 #[cfg(feature = "polars")]
@@ -73,6 +75,7 @@ pub use ibis_sqlite as sqlite;
 /// | `duckdb://` (in memory), `duckdb://path/to/file.db` | DuckDB | `duckdb` |
 /// | `sqlite://` (in memory), `sqlite://path/to/file.db` | SQLite | `sqlite` |
 /// | `postgres://user:pass@host:5432/db`, `postgresql://...` | Postgres | `postgres` |
+/// | `clickhouse://user:pass@host:8123/db` (HTTP), `clickhouses://...` (HTTPS) | ClickHouse | `clickhouse` |
 ///
 /// Everything after `duckdb://` or `sqlite://` is a file path, so an absolute
 /// path has three slashes: `sqlite:///var/data/app.db`.
@@ -82,7 +85,7 @@ pub use ibis_sqlite as sqlite;
 pub fn connect(url: &str) -> Result<Box<dyn Backend>> {
     let Some((scheme, rest)) = url.split_once("://") else {
         return Err(Error::Other(format!(
-            "connect: `{url}` is not a URL; expected polars://, duckdb://, sqlite:// or postgres://"
+            "connect: `{url}` is not a URL; expected polars://, duckdb://, sqlite://, postgres:// or clickhouse://"
         )));
     };
     match scheme {
@@ -90,8 +93,9 @@ pub fn connect(url: &str) -> Result<Box<dyn Backend>> {
         "duckdb" => duckdb_at(rest),
         "sqlite" => sqlite_at(rest),
         "postgres" | "postgresql" => postgres_at(url),
+        "clickhouse" | "clickhouses" => clickhouse_at(url),
         other => Err(Error::Other(format!(
-            "connect: unknown backend `{other}` in `{url}`; expected polars://, duckdb://, sqlite:// or postgres://"
+            "connect: unknown backend `{other}` in `{url}`; expected polars://, duckdb://, sqlite://, postgres:// or clickhouse://"
         ))),
     }
 }
@@ -148,6 +152,15 @@ fn postgres_at(url: &str) -> Result<Box<dyn Backend>> {
 #[cfg(not(feature = "postgres"))]
 fn postgres_at(_: &str) -> Result<Box<dyn Backend>> {
     disabled("postgres")
+}
+
+#[cfg(feature = "clickhouse")]
+fn clickhouse_at(url: &str) -> Result<Box<dyn Backend>> {
+    Ok(Box::new(clickhouse::ClickHouse::connect(url)?))
+}
+#[cfg(not(feature = "clickhouse"))]
+fn clickhouse_at(_: &str) -> Result<Box<dyn Backend>> {
+    disabled("clickhouse")
 }
 
 #[cfg(test)]
@@ -248,6 +261,14 @@ mod tests {
     fn postgres_urls_reach_the_postgres_backend() {
         for url in ["postgres://u@127.0.0.1:1/db", "postgresql://u@127.0.0.1:1/db"] {
             assert!(err(url).contains("postgres failed"), "{}", err(url));
+        }
+    }
+
+    #[cfg(feature = "clickhouse")]
+    #[test]
+    fn clickhouse_urls_reach_the_clickhouse_backend() {
+        for url in ["clickhouse://u@127.0.0.1:1/db", "clickhouses://u@127.0.0.1:1/db"] {
+            assert!(err(url).contains("clickhouse failed"), "{}", err(url));
         }
     }
 }

@@ -17,7 +17,6 @@ categories = ["database"]
 # different arrow must convert via the Arrow C Data Interface (see LEARNINGS.md).
 arrow-array = "60.1"
 arrow-schema = "60.1"
-arrow-cast = "60.1"
 parquet = { version = "60.1", default-features = false, features = ["arrow", "snap", "zstd"] }
 duckdb = { version = "1.20000.1", features = ["bundled", "appender-arrow"] }
 rusqlite = { version = "0.42", features = ["bundled", "functions"] }
@@ -30,17 +29,17 @@ polars = { version = "0.55.2", default-features = false, features = [
   "semi_anti_join", "cross_join", "concat_str", "string_pad", "string_reverse", "coalesce", "range", "dtype-array", "dtype-struct", "string_encoding", "string_to_integer", "dtype-u128", "dtype-i128",
 ] }
 thiserror = "2"
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = "0.4"
+ureq = "3.5"
 
 ibis-core = { path = "crates/ibis-core", version = "0.1.0" }
 ibis-sql = { path = "crates/ibis-sql", version = "0.1.0" }
 ibis-duckdb = { path = "crates/ibis-duckdb", version = "0.1.0" }
 ibis-sqlite = { path = "crates/ibis-sqlite", version = "0.1.0" }
 ibis-postgres = { path = "crates/ibis-postgres", version = "0.1.0" }
+ibis-clickhouse = { path = "crates/ibis-clickhouse", version = "0.1.0" }
 ibis-polars = { path = "crates/ibis-polars", version = "0.1.0" }
-ibis-rs = { path = "crates/ibis-rs", version = "0.1.1" }
 
 # Optimize dependencies (DuckDB, SQLite, regex, parquet) even in dev builds;
 # our own crates stay fast to compile. Debug-built DuckDB/SQLite are very slow.
