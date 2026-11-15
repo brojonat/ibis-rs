@@ -38,7 +38,7 @@ Plan: lockstep versions (one `workspace.package.version`), hand-written CHANGELO
 `vX.Y.Z` tag -> CI gate -> `cargo publish --workspace` -> GitHub release with that version's CHANGELOG section.
 Steps are in dependency order.
 - [ ] Decide when the repo goes public (publishing to crates.io makes the source public either way)
-- [ ] Check crates.io name availability: ibis-core, ibis-sql, ibis-duckdb, ibis-sqlite, ibis-postgres, and `ibis` for the facade (`cargo search ibis`). Not checked yet; a taken name means renaming every crate
+- [x] crates.io names checked 2026-11-14: ibis-core, ibis-sql, ibis-duckdb, ibis-sqlite, ibis-postgres and ibis-rs are free. `ibis` is taken (a 1.5 KB "WIP" placeholder published 2026-09-27, no repository), so the facade needs another name (`ibis-rs`) or a request to that owner. Names are held only once published
 - [x] Licensing: library crates `MIT OR Apache-2.0`, conformance suite Apache-2.0 (adapted from Ibis), LICENSE files + NOTICE
 - [ ] Ask the Ibis maintainers about the name before publishing (`ibis-rs`, a crate called `ibis`); the Apache license grants no trademark rights
 - [ ] Manifests: `repository.workspace = true`, `readme`, `keywords`, `categories`, `rust-version` in each crate
@@ -54,7 +54,7 @@ Steps are in dependency order.
 - [ ] Alternative to the tag flow if release PRs are preferred: release-plz (needs a PAT or GitHub App, and its generated changelog turned off)
 
 ## Later
-- [ ] Facade crate `ibis` with cargo features + `connect(url, &registry)`
+- [ ] Facade crate (`ibis-rs`; `ibis` is taken on crates.io) with cargo features + `connect(url, &registry)`
 - [ ] ibis-datafusion backend: IR -> LogicalPlan; arrow 59 vs 60 needs C Data Interface hop
 - [ ] ibis-polars backend: IR -> LazyFrame (proves the IR isn't SQL-shaped)
 - [ ] More SQL backends: BigQuery, Snowflake, Trino, ClickHouse, MySQL (dialect + driver each)
