@@ -210,3 +210,48 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
 - **What:** Selecting packages with `-p` resolves a different feature set for shared
   dependencies than `--workspace`, so bundled DuckDB (10+ minutes) compiles again.
 - **Avoid:** Build and test with `--workspace` (`mise run test`, `mise run lint`).
+
+## mise tasks run under `sh`, which is dash on Ubuntu
+- **What:** `2> >(tee ...)` (process substitution) in `mise run conformance` worked locally,
+  where `sh` is bash, and failed in CI with "Syntax error: redirection unexpected".
+- **Avoid:** Keep task scripts POSIX, or set `shell = "bash -c"` on the task that needs bash.
+
+## A memory cap on `cargo test` also caps the doctest linker
+- **What:** `ulimit -v 12000000; cargo test` failed with "ld.lld: failed to open ...: Cannot
+  allocate memory". Doctests are compiled and linked when they run, inside the limit, and
+  linking against DuckDB and Polars maps more than 12 GB of address space.
+- **Avoid:** Build first (`--no-run`), run `--lib --bins --tests --examples` under the cap,
+  and run `--doc` outside it. That is what `mise run test` does.
+
+## Database images pass a naive healthcheck before they are ready
+- **What:** The Postgres and ClickHouse images start a temporary server to run their init
+  scripts, then restart. A healthcheck over the unix socket or localhost passes during that
+  phase, `docker compose up --wait` returns, and the first connection is refused.
+- **Avoid:** Check the way a client connects: `pg_isready -h 127.0.0.1` for Postgres, and
+  the container's own address (`hostname -i`) for ClickHouse, whose temporary server only
+  listens on localhost.
+
+## ClickHouse is closer to standard SQL than its reputation, given the right settings
+- **What:** With `join_use_nulls`, `aggregate_functions_null_for_empty`, `cast_keep_nullable`,
+  `union_default_mode=DISTINCT` and `prefer_column_name_to_alias` set per request, and every
+  type spelled `Nullable(...)`, the default SQL passed 568 of 573 on the first run. What was
+  left: `round` on floats rounds half to even; `DATE_TRUNC` stops at seconds
+  (`toStartOfMillisecond`); `cume_dist` exists only in lower case while the other window
+  functions take either; `x IN (NULL)` is false (Ibis marks that notyet too).
+- **Also:** string literals read backslash escapes, so a regex like `\d+` must be written
+  `'\\d+'`; function names are case-sensitive except the standard SQL ones.
+
+## pytest ids: the backend is usually the first parameter, not always
+- **What:** Ibis's ids look like `test_x[duckdb-param]`, but `test_time_literal_sql[0-duckdb]`
+  has it last, and `test_dot_sql` ids contain other backends' names as dialect parameters
+  (`[duckdb-postgres]`). Filtering out every id that mentions another backend dropped 42
+  real ids.
+- **Avoid:** Take the backend from the first parameter, else the last; leave the rest alone
+  (conformance/site.py `collect`).
+
+## A new crate can rebuild DuckDB
+- **What:** Adding `ibis-clickhouse` to the workspace made bundled DuckDB compile again
+  (12 minutes). The cause was not confirmed; the likely one is `ureq`, which the new crate
+  uses and which was already in the lockfile, being built with a different feature set.
+- **Avoid:** Add a new crate's dependencies once, before iterating on its code, and expect
+  one long build.

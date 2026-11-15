@@ -2,7 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, SQLite 530 (21 need NaN).
+Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, SQLite 530 (21 need NaN), ClickHouse 550 (1 marked notyet in Ibis too).
+Coverage of the Ibis suite: 561 of 1,899 applicable test ids (30%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -18,36 +19,46 @@ Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551
 - [x] Ported: test_generic, test_numeric, test_string, test_aggregation (part), test_temporal (tier 1), test_join, test_window, test_set_ops, test_conditionals
 - [x] ibis-polars backend (IR -> LazyFrame): 551/551 and 22/22; default backend of the facade
 - [x] Facade crate `ibis-rs`: feature per backend, `connect(url)`
-- [x] TPC-H: Ibis's 22 queries on all four backends, benchmark against Python Ibis (`mise run bench`)
+- [x] TPC-H: Ibis's 22 queries on every backend, benchmark against Python Ibis (`mise run bench`)
+- [x] Backends in containers: `compose.yaml`, `mise run up` / `down`; the runner skips a backend that is down (`IBIS_TESTING_STRICT` makes that an error)
+- [x] ibis-clickhouse backend (HTTP): 550/551 + 1 xfail, 22/22
+- [x] Parity site (`mise run site`, conformance/site.py), published to GitHub Pages by CI
+- [x] CI: lint + test on every backend + site (.github/workflows/ci.yml)
+- [x] `mise run test` under a memory cap
 
 ## Next: parity
-- [ ] Parity report: all Ibis test ids vs ported ids, per module (check_ids.py already collects them)
 - [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
 - [ ] Rest of test_aggregation: grouped reductions, mode, argmin/argmax, approx, collect
 - [ ] Rest of test_string: translate, split, join, find_in_set, capitalize, slices
-- [ ] Nested types (array, struct, map) and test_array / test_struct / test_map
+- [ ] Nested types (array, struct, map) and test_array / test_struct / test_map (303 ids, the largest unported block)
+- [ ] test_client (203 ids): create/drop/insert/list through the `Backend` trait; decide which apply
+- [ ] TPC-DS (100 ids): Ibis's queries, like TPC-H
 - [ ] `distinct(on=..., keep=...)`, `GroupedTable.order_by().mutate()`, negative slices
 - [ ] Timestamp scale in `DataType` (the schema check normalizes `timestamp(6)` away today)
 - [ ] SQLite `least`/`greatest`: scalar MIN/MAX return NULL if any argument is NULL; Ibis skips NULLs
 - [ ] Float literals are read as DECIMAL by DuckDB and NUMERIC by Postgres; emit typed literals
 - [ ] Ordering is lost through a wrap when the sort column is dropped or a LIMIT sits between
+- [ ] Review `conformance/not_applicable.json`: the module-level calls (307 ids) were made without reading every test
 
-## Next: development flow
-- [ ] Backends in containers (docker-compose) instead of binaries on the host. Today Postgres needs `initdb`/`pg_ctl`/`psql` installed (scripts/pg.sh); that does not scale to Spark, Impala, ClickHouse, Trino, MySQL and the rest. One compose service per backend, `mise run up <backend>` / `down`, connection URLs from the environment, and the conformance runner skipping backends that are not up. Ibis's own repo has a `compose.yaml` covering its backends: start from it
+## Next: backends
+One compose service + one crate each; start in `EXPERIMENTAL` (README: "Adding things").
+- [ ] MySQL (single container; `mysql` crate)
+- [ ] Trino (single container, HTTP)
+- [ ] Spark (Spark Connect container) and Impala (needs a metastore and storage: start from Ibis's `compose.yaml`)
 - [ ] Cloud-only backends (BigQuery, Snowflake): credentials from environment variables, tests skipped without them
-- [ ] CI runs the same compose services
+- [ ] ClickHouse: publish `ibis-clickhouse` and an `ibis-rs` release with the `clickhouse` feature; the native protocol or Arrow format instead of tab-separated text for large results; add it to `mise run bench` and to the Python Ibis cross-check in gen_goldens.py
+- [ ] `x IN (NULL)` on ClickHouse is false, not NULL (the one xfail)
 
 ## Next: parity site
-- [ ] A static HTML site showing coverage of the Ibis test suite. One row per Ibis test id (check_ids.py already collects them): the Ibis test with a link to its source, our port (the Python case and the Rust case), and pass / expected-failure / unsupported per backend from `logs/conformance.jsonl`. 1:1 parity is not the goal: tests that cannot apply (Python-only APIs, pandas output formats) are marked as such rather than counted as missing
 - [ ] Per-backend operation matrix on the same site, shaped like Ibis's support matrix, generated from the cases and `notimpl` marks
-- [ ] Publish with GitHub Pages from CI
+- [ ] Rust line links are best-effort when a case id is built with `format!`; give cases a `file!()`/`line!()` at registration
+- [ ] Trim page weight (4.9 MB; the generated queries are most of it)
 
 ## Next: Polars
 - [ ] Arrow in and out through the C Data Interface. Today `create_table` and results go through rows of `Value`, which is slow and memory-hungry on large tables
 - [ ] `polars://path`: scan a directory of parquet/CSV files lazily instead of holding tables in memory
 - [ ] Add Polars to `mise run bench` (Rust side, and Python Ibis's Polars backend as the baseline)
 - [ ] Not supported yet (reported as `Error::Unsupported`): RANGE window frames, min/max over frames wider than 256 rows, std/var over a frame, outer joins on non-equality conditions, correlated scalar subqueries outside a filter or correlated by a non-equality, uncorrelated EXISTS
-- [ ] Run the conformance suite under a memory cap in `mise run test` (an unbounded Polars plan took 25 GB and triggered the OOM killer once)
 
 ## Next: performance
 - [ ] Cache `Rel::deref_map()`; it is recomputed recursively, so join-chain queries take 1-3 ms to compile (TPC-H Q5, Q7, Q8, Q9)
@@ -57,7 +68,7 @@ Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551
 Plan: lockstep versions (one `workspace.package.version`), hand-written CHANGELOG, tag-triggered publish.
 `vX.Y.Z` tag -> CI gate -> `cargo publish --workspace` -> GitHub release with that version's CHANGELOG section.
 Steps are in dependency order.
-- [ ] Decide when the repo goes public (publishing to crates.io makes the source public either way)
+- [x] Repo is public (2026-11-15)
 - [x] crates.io names checked 2026-11-14: ibis-core, ibis-sql, ibis-duckdb, ibis-sqlite, ibis-postgres and ibis-rs are free. `ibis` is taken (a 1.5 KB "WIP" placeholder published 2026-09-27, no repository), so the facade needs another name (`ibis-rs`) or a request to that owner. Names are held only once published
 - [x] Licensing: library crates `MIT OR Apache-2.0`, conformance suite Apache-2.0 (adapted from Ibis), LICENSE files + NOTICE
 - [ ] Ask the Ibis maintainers about the name before publishing (`ibis-rs`, a crate called `ibis`); the Apache license grants no trademark rights
@@ -66,7 +77,8 @@ Steps are in dependency order.
 - [x] Internal deps carry versions; `cargo publish --workspace --dry-run` passes
 - [ ] Features: make `bundled` an opt-out default feature of ibis-duckdb and ibis-sqlite, so users can link a system library; check the docs.rs build of ibis-duckdb fits its time limit
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
-- [ ] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run test`. Needs Postgres binaries on PATH for scripts/pg.sh, mise + uv, a cache for `ci/` data, and `Swatinem/rust-cache` (cold DuckDB build is 10+ min). Private-repo Actions minutes are limited
+- [x] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run up`, `mise run test`, `mise run site`
+- [ ] Versions are uneven (ibis-rs 0.1.1, the rest 0.1.0, ibis-clickhouse unpublished): realign at the next release
 - [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
 - [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body
 - [x] First publish: 0.1.0 of the five library crates is on crates.io (2026-11-14), tagged `v0.1.0`

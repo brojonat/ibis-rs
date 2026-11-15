@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- `ibis-clickhouse`: ClickHouse backend over the HTTP interface. Every type is `Nullable`, each request carries the settings that give standard SQL semantics (NULLs from outer joins, NULL for aggregates of no rows, `UNION` meaning `UNION DISTINCT`), and floats round half away from zero. Passes 550 of the 551 Ibis cases (the other is marked `notyet` for ClickHouse in Ibis itself) and the 22 TPC-H queries. Not on crates.io yet.
+- `ibis-rs`: `clickhouse` feature and `clickhouse://` / `clickhouses://` URLs in `connect`.
+- `ibis-sql`: `Dialect::analytic`, a hook for how a dialect spells ranking and offset window functions.
+- `compose.yaml`: one container per server backend (Postgres, ClickHouse). `mise run up [service...]` and `mise run down`.
+- Parity site: `conformance/site.py` and `mise run site` build a static site showing every Ibis backend test id, whether it is ported (with links to the Ibis source and both sides of our port), and the result and query on each backend. `conformance/not_applicable.json` lists the Ibis tests that cannot apply to a Rust port.
+- CI (`.github/workflows/ci.yml`): lint, test on every backend, build the parity site and publish it to GitHub Pages from `main`.
+- Conformance: a backend whose server is down is skipped with a note (`IBIS_TESTING_STRICT`, or naming it with `--backend`, makes that an error). An `EXPERIMENTAL` tier for backends still being ported: reported, not gating.
+
+### Changed
+- Postgres for tests runs from `compose.yaml` (TCP, localhost:54330) instead of host binaries. `mise run pg-start` / `pg-stop` are replaced by `mise run up` / `down`.
+- `mise run test` runs the test binaries under a 12 GB address-space cap.
+- `bench/tpch_data.py` is idempotent (each database is left alone if already loaded) and no longer needs `psql`.
+- `mise run conformance` builds with the same flags as `mise run test`.
+
+### Removed
+- `scripts/pg.sh`.
+
 ## [ibis-rs 0.1.1, ibis-polars 0.1.0] - 2026-11-15
 
 ### Added
