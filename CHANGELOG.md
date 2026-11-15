@@ -5,6 +5,13 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ## [Unreleased]
 
 ### Added
+- `ibis-postgres`: Postgres backend (`postgres` crate, binary protocol including NUMERIC, `COPY` for table loads, server error detail surfaced). `scripts/pg.sh` and `mise run pg-start` / `pg-stop` run a throwaway local cluster.
+- Bound column references: `t.col("x")` (Ibis `t.x`) next to unbound `col("x")` (Ibis `_.x`). Correlated subqueries, `EXISTS` (`.any()` over another table), scalar subqueries, `isin_col` / `notin_col`.
+- Joins: all six kinds, general predicates, self joins through `view()`, Ibis's `_right` collision renaming. Set operations: `union` / `intersect` / `difference` with `distinct`.
+- Table API: `mutate`, `drop`, `relocate`, `distinct`, `fill_null`, `drop_null`, `offset`, `head`.
+- Expressions: `isin` / `notin`, `cases`, `coalesce`, `least` / `greatest`, `clip`, `isnan` / `isinf`, trigonometry, `log`, `radians` / `degrees`, xor; temporal extraction, `truncate`, `strftime`, date and timestamp constructors; window functions (`rank`, `dense_rank`, `percent_rank`, `cume_dist`, `ntile`, `lag`, `lead`, `first`, `last`, `nth`, cumulative aggregates, `over`).
+- Conformance: 551 Ibis cases (was 108) across nine modules, one file per Ibis test module on each side; parquet goldens with an index; multi-table and in-memory fixtures; `schema` pseudo-backend comparing output names and types to Ibis's; a record of whether Python Ibis itself agrees across backends; a gate on goldens with no Rust port; `mise run check-ids`.
+- TPC-H: Ibis's 22 queries ported and passing on DuckDB, Postgres and SQLite; `mise run bench` compares compile and execute time with Python Ibis.
 - `ibis-core`: Ibis datatypes/schema with Arrow mapping; IR (`Rel`/`RelOp`, `Expr` with closed op enums documenting Ibis semantics); `Table`/`Expr` builder API with eager schema validation and type inference; `Backend` trait; Arrow <-> row conversions that conform results to the Ibis output schema.
 - `ibis-sql`: IR -> SQL compiler (merge-or-wrap `Select` lowering) and the `Dialect` trait with per-op override hooks.
 - `ibis-duckdb`: DuckDB backend (bundled, Arrow-native results).
@@ -15,3 +22,19 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Spike `spikes/unparser`: DataFusion 55 Unparser conformance across Postgres 18, DuckDB, SQLite (62 cases; findings in `spikes/unparser/FINDINGS.md`).
 - Design doc (`docs/design.md`): owned IR, backend plugins, Ibis-test-suite parity as the north star.
 - Cargo workspace scaffold, `mise.toml` front door, `install-skills.sh`.
+
+### Changed
+- Integer typing follows Ibis: integer literals take the smallest integer type, `+ - * %` widen by value bounds, `//` is always `int64`.
+- Division follows IEEE 754 on every backend: `x / 0` is infinity and `0 / 0` is NaN (NULL on SQLite, which has no NaN). Postgres raised an error before.
+- A sorted table stays sorted through later `filter` / `select` / `distinct`; a later `order_by` takes precedence and earlier keys break ties.
+- A window with an ordering and no frame covers the whole partition, as in Ibis. SQL's default would make it a running aggregate.
+- Set operations match columns by name, not position.
+- `Dialect::agg` receives the `FILTER` and `OVER` clauses as a tail to place after the aggregate call.
+- Every FROM source is aliased and column references are qualified.
+
+### Fixed
+- Ordering was dropped whenever the compiler nested a query.
+- Windowed aggregates on Postgres and SQLite put `OVER` after the dialect's cast wrapper, which is invalid SQL.
+- Joining a table to a table derived from itself resolved left-side columns to the right side.
+- `INTERSECT ALL` / `EXCEPT ALL` on SQLite (unsupported natively; emulated with `ROW_NUMBER`).
+- `drop_null` with an empty subset and `how = all` kept rows; it drops every row, as Ibis does.

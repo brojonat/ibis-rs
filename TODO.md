@@ -1,32 +1,62 @@
 # TODO
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
+Current: 551 Ibis cases + 22 TPC-H queries. DuckDB 551, Postgres 551, SQLite 530 (21 need NaN).
 
-## Now
+## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
 - [x] Design doc, workspace scaffold, mise front door
 - [x] ibis-core: datatypes, schema, IR, Table/Expr API, type inference, Backend trait
 - [x] ibis-sql: Select-merging compiler + Dialect trait
-- [x] ibis-duckdb backend
-- [x] ibis-sqlite backend (polyfills + results coerced to Ibis schema)
-- [x] Conformance: cases.py + gen_goldens.py + Rust runner; 108 cases from test_string / test_numeric / test_aggregation pass on duckdb + sqlite
-- [ ] Verify ported ids match `pytest --collect-only` exactly (esp. stacked parametrize like `test_reduction_ops[no_cond-count]`)
+- [x] ibis-duckdb, ibis-sqlite, ibis-postgres backends
+- [x] Bound column refs (`t.col`), correlated subqueries, EXISTS, scalar subqueries, joins with general predicates
+- [x] Order-preserving wrap: ordering carried in the IR and hoisted over nested selects
+- [x] Conformance harness: per-module cases, parquet goldens, multi-table and in-memory fixtures
+- [x] Output dtype parity (`schema` pseudo-backend)
+- [x] Case ids verified against `pytest --collect-only` (`mise run check-ids`)
+- [x] Ported: test_generic, test_numeric, test_string, test_aggregation (part), test_temporal (tier 1), test_join, test_window, test_set_ops, test_conditionals
+- [x] TPC-H: Ibis's 22 queries on all three backends, benchmark against Python Ibis (`mise run bench`)
 
-## Next
-- [ ] Parity report: collect all Ibis test ids (`pytest --collect-only` on ibis/backends/tests) vs ported ids
-- [ ] Port the rest of the slice's test functions: test_string (translate, split, join, find_in_set, capitalize...), test_substring slices, test_numeric literals/round/clip, test_aggregation grouped/mode/argmin
-- [ ] Port more modules: test_generic, test_temporal, test_window, test_join, test_set_ops, test_conditionals
-- [ ] Rel-level conformance cases (joins, set ops, windows, order+limit) — current slice is mostly column exprs and reductions
-- [ ] Output dtype parity (compare result Arrow types to Ibis dtypes, not just values)
-- [ ] ibis-postgres backend (throwaway cluster via scripts like spikes/unparser/scripts/pg.sh)
-- [ ] ibis-datafusion backend: IR -> LogicalPlan; arrow 59 vs 60 needs C Data Interface hop
-- [ ] ibis-polars backend: IR -> LazyFrame (proves the IR isn't SQL-shaped)
-- [ ] Facade crate `ibis` with cargo features + `connect(url, &registry)`
-- [ ] Joins with general predicates (side-bound column refs), collision renaming parity
-- [ ] Order-preserving wrap: hoist ORDER BY when wrapping a sorted Select
+## Next: parity
+- [ ] Parity report: all Ibis test ids vs ported ids, per module (check_ids.py already collects them)
+- [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
+- [ ] Rest of test_aggregation: grouped reductions, mode, argmin/argmax, approx, collect
+- [ ] Rest of test_string: translate, split, join, find_in_set, capitalize, slices
+- [ ] Nested types (array, struct, map) and test_array / test_struct / test_map
+- [ ] `distinct(on=..., keep=...)`, `GroupedTable.order_by().mutate()`, negative slices
+- [ ] Timestamp scale in `DataType` (the schema check normalizes `timestamp(6)` away today)
+- [ ] SQLite `least`/`greatest`: scalar MIN/MAX return NULL if any argument is NULL; Ibis skips NULLs
+- [ ] Float literals are read as DECIMAL by DuckDB and NUMERIC by Postgres; emit typed literals
+- [ ] Ordering is lost through a wrap when the sort column is dropped or a LIMIT sits between
+
+## Next: performance
+- [ ] Cache `Rel::deref_map()`; it is recomputed recursively, so join-chain queries take 1-3 ms to compile (TPC-H Q5, Q7, Q8, Q9)
+- [ ] Benchmark at sf=1; add primary keys and indexes to the Postgres TPC-H tables (Q20 takes 24 s without)
+
+## Next: release automation
+Plan: lockstep versions (one `workspace.package.version`), hand-written CHANGELOG, tag-triggered publish.
+`vX.Y.Z` tag -> CI gate -> `cargo publish --workspace` -> GitHub release with that version's CHANGELOG section.
+Steps are in dependency order.
+- [ ] Decide when the repo goes public (publishing to crates.io makes the source public either way)
+- [ ] Check crates.io name availability: ibis-core, ibis-sql, ibis-duckdb, ibis-sqlite, ibis-postgres, and `ibis` for the facade (`cargo search ibis`). Not checked yet; a taken name means renaming every crate
+- [ ] Add LICENSE (Apache-2.0 is declared in Cargo.toml; no license file exists)
+- [ ] Manifests: `repository.workspace = true`, `readme`, `keywords`, `categories`, `rust-version` in each crate; `publish = false` on ibis-conformance
+- [ ] Internal deps need versions: `ibis-core = { path = "crates/ibis-core", version = "0.1.0" }` etc. `cargo package --workspace` fails on ibis-sql without it
+- [ ] Features: make `bundled` an opt-out default feature of ibis-duckdb and ibis-sqlite, so users can link a system library; check the docs.rs build of ibis-duckdb fits its time limit
+- [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
+- [ ] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run test`. Needs Postgres binaries on PATH for scripts/pg.sh, mise + uv, a cache for `ci/` data, and `Swatinem/rust-cache` (cold DuckDB build is 10+ min). Private-repo Actions minutes are limited
+- [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
+- [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body
+- [ ] First publish of each crate by hand (crates.io requires it), then configure trusted publishing per crate (repo, workflow file `release.yml`, environment `release`) so CI needs no stored token
+- [ ] After 0.1.0 is on crates.io: `cargo-semver-checks` job in CI
+- [ ] When there is a user-facing binary: `dist` (cargo-dist) for cross-platform binaries and installers on the same tags
+- [ ] Alternative to the tag flow if release PRs are preferred: release-plz (needs a PAT or GitHub App, and its generated changelog turned off)
 
 ## Later
-- [ ] More SQL backends: BigQuery, Snowflake, Trino, ClickHouse (dialect + driver each)
+- [ ] Facade crate `ibis` with cargo features + `connect(url, &registry)`
+- [ ] ibis-datafusion backend: IR -> LogicalPlan; arrow 59 vs 60 needs C Data Interface hop
+- [ ] ibis-polars backend: IR -> LazyFrame (proves the IR isn't SQL-shaped)
+- [ ] More SQL backends: BigQuery, Snowflake, Trino, ClickHouse, MySQL (dialect + driver each)
 - [ ] Upstream DataFusion unparser bug reports from spikes/unparser/FINDINGS.md
 - [ ] Selectors (s.numeric(), s.matches(...)), deferred-style sugar, typed derive layer
 - [ ] UDF escape hatch
