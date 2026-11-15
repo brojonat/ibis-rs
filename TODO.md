@@ -1,6 +1,7 @@
 # TODO
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
+The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
 Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, SQLite 530 (21 need NaN).
 
 ## Done
@@ -30,6 +31,16 @@ Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551
 - [ ] SQLite `least`/`greatest`: scalar MIN/MAX return NULL if any argument is NULL; Ibis skips NULLs
 - [ ] Float literals are read as DECIMAL by DuckDB and NUMERIC by Postgres; emit typed literals
 - [ ] Ordering is lost through a wrap when the sort column is dropped or a LIMIT sits between
+
+## Next: development flow
+- [ ] Backends in containers (docker-compose) instead of binaries on the host. Today Postgres needs `initdb`/`pg_ctl`/`psql` installed (scripts/pg.sh); that does not scale to Spark, Impala, ClickHouse, Trino, MySQL and the rest. One compose service per backend, `mise run up <backend>` / `down`, connection URLs from the environment, and the conformance runner skipping backends that are not up. Ibis's own repo has a `compose.yaml` covering its backends: start from it
+- [ ] Cloud-only backends (BigQuery, Snowflake): credentials from environment variables, tests skipped without them
+- [ ] CI runs the same compose services
+
+## Next: parity site
+- [ ] A static HTML site showing coverage of the Ibis test suite. One row per Ibis test id (check_ids.py already collects them): the Ibis test with a link to its source, our port (the Python case and the Rust case), and pass / expected-failure / unsupported per backend from `logs/conformance.jsonl`. 1:1 parity is not the goal: tests that cannot apply (Python-only APIs, pandas output formats) are marked as such rather than counted as missing
+- [ ] Per-backend operation matrix on the same site, shaped like Ibis's support matrix, generated from the cases and `notimpl` marks
+- [ ] Publish with GitHub Pages from CI
 
 ## Next: Polars
 - [ ] Arrow in and out through the C Data Interface. Today `create_table` and results go through rows of `Value`, which is slow and memory-hungry on large tables

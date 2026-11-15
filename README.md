@@ -8,8 +8,9 @@ plugins: a core plus one crate per engine.
 
 **North star: Ibis parity, measured by Ibis's own backend test suite.** Each
 conformance case is a ported Ibis test (same pytest id), and its expected result
-comes from running the real Python Ibis expression. See
-[docs/design.md](docs/design.md).
+comes from running the real Python Ibis expression. The shape to grow into is
+Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
+See [docs/design.md](docs/design.md).
 
 Status: pre-alpha. Four backends, 551 ported Ibis test cases and Ibis's 22
 TPC-H queries:
