@@ -308,3 +308,12 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
   case-insensitive. The test server runs with `utf8mb4_bin` (compose.yaml), the counterpart
   of Postgres's `--no-locale`, and the backend sets the connection collation to match.
 
+## CI: a partly restored cache breaks the DuckDB build
+- **What:** The first push that changed `Cargo.lock` failed in `mise run lint` after 90
+  seconds: `libduckdb-sys` build script, "unpacking bundled DuckDB sources: Directory not empty".
+- **Why surprising:** Nothing in the change touched DuckDB. `Swatinem/rust-cache` restored the
+  previous lockfile's cache ("full match: false"), which keeps `target/duckdb-sources/<hash>/`
+  in pruned form; the changed dependency graph reran the build script, which will not unpack
+  into a directory that exists.
+- **Avoid:** The workflow removes `target/duckdb-sources` after restoring the cache.
+

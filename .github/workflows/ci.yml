@@ -29,6 +29,10 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      # A cache restored for a different Cargo.lock keeps a pruned copy of the
+      # unpacked DuckDB sources, and DuckDB's build script fails unpacking over
+      # it ("Directory not empty").
+      - run: rm -rf target/duckdb-sources
       - uses: jdx/mise-action@v5
       - run: mise run lint
       # every backend in compose.yaml, so none is skipped
