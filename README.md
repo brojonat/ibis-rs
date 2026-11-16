@@ -30,8 +30,6 @@ TPC-H queries:
 | ClickHouse | 550 (1 expected failure, as in Ibis: `x IN (NULL)` is false, not NULL) | 22 |
 | Trino | 551 | 22 |
 
-MySQL and Trino are in this repository but not in a crates.io release yet.
-
 Output column names and types match Ibis's on all 551. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal` (first tier), `test_join`, `test_window`, `test_set_ops`,
@@ -66,9 +64,8 @@ let batches = con.execute(&expr)?;            // Vec<arrow RecordBatch>
 ```
 
 `ibis-rs` is the front door: it re-exports the API and puts each backend behind
-a cargo feature. (In this repository `duckdb` also has a `duckdb-linked`
-variant, which links a prebuilt DuckDB instead of compiling it; not in a
-crates.io release yet.) Polars is the default: it runs in process, needs no server
+a cargo feature. (`duckdb` also has a `duckdb-linked` variant, which links a
+prebuilt DuckDB instead of compiling it.) Polars is the default: it runs in process, needs no server
 and no C++ toolchain, and holds its tables in memory (`create_table` from Arrow
 batches, or `ibis_rs::polars::Polars::register` for a Polars `DataFrame`).
 `connect` returns a `Box<dyn Backend>`; the concrete types

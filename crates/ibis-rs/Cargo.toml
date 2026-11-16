@@ -2,8 +2,8 @@
 name = "ibis-rs"
 description = "Portable lazy dataframe API for Rust, modeled on Python Ibis: write a query once, run it on Polars, DuckDB, SQLite, Postgres, MySQL, ClickHouse or Trino"
 # ahead of the workspace version: 0.1.1 added the polars feature and made it
-# the default, 0.1.2 the clickhouse feature
-version = "0.1.2"
+# the default, 0.1.2 the clickhouse feature, 0.1.3 mysql, trino and duckdb-linked
+version = "0.1.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

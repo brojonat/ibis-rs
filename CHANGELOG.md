@@ -4,9 +4,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [ibis-sql 0.1.2, ibis-duckdb 0.1.1, ibis-mysql 0.1.0, ibis-trino 0.1.0, ibis-rs 0.1.3] - 2026-11-16
+
 ### Added
-- `ibis-mysql`: MySQL backend (`mysql` crate, text protocol). MySQL has no boolean type, NaN or infinity, `FILTER (WHERE ...)`, `NULLS FIRST`/`LAST` or `FULL OUTER JOIN`, and its `CAST` has its own type names; each is rewritten. Passes 531 of the 551 Ibis cases (the other 20 need NaN or infinity) and the 22 TPC-H queries. Not on crates.io yet.
-- `ibis-trino`: Trino backend over the HTTP protocol. Floats are written with an exponent (a bare `1.5` is a decimal there), and `create_table` sends rows as one JSON array per column. Passes all 551 Ibis cases and the 22 TPC-H queries. Not on crates.io yet.
+- `ibis-mysql`: MySQL backend (`mysql` crate, text protocol). MySQL has no boolean type, NaN or infinity, `FILTER (WHERE ...)`, `NULLS FIRST`/`LAST` or `FULL OUTER JOIN`, and its `CAST` has its own type names; each is rewritten. Passes 531 of the 551 Ibis cases (the other 20 need NaN or infinity) and the 22 TPC-H queries.
+- `ibis-trino`: Trino backend over the HTTP protocol. Floats are written with an exponent (a bare `1.5` is a decimal there), and `create_table` sends rows as one JSON array per column. Passes all 551 Ibis cases and the 22 TPC-H queries.
 - `ibis-rs`: `mysql` and `trino` features; `mysql://`, `trino://` and `trinos://` URLs in `connect`.
 - `ibis-sql`: `Dialect::cast_type_name` (type names inside `CAST`), `Dialect::sort_key` (how an `ORDER BY` key and its NULL placement are spelled), `Dialect::supports_agg_filter` (without it the condition moves into the argument as a `CASE`), `Dialect::supports_full_outer_join` (without it the join becomes a left join plus the unmatched right rows) and `strftime_to_date_format`.
 - `compose.yaml`: MySQL 8.4 and Trino 484 services.

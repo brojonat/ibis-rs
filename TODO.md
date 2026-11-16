@@ -45,7 +45,7 @@ Coverage of the Ibis suite: 561 of 1,899 applicable test ids (30%); per module a
 
 ## Next: backends
 One compose service + one crate each; start in `EXPERIMENTAL` (README: "Adding things").
-- [ ] Publish `ibis-mysql` and `ibis-trino` (needs ibis-sql 0.1.2 for the new `Dialect` hooks, then an ibis-rs release with the `mysql` and `trino` features)
+- [x] Published 2026-11-16: ibis-sql 0.1.2, ibis-duckdb 0.1.1, ibis-mysql 0.1.0, ibis-trino 0.1.0, ibis-rs 0.1.3 (the `mysql`, `trino` and `duckdb-linked` features)
 - [ ] MySQL: TLS (the `mysql` crate is built without it), `caching_sha2_password` over plain TCP is untested (the test server has an empty root password)
 - [ ] Trino: a load path that is not SQL text (`create_table` sends rows inside INSERT statements); the test server's memory catalog loses its tables on restart
 - [ ] Spark (Spark Connect container) and Impala (needs a metastore and storage: start from Ibis's `compose.yaml`)
@@ -80,12 +80,12 @@ Steps are in dependency order.
 - [x] Manifests: `repository`, `readme`, `keywords`, `categories` in each crate
 - [ ] `rust-version` (MSRV) in each crate; needs older toolchains to verify
 - [x] Internal deps carry versions; `cargo publish --workspace --dry-run` passes
-- [x] ibis-duckdb: `bundled` is an opt-out default feature; ibis-rs has `duckdb-linked` (unpublished: needs ibis-duckdb 0.1.1 and an ibis-rs release)
+- [x] ibis-duckdb: `bundled` is an opt-out default feature; ibis-rs has `duckdb-linked`
 - [ ] The same for ibis-sqlite; add `duckdb-linked` to the docs.rs features if docs.rs builds can download the library
 - [ ] CI no longer builds bundled DuckDB (same DuckDB commit as the prebuilt library, but the static build is only exercised locally): a weekly job with the default flags
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
 - [x] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run up`, `mise run test`, `mise run site`
-- [ ] Versions are uneven (ibis-rs 0.1.2, ibis-sql 0.1.1, the rest 0.1.0; ibis-mysql and ibis-trino unpublished): realign at the next release
+- [ ] Versions are uneven (ibis-rs 0.1.3, ibis-sql 0.1.2, ibis-duckdb 0.1.1, the rest 0.1.0): realign at the next minor release
 - [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
 - [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body
 - [x] First publish: 0.1.0 of the five library crates is on crates.io (2026-11-14), tagged `v0.1.0`

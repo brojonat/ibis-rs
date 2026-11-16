@@ -1,7 +1,8 @@
 [package]
 name = "ibis-duckdb"
 description = "DuckDB backend plugin for ibis-rs"
-version.workspace = true
+# ahead of the workspace version: 0.1.1 made `bundled` a feature
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
