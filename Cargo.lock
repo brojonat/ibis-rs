@@ -1543,7 +1543,7 @@ dependencies = [
 
 [[package]]
 name = "ibis-rs"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "arrow-array",
  "ibis-clickhouse",
@@ -1571,7 +1571,7 @@ dependencies = [
 
 [[package]]
 name = "ibis-sql"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ibis-core",
 ]

@@ -37,7 +37,7 @@ ureq = "3.5"
 mysql = { version = "28", default-features = false, features = ["minimal-rust"] }
 
 ibis-core = { path = "crates/ibis-core", version = "0.1.0" }
-ibis-sql = { path = "crates/ibis-sql", version = "0.1.2" }
+ibis-sql = { path = "crates/ibis-sql", version = "0.1.3" }
 ibis-duckdb = { path = "crates/ibis-duckdb", version = "0.1.1", default-features = false }
 ibis-sqlite = { path = "crates/ibis-sqlite", version = "0.1.0" }
 ibis-postgres = { path = "crates/ibis-postgres", version = "0.1.0" }

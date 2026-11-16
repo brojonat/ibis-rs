@@ -49,7 +49,7 @@ One compose service + one crate each; start in `EXPERIMENTAL` (README: "Adding t
 - [ ] MySQL: TLS (the `mysql` crate is built without it), `caching_sha2_password` over plain TCP is untested (the test server has an empty root password)
 - [ ] Trino: a load path that is not SQL text (`create_table` sends rows inside INSERT statements); the test server's memory catalog loses its tables on restart
 - [x] ibis-spark (Spark Thrift server) 551/551, 22/22; ibis-impala 548/551 (3 xfail), 22/22; both over `ibis-hiveserver2`
-- [ ] Publish `ibis-hiveserver2`, `ibis-spark`, `ibis-impala` (needs ibis-sql 0.1.3 for `strftime_to_java_format` and `Dialect::offset_needs_order_by`, then an ibis-rs release with the `spark` and `impala` features)
+- [x] Published 2026-11-16: ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4 (the `spark` and `impala` features)
 - [ ] ibis-hiveserver2: TLS, Kerberos, and the HTTP transport (today: a plain socket, with or without SASL PLAIN)
 - [ ] Spark: Spark Connect as a second way in (Databricks and Spark 4 clusters often expose that and no Thrift server)
 - [ ] Impala: `IN (subquery)` in a select list (2 xfail; a left join against the distinct subquery would do it), `NTH_VALUE` (1 xfail), `LENGTH` and friends count bytes unless the session sets `utf8_mode`
@@ -91,7 +91,7 @@ Steps are in dependency order.
 - [ ] CI no longer builds bundled DuckDB (same DuckDB commit as the prebuilt library, but the static build is only exercised locally): a weekly job with the default flags
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
 - [x] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run up`, `mise run test`, `mise run site`
-- [ ] Versions are uneven (ibis-rs 0.1.3, ibis-sql 0.1.2, ibis-duckdb 0.1.1, the rest 0.1.0): realign at the next minor release
+- [ ] Versions are uneven (ibis-rs 0.1.4, ibis-sql 0.1.3, ibis-duckdb 0.1.1, the rest 0.1.0): realign at the next minor release
 - [ ] CI memory: nine backends' containers take about 10 GB of the runner's 16; if it starts failing, split the server backends over two jobs
 - [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
 - [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body

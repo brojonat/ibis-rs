@@ -2,7 +2,7 @@
 name = "ibis-sql"
 description = "IR -> SQL compiler for ibis-rs; the Dialect trait is the SQL backend plugin seam"
 # ahead of the workspace version: 0.1.1 added Dialect::analytic
-version = "0.1.2"
+version = "0.1.3"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

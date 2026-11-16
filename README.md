@@ -32,8 +32,6 @@ TPC-H queries:
 | Spark SQL | 551 | 22 |
 | Impala | 548 (3 expected failures, as in Ibis: no `NTH_VALUE`, and `IN (subquery)` only in `WHERE`) | 22 |
 
-Spark and Impala are in this repository but not in a crates.io release yet.
-
 Output column names and types match Ibis's on all 551. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal` (first tier), `test_join`, `test_window`, `test_set_ops`,
@@ -44,7 +42,7 @@ Output column names and types match Ibis's on all 551. Ported so far:
 ```toml
 [dependencies]
 ibis-rs = "0.1"                                                   # Polars, in process
-ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }  # more engines: duckdb, sqlite, postgres, mysql, clickhouse, trino (spark, impala: not released yet)
+ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }  # more engines: duckdb, sqlite, postgres, mysql, clickhouse, trino, spark, impala
 ```
 
 ```rust

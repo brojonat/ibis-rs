@@ -4,10 +4,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
+
 ### Added
 - `ibis-hiveserver2`: a HiveServer2 client with no dependencies. The Thrift binary protocol and the part of `TCLIService` a query needs are written by hand; it speaks to a plain socket with or without the SASL `PLAIN` handshake (no TLS, Kerberos or HTTP transport). `examples/hs2.rs` runs statements from the command line.
-- `ibis-spark`: Spark SQL backend, over the Spark Thrift server. Floats are written with an exponent (a bare `1.5` is a decimal), division by zero follows IEEE 754 whatever the ANSI setting, zone-less timestamps are `TIMESTAMP_NTZ`, and POSIX classes in a literal regular expression (`[[:digit:]]`) are rewritten for Java's regex engine. Passes all 551 Ibis cases and the 22 TPC-H queries. Not on crates.io yet.
-- `ibis-impala`: Impala backend. Impala has no `FILTER (WHERE ...)`, `INTERSECT ALL`, `EXCEPT ALL` or `NTH_VALUE`, refuses `OFFSET` without `ORDER BY`, and its `NTILE` sizes buckets its own way; all but `NTH_VALUE` are rewritten. `create_table` sends the rows as one string per statement, split and cast on the server. Passes 548 of the 551 Ibis cases (the other 3 are marked for Impala in Ibis itself) and the 22 TPC-H queries. Not on crates.io yet.
+- `ibis-spark`: Spark SQL backend, over the Spark Thrift server. Floats are written with an exponent (a bare `1.5` is a decimal), division by zero follows IEEE 754 whatever the ANSI setting, zone-less timestamps are `TIMESTAMP_NTZ`, and POSIX classes in a literal regular expression (`[[:digit:]]`) are rewritten for Java's regex engine. Passes all 551 Ibis cases and the 22 TPC-H queries.
+- `ibis-impala`: Impala backend. Impala has no `FILTER (WHERE ...)`, `INTERSECT ALL`, `EXCEPT ALL` or `NTH_VALUE`, refuses `OFFSET` without `ORDER BY`, and its `NTILE` sizes buckets its own way; all but `NTH_VALUE` are rewritten. `create_table` sends the rows as one string per statement, split and cast on the server. Passes 548 of the 551 Ibis cases (the other 3 are marked for Impala in Ibis itself) and the 22 TPC-H queries.
 - `ibis-rs`: `spark` and `impala` features; `spark://` and `impala://` URLs in `connect`.
 - `ibis-sql`: `Dialect::offset_needs_order_by` (a query that skips rows without ordering them is ordered by its first column) and `strftime_to_java_format`.
 - `compose.yaml`: Spark 4.3.0 (Thrift server) and Impala 4.5.3 (metastore, statestore, catalog, daemon) services.
