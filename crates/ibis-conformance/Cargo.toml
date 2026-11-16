@@ -7,6 +7,11 @@ license = "Apache-2.0" # adapted from Ibis tests; see NOTICE
 publish = false
 default-run = "ibis-conformance"
 
+[features]
+default = ["bundled-duckdb"]
+# DuckDB compiled from source. CI builds without it and links the prebuilt library.
+bundled-duckdb = ["ibis-duckdb/bundled"]
+
 [dependencies]
 ibis-core.workspace = true
 ibis-duckdb.workspace = true

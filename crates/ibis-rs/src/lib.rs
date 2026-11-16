@@ -59,7 +59,7 @@ pub use arrow_array;
 
 #[cfg(feature = "clickhouse")]
 pub use ibis_clickhouse as clickhouse;
-#[cfg(feature = "duckdb")]
+#[cfg(feature = "duckdb-linked")]
 pub use ibis_duckdb as duckdb;
 #[cfg(feature = "mysql")]
 pub use ibis_mysql as mysql;
@@ -77,7 +77,7 @@ pub use ibis_trino as trino;
 /// | URL | backend | feature |
 /// |---|---|---|
 /// | `polars://` (in memory) | Polars | `polars` (default) |
-/// | `duckdb://` (in memory), `duckdb://path/to/file.db` | DuckDB | `duckdb` |
+/// | `duckdb://` (in memory), `duckdb://path/to/file.db` | DuckDB | `duckdb` (built from source) or `duckdb-linked` (prebuilt library) |
 /// | `sqlite://` (in memory), `sqlite://path/to/file.db` | SQLite | `sqlite` |
 /// | `postgres://user:pass@host:5432/db`, `postgresql://...` | Postgres | `postgres` |
 /// | `mysql://user:pass@host:3306/db` | MySQL | `mysql` |
@@ -134,12 +134,12 @@ fn polars_at(_: &str) -> Result<Box<dyn Backend>> {
     disabled("polars")
 }
 
-#[cfg(feature = "duckdb")]
+#[cfg(feature = "duckdb-linked")]
 fn duckdb_at(path: &str) -> Result<Box<dyn Backend>> {
     let con = if in_memory(path) { duckdb::DuckDb::open_in_memory()? } else { duckdb::DuckDb::open(path)? };
     Ok(Box::new(con))
 }
-#[cfg(not(feature = "duckdb"))]
+#[cfg(not(feature = "duckdb-linked"))]
 fn duckdb_at(_: &str) -> Result<Box<dyn Backend>> {
     disabled("duckdb")
 }
@@ -211,7 +211,7 @@ mod tests {
         assert!(err("oracle://localhost/db").contains("unknown backend `oracle`"));
     }
 
-    #[cfg(not(feature = "duckdb"))]
+    #[cfg(not(feature = "duckdb-linked"))]
     #[test]
     fn names_the_missing_feature() {
         assert!(err("duckdb://").contains("without the `duckdb` feature"));
@@ -263,7 +263,7 @@ mod tests {
         assert!(err("polars://some/path").contains("takes no path"));
     }
 
-    #[cfg(feature = "duckdb")]
+    #[cfg(feature = "duckdb-linked")]
     #[test]
     fn duckdb_in_memory() {
         assert_eq!(totals("duckdb://").unwrap(), expected());

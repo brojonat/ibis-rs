@@ -10,9 +10,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ibis-rs`: `mysql` and `trino` features; `mysql://`, `trino://` and `trinos://` URLs in `connect`.
 - `ibis-sql`: `Dialect::cast_type_name` (type names inside `CAST`), `Dialect::sort_key` (how an `ORDER BY` key and its NULL placement are spelled), `Dialect::supports_agg_filter` (without it the condition moves into the argument as a `CASE`), `Dialect::supports_full_outer_join` (without it the join becomes a left join plus the unmatched right rows) and `strftime_to_date_format`.
 - `compose.yaml`: MySQL 8.4 and Trino 484 services.
+- `ibis-duckdb`: `bundled` is now a feature, on by default. Without it the crate links a prebuilt DuckDB (downloaded by the `duckdb` crate, or `DUCKDB_LIB_DIR`) instead of compiling it. `ibis-rs`: `duckdb-linked` feature for the same; `duckdb` still compiles from source.
 
 ### Changed
 - `ibis-sql`: a literal `nth` index compiles to a literal (`NTH_VALUE(x, 4)`, not `NTH_VALUE(x, 3 + 1)`).
+- CI links the prebuilt DuckDB and caches rustc outputs with sccache; the mise cargo tasks take their flags from `IBIS_CARGO_FLAGS` (default `--workspace --all-features`).
 - Dev builds keep line tables only (`[profile.dev] debug = "line-tables-only"`, none for dependencies): `target/` had grown past 180 GB.
 
 ## [ibis-sql 0.1.1, ibis-clickhouse 0.1.0, ibis-rs 0.1.2] - 2026-11-15

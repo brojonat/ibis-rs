@@ -10,6 +10,10 @@ IBIS_TESTING_POSTGRES_URL = "host=127.0.0.1 port=54330 user=postgres dbname=ibis
 IBIS_TESTING_CLICKHOUSE_URL = "clickhouse://ibis:ibis@127.0.0.1:18123/ibis_testing"
 IBIS_TESTING_MYSQL_URL = "mysql://root@127.0.0.1:13306/ibis_testing"
 IBIS_TESTING_TRINO_URL = "trino://ibis@127.0.0.1:18080/memory/default"
+# What the cargo tasks build: every crate with every feature, which compiles
+# DuckDB from source (ibis-duckdb's `bundled`). CI sets IBIS_CARGO_FLAGS to a
+# feature list without it and links the prebuilt DuckDB instead.
+CARGO_FLAGS = "{{ get_env(name='IBIS_CARGO_FLAGS', default='--workspace --all-features') }}"
 
 [tasks.up]
 description = "Start backend containers and wait until they are healthy: mise run up [service...] (default: all in compose.yaml)"
@@ -39,14 +43,14 @@ depends = ["setup"]
 # down. Doctests are compiled when they run, and the linker needs more than the
 # cap allows, so they go last, uncapped.
 run = [
-  "cargo test --workspace --all-features --no-run",
-  "ulimit -v 12000000; cargo test --workspace --all-features --lib --bins --tests --examples",
-  "cargo test --workspace --all-features --doc",
+  "cargo test $CARGO_FLAGS --no-run",
+  "ulimit -v 12000000; cargo test $CARGO_FLAGS --lib --bins --tests --examples",
+  "cargo test $CARGO_FLAGS --doc",
 ]
 
 [tasks.lint]
 description = "rustfmt check + clippy"
-run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets --all-features -- -D warnings"]
+run = ["cargo fmt --all --check", "cargo clippy $CARGO_FLAGS --all-targets -- -D warnings"]
 
 [tasks.conformance]
 description = "Run ported Ibis cases on every backend: JSONL -> logs/conformance.jsonl, matrix -> stderr"
@@ -54,7 +58,7 @@ depends = ["setup"]
 # built with the same flags as `test`, so nothing is compiled twice
 shell = "bash -c" # process substitution below; sh is dash on Debian and Ubuntu
 run = [
-  "cargo build --quiet --workspace --all-features --bin ibis-conformance",
+  "cargo build --quiet $CARGO_FLAGS --bin ibis-conformance",
   'mkdir -p logs; f() { target/debug/ibis-conformance "$@" > logs/conformance.jsonl 2> >(tee logs/conformance.txt >&2); }; f',
 ]
 

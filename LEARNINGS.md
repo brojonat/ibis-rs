@@ -315,5 +315,19 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
   previous lockfile's cache ("full match: false"), which keeps `target/duckdb-sources/<hash>/`
   in pruned form; the changed dependency graph reran the build script, which will not unpack
   into a directory that exists.
-- **Avoid:** The workflow removes `target/duckdb-sources` after restoring the cache.
+- **Avoid:** CI no longer compiles DuckDB (it links the prebuilt library). If it ever does
+  again: `rm -rf target/duckdb-sources` after restoring the cache.
+
+## The `duckdb` crate downloads a prebuilt library when `bundled` is off
+- **What:** A cold CI run took 30 minutes, 13 of them compiling DuckDB's C++. Without the
+  `bundled` feature, `libduckdb-sys` downloads the pinned `libduckdb.so` into
+  `target/duckdb-download/` and links it: lint went from minutes to seconds.
+- **Why it took plumbing:** `--all-features` turns on every feature of every workspace
+  crate, so no feature can be "off in CI" while tasks pass it; and a dependency edge with
+  default features turns `bundled` back on. Hence `default-features = false` on the
+  workspace's `ibis-duckdb` entry, a `bundled-duckdb` default feature on the conformance
+  crate, and `IBIS_CARGO_FLAGS` for the mise tasks.
+- **Avoid:** `cargo test` and `cargo run` put the library on the loader path; a binary run
+  directly (`target/debug/ibis-conformance`) needs `LD_LIBRARY_PATH`. `cargo run` does not
+  take `--workspace`, so the task cannot simply go through it.
 

@@ -66,7 +66,9 @@ let batches = con.execute(&expr)?;            // Vec<arrow RecordBatch>
 ```
 
 `ibis-rs` is the front door: it re-exports the API and puts each backend behind
-a cargo feature. Polars is the default: it runs in process, needs no server
+a cargo feature. (In this repository `duckdb` also has a `duckdb-linked`
+variant, which links a prebuilt DuckDB instead of compiling it; not in a
+crates.io release yet.) Polars is the default: it runs in process, needs no server
 and no C++ toolchain, and holds its tables in memory (`create_table` from Arrow
 batches, or `ibis_rs::polars::Polars::register` for a Polars `DataFrame`).
 `connect` returns a `Box<dyn Backend>`; the concrete types
@@ -119,7 +121,7 @@ A backend whose container is not running is skipped with a note on stderr, so
 | `crates/ibis-conformance` | Rust side of the suite: `src/cases/<module>.rs`, `src/tpch.rs`, the runner, `tpch-bench` |
 | `conformance/` | Python side: `cases/test_<module>.py` (the Ibis expressions), `gen_goldens.py`, `check_ids.py`, `memtables.json`, `golden/` (parquet + `index.json`), `site.py` and `not_applicable.json` (the parity site) |
 | `compose.yaml`, `docker/` | one container per server backend |
-| `.github/workflows/ci.yml` | lint, test on every backend, build the parity site and publish it to GitHub Pages from `main` |
+| `.github/workflows/ci.yml` | lint, test on every backend (DuckDB linked prebuilt), build the parity site and publish it to GitHub Pages from `main` |
 | `bench/` | TPC-H data generation, the Python Ibis baseline, the report script |
 | `scripts/` | `download-data.sh` (Ibis testing data) |
 | `spikes/unparser` | spike: DataFusion's Unparser as a multi-backend compiler ([findings](spikes/unparser/FINDINGS.md)) |
@@ -143,6 +145,12 @@ A backend whose container is not running is skipped with a note on stderr, so
 | `mise run dev` | rerun conformance on every file change, tee to `logs/dev.log` |
 
 The first build compiles DuckDB from source (10+ minutes) and Polars (about 5).
+To skip the DuckDB compile, build without `ibis-duckdb`'s `bundled` feature: the
+`duckdb` crate then downloads a prebuilt `libduckdb.so` and links that. CI does
+this through `IBIS_CARGO_FLAGS` (see `.github/workflows/ci.yml`), which replaces
+the `--workspace --all-features` the mise tasks otherwise pass to cargo; a
+binary started outside cargo then needs the library's directory
+(`target/duckdb-download/<target>/<version>`) in `LD_LIBRARY_PATH`.
 Dev builds keep line tables only, not full debug info: with it, `target/` grew
 past 180 GB. It is about 9 GB now; `cargo clean` when it creeps up.
 On a machine short of memory, `CARGO_BUILD_JOBS=4`. Build with `--workspace`:

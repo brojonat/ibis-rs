@@ -15,7 +15,11 @@ categories.workspace = true
 [features]
 default = ["polars"]
 polars = ["dep:ibis-polars"]
-duckdb = ["dep:ibis-duckdb"]
+# DuckDB compiled from source and linked statically: nothing to install, slow first build.
+duckdb = ["duckdb-linked", "ibis-duckdb/bundled"]
+# DuckDB linked from a prebuilt shared library (downloaded at build time, or
+# DUCKDB_LIB_DIR): builds in seconds, and libduckdb must be found at run time.
+duckdb-linked = ["dep:ibis-duckdb"]
 sqlite = ["dep:ibis-sqlite"]
 postgres = ["dep:ibis-postgres"]
 clickhouse = ["dep:ibis-clickhouse"]

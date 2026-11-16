@@ -80,7 +80,9 @@ Steps are in dependency order.
 - [x] Manifests: `repository`, `readme`, `keywords`, `categories` in each crate
 - [ ] `rust-version` (MSRV) in each crate; needs older toolchains to verify
 - [x] Internal deps carry versions; `cargo publish --workspace --dry-run` passes
-- [ ] Features: make `bundled` an opt-out default feature of ibis-duckdb and ibis-sqlite, so users can link a system library; check the docs.rs build of ibis-duckdb fits its time limit
+- [x] ibis-duckdb: `bundled` is an opt-out default feature; ibis-rs has `duckdb-linked` (unpublished: needs ibis-duckdb 0.1.1 and an ibis-rs release)
+- [ ] The same for ibis-sqlite; add `duckdb-linked` to the docs.rs features if docs.rs builds can download the library
+- [ ] CI no longer builds bundled DuckDB (same DuckDB commit as the prebuilt library, but the static build is only exercised locally): a weekly job with the default flags
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
 - [x] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run up`, `mise run test`, `mise run site`
 - [ ] Versions are uneven (ibis-rs 0.1.2, ibis-sql 0.1.1, the rest 0.1.0; ibis-mysql and ibis-trino unpublished): realign at the next release

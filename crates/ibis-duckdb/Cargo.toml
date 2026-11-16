@@ -9,6 +9,15 @@ readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = ["bundled"]
+# Compile DuckDB from source and link it statically: a self-contained binary,
+# and ten minutes or more of C++ on the first build. Without it, the build
+# links a prebuilt libduckdb: the one the `duckdb` crate downloads, or the one
+# in DUCKDB_LIB_DIR. That is a shared library, which must be found at run time
+# (`cargo run` and `cargo test` see to it; elsewhere, LD_LIBRARY_PATH).
+bundled = ["duckdb/bundled"]
+
 [dependencies]
 ibis-core.workspace = true
 ibis-sql.workspace = true
