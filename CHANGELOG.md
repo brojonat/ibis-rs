@@ -5,7 +5,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ## [Unreleased]
 
 ### Changed
-- Conformance: backends run side by side, one thread each, for loading fixtures, the Ibis cases and TPC-H. Outcomes are reported in the same order as before.
+- Conformance: backends run side by side, one thread each, for loading fixtures, the Ibis cases and TPC-H. Outcomes are reported in the same order as before. The runner does the Ibis cases and TPC-H at the same time.
 - CI runs the suite once instead of twice: `mise run unit` (new: unit tests and doctests, no containers) and then `mise run site`, whose conformance run fails the job on any failing case. Images are pulled while the code compiles.
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16

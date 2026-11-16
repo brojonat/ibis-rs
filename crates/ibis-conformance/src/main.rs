@@ -56,9 +56,15 @@ fn go(names: &[String], strict: bool, filter: &str) -> ibis_core::Result<bool> {
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let names = available(&names, strict)?;
     let data = FixtureData::read(&paths)?;
-    let ts = targets(&data, &names)?;
-    let mut outcomes = run(&paths, &data, &ts, filter)?;
-    outcomes.extend(run_tpch(&paths, &names, filter)?);
+    // The Ibis cases and TPC-H use different tables (and different databases
+    // on a server), so the two go on at once.
+    let (cases, tpch) = std::thread::scope(|scope| {
+        let tpch = scope.spawn(|| run_tpch(&paths, &names, filter));
+        let cases = targets(&data, &names).and_then(|ts| run(&paths, &data, &ts, filter));
+        (cases, tpch.join().unwrap_or_else(|panic| std::panic::resume_unwind(panic)))
+    });
+    let mut outcomes = cases?;
+    outcomes.extend(tpch?);
 
     let mut stdout = std::io::stdout().lock();
     for o in &outcomes {
