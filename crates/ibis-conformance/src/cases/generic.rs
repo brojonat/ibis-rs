@@ -294,7 +294,9 @@ pub fn register(v: &mut Vec<Case>) {
             let (u1, a) = (fx.mem("ids_123")?, fx.mem("ids_12")?);
             u1.mutate([u1.col("id").isin_col(a.col("id")).name("in_a")])?.order_by(["id"])
         })
-        .ordered(),
+        .ordered()
+        // Impala takes IN (subquery) in WHERE only; marked notyet in Ibis too
+        .notimpl(&["impala"]),
     );
     v.push(
         tables("test_isin_uncorrelated", |fx| {
@@ -306,7 +308,8 @@ pub fn register(v: &mut Vec<Case>) {
                 ])?
                 .order_by(["playerID", "yearID"])
         })
-        .ordered(),
+        .ordered()
+        .notimpl(&["impala"]),
     );
     v.push(
         tables("test_isin_uncorrelated_filter", |fx| {

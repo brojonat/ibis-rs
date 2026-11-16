@@ -1,0 +1,16 @@
+[package]
+name = "ibis-spark"
+description = "Spark SQL backend plugin for ibis-rs, over the Spark Thrift server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ibis-core.workspace = true
+ibis-sql.workspace = true
+ibis-hiveserver2.workspace = true
+arrow-array.workspace = true

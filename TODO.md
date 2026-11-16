@@ -2,7 +2,7 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, Trino 551, ClickHouse 550 (1 marked notyet in Ibis too), MySQL 531 (20 need NaN or infinity), SQLite 530 (21 need NaN).
+Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, Trino 551, Spark 551, ClickHouse 550 (1 marked notyet in Ibis too), Impala 548 (3 marked for Impala in Ibis too), MySQL 531 (20 need NaN or infinity), SQLite 530 (21 need NaN).
 Coverage of the Ibis suite: 561 of 1,899 applicable test ids (30%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
@@ -48,16 +48,22 @@ One compose service + one crate each; start in `EXPERIMENTAL` (README: "Adding t
 - [x] Published 2026-11-16: ibis-sql 0.1.2, ibis-duckdb 0.1.1, ibis-mysql 0.1.0, ibis-trino 0.1.0, ibis-rs 0.1.3 (the `mysql`, `trino` and `duckdb-linked` features)
 - [ ] MySQL: TLS (the `mysql` crate is built without it), `caching_sha2_password` over plain TCP is untested (the test server has an empty root password)
 - [ ] Trino: a load path that is not SQL text (`create_table` sends rows inside INSERT statements); the test server's memory catalog loses its tables on restart
-- [ ] Spark (Spark Connect container) and Impala (needs a metastore and storage: start from Ibis's `compose.yaml`)
+- [x] ibis-spark (Spark Thrift server) 551/551, 22/22; ibis-impala 548/551 (3 xfail), 22/22; both over `ibis-hiveserver2`
+- [ ] Publish `ibis-hiveserver2`, `ibis-spark`, `ibis-impala` (needs ibis-sql 0.1.3 for `strftime_to_java_format` and `Dialect::offset_needs_order_by`, then an ibis-rs release with the `spark` and `impala` features)
+- [ ] ibis-hiveserver2: TLS, Kerberos, and the HTTP transport (today: a plain socket, with or without SASL PLAIN)
+- [ ] Spark: Spark Connect as a second way in (Databricks and Spark 4 clusters often expose that and no Thrift server)
+- [ ] Impala: `IN (subquery)` in a select list (2 xfail; a left join against the distinct subquery would do it), `NTH_VALUE` (1 xfail), `LENGTH` and friends count bytes unless the session sets `utf8_mode`
+- [ ] Spark and Impala: a load path that is not SQL text, as for Trino
+- [ ] `rows()` and `insert_text()` are the same code in ibis-spark and ibis-impala (and `insert_text` in ibis-trino): share them once a fourth copy threatens
 - [ ] Cloud-only backends (BigQuery, Snowflake): credentials from environment variables, tests skipped without them
 - [ ] ClickHouse: the native protocol or Arrow format instead of tab-separated text for large results
-- [ ] Add MySQL, ClickHouse and Trino to `mise run bench` and to the Python Ibis cross-check in gen_goldens.py
+- [ ] Add MySQL, ClickHouse, Trino, Spark and Impala to `mise run bench` and to the Python Ibis cross-check in gen_goldens.py
 - [ ] `x IN (NULL)` on ClickHouse is false, not NULL (the one xfail)
 
 ## Next: parity site
 - [ ] Per-backend operation matrix on the same site, shaped like Ibis's support matrix, generated from the cases and `notimpl` marks
 - [ ] Rust line links are best-effort when a case id is built with `format!`; give cases a `file!()`/`line!()` at registration
-- [ ] Trim page weight (6.6 MB with seven backends; the generated queries are most of it)
+- [ ] Trim page weight (6.6 MB with seven backends, more with nine; the generated queries are most of it)
 
 ## Next: Polars
 - [ ] Arrow in and out through the C Data Interface. Today `create_table` and results go through rows of `Value`, which is slow and memory-hungry on large tables
@@ -86,6 +92,7 @@ Steps are in dependency order.
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
 - [x] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run up`, `mise run test`, `mise run site`
 - [ ] Versions are uneven (ibis-rs 0.1.3, ibis-sql 0.1.2, ibis-duckdb 0.1.1, the rest 0.1.0): realign at the next minor release
+- [ ] CI memory: nine backends' containers take about 10 GB of the runner's 16; if it starts failing, split the server backends over two jobs
 - [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
 - [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body
 - [x] First publish: 0.1.0 of the five library crates is on crates.io (2026-11-14), tagged `v0.1.0`

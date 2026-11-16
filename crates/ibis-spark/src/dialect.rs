@@ -1,0 +1,161 @@
+//! What Spark SQL spells or means differently from the defaults in `ibis-sql`.
+
+use ibis_core::convert::format_timestamp;
+use ibis_core::{BinaryOp, DataType, Error, Expr, Func, Result, Value};
+use ibis_sql::{Dialect, ExprCompiler, strftime_to_java_format};
+
+pub struct SparkDialect;
+
+/// A string literal. Backslash escapes are read inside quotes, and two
+/// adjacent literals are concatenated, so `'it''s'` would be `its`.
+pub(crate) fn quote_str(s: &str) -> String {
+    format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
+}
+
+/// A regular expression for `java.util.regex`. It has no POSIX bracket
+/// classes: `[[:digit:]]` is read as a set of the characters `:digt`. Each
+/// `[:name:]` becomes the `\p{Name}` that means the same.
+pub(crate) fn java_regex(pattern: &str) -> String {
+    const CLASSES: [(&str, &str); 13] = [
+        ("[:alnum:]", r"\p{Alnum}"),
+        ("[:alpha:]", r"\p{Alpha}"),
+        ("[:ascii:]", r"\p{ASCII}"),
+        ("[:blank:]", r"\p{Blank}"),
+        ("[:cntrl:]", r"\p{Cntrl}"),
+        ("[:digit:]", r"\p{Digit}"),
+        ("[:graph:]", r"\p{Graph}"),
+        ("[:lower:]", r"\p{Lower}"),
+        ("[:print:]", r"\p{Print}"),
+        ("[:punct:]", r"\p{Punct}"),
+        ("[:space:]", r"\p{Space}"),
+        ("[:upper:]", r"\p{Upper}"),
+        ("[:xdigit:]", r"\p{XDigit}"),
+    ];
+    CLASSES.iter().fold(pattern.to_string(), |p, (posix, java)| p.replace(posix, java))
+}
+
+fn unsupported<T>(op: impl Into<String>) -> Result<T> {
+    Err(Error::Unsupported { backend: "spark".into(), op: op.into() })
+}
+
+impl Dialect for SparkDialect {
+    fn name(&self) -> &str {
+        "spark"
+    }
+
+    fn quote_ident(&self, s: &str) -> String {
+        format!("`{}`", s.replace('`', "``"))
+    }
+
+    /// No unsigned integers: each takes the next wider signed type.
+    /// `TIMESTAMP` is an instant shown in the session time zone;
+    /// `TIMESTAMP_NTZ` is the zone-less one.
+    fn type_name(&self, t: &DataType) -> Result<String> {
+        Ok(match t {
+            DataType::Null => "VOID".into(),
+            DataType::Int32 => "INT".into(),
+            DataType::UInt8 => "SMALLINT".into(),
+            DataType::UInt16 => "INT".into(),
+            DataType::UInt32 => "BIGINT".into(),
+            DataType::UInt64 => "DECIMAL(20, 0)".into(),
+            DataType::Float32 => "FLOAT".into(),
+            DataType::String => "STRING".into(),
+            DataType::Binary => "BINARY".into(),
+            DataType::Timestamp { tz: None } => "TIMESTAMP_NTZ".into(),
+            DataType::Timestamp { tz: Some(_) } => "TIMESTAMP".into(),
+            t => ibis_sql::default_type_name("spark", t)?,
+        })
+    }
+
+    fn literal(&self, v: &Value, t: &DataType) -> Result<Option<String>> {
+        Ok(match v {
+            Value::String(s) => Some(quote_str(s)),
+            // with an exponent it is a DOUBLE; `1.5` would be an exact DECIMAL
+            Value::Float(f) if f.is_finite() => Some(format!("{f:E}")),
+            Value::Binary(b) => Some(format!("X'{}'", b.iter().map(|byte| format!("{byte:02X}")).collect::<String>())),
+            Value::Timestamp(us) if matches!(t, DataType::Timestamp { tz: None }) => {
+                Some(format!("TIMESTAMP_NTZ '{}'", format_timestamp(*us)))
+            }
+            _ => None,
+        })
+    }
+
+    fn binary(&self, c: &ExprCompiler, op: BinaryOp, l: &Expr, r: &Expr) -> Result<Option<String>> {
+        // In ANSI mode (the default since Spark 4) division by zero raises, and
+        // out of it the answer is NULL. Ibis's `/` follows IEEE 754: x / 0 is
+        // +/-Infinity, 0 / 0 is NaN.
+        if op == BinaryOp::Div
+            && !matches!(r, Expr::Literal(v, _) if !matches!(v, Value::Int(0)) && *v != Value::Float(0.0))
+        {
+            let (ls, rs) = (c.sql(l)?, c.sql(r)?);
+            return Ok(Some(format!(
+                "CASE WHEN {rs} = 0 THEN CAST(CASE WHEN {ls} IS NULL THEN NULL WHEN {ls} > 0 THEN 'Infinity' \
+                 WHEN {ls} < 0 THEN '-Infinity' ELSE 'NaN' END AS DOUBLE) ELSE CAST({ls} AS DOUBLE) / {rs} END"
+            )));
+        }
+        Ok(None)
+    }
+
+    fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {
+        let a = |i: usize| c.sql(&args[i]);
+        // a literal pattern is rewritten for Java; a computed one is the caller's business
+        let pattern = |i: usize| match ExprCompiler::lit_str(&args[i]) {
+            Some(p) => Ok(quote_str(&java_regex(p))),
+            None => c.sql(&args[i]),
+        };
+        let int = |s: String| format!("CAST({s} AS INT)");
+        Ok(match f {
+            Func::StartsWith => Some(format!("STARTSWITH({}, {})", a(0)?, a(1)?)),
+            Func::EndsWith => Some(format!("ENDSWITH({}, {})", a(0)?, a(1)?)),
+            Func::Contains => Some(format!("CONTAINS({}, {})", a(0)?, a(1)?)),
+            Func::Find => Some(match args.get(2) {
+                None => format!("CAST(LOCATE({}, {}) - 1 AS BIGINT)", a(1)?, a(0)?),
+                Some(start) => format!("CAST(LOCATE({}, {}, {} + 1) - 1 AS BIGINT)", a(1)?, a(0)?, c.sql(start)?),
+            }),
+            Func::RegexSearch => Some(format!("REGEXP_LIKE({}, {})", a(0)?, pattern(1)?)),
+            Func::RegexExtract => Some(format!("REGEXP_EXTRACT({}, {}, {})", a(0)?, pattern(1)?, a(2)?)),
+            Func::RegexReplace => Some(format!("REGEXP_REPLACE({}, {}, {})", a(0)?, pattern(1)?, a(2)?)),
+            // no ISINF
+            Func::IsInf => Some(format!("(ABS({}) = CAST('Infinity' AS DOUBLE))", a(0)?)),
+            // WEEKDAY: 0 is Monday
+            Func::DayOfWeekIndex => Some(format!("CAST(WEEKDAY({}) AS SMALLINT)", a(0)?)),
+            Func::DayOfWeekName => Some(format!("DATE_FORMAT({}, 'EEEE')", a(0)?)),
+            // EXTRACT has no field finer than SECOND, which carries the fraction
+            Func::Millisecond => Some(int(format!("FLOOR(EXTRACT(SECOND FROM {}) * 1000) % 1000", a(0)?))),
+            Func::Microsecond => Some(int(format!("FLOOR(EXTRACT(SECOND FROM {}) * 1000000) % 1000000", a(0)?))),
+            Func::Truncate => {
+                let unit = match ExprCompiler::lit_str(&args[1]) {
+                    Some("Y") => "year",
+                    Some("Q") => "quarter",
+                    Some("M") => "month",
+                    Some("W") => "week",
+                    Some("D") => "day",
+                    Some("h") => "hour",
+                    Some("m") => "minute",
+                    Some("s") => "second",
+                    Some("ms") => "millisecond",
+                    Some("us") => "microsecond",
+                    _ => return unsupported("truncate with a non-literal or unknown unit"),
+                };
+                // DATE_TRUNC answers with a TIMESTAMP whatever it was given
+                let t = self.cast_type_name(&c.dtype(&args[0])?)?;
+                Some(format!("CAST(DATE_TRUNC('{unit}', {}) AS {t})", a(0)?))
+            }
+            Func::Strftime => {
+                let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
+                    return unsupported("strftime with a non-literal format");
+                };
+                Some(format!("DATE_FORMAT({}, {})", a(0)?, quote_str(&strftime_to_java_format("spark", fmt)?)))
+            }
+            Func::TimestampFromYmdhms => {
+                Some(format!("MAKE_TIMESTAMP_NTZ({}, {}, {}, {}, {}, {})", a(0)?, a(1)?, a(2)?, a(3)?, a(4)?, a(5)?))
+            }
+            _ => None,
+        })
+    }
+
+    /// "FILTER is not supported for window functions"
+    fn supports_agg_filter(&self, windowed: bool) -> bool {
+        !windowed
+    }
+}

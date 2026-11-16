@@ -10,6 +10,9 @@ IBIS_TESTING_POSTGRES_URL = "host=127.0.0.1 port=54330 user=postgres dbname=ibis
 IBIS_TESTING_CLICKHOUSE_URL = "clickhouse://ibis:ibis@127.0.0.1:18123/ibis_testing"
 IBIS_TESTING_MYSQL_URL = "mysql://root@127.0.0.1:13306/ibis_testing"
 IBIS_TESTING_TRINO_URL = "trino://ibis@127.0.0.1:18080/memory/default"
+# the Spark Thrift server
+IBIS_TESTING_SPARK_URL = "spark://ibis@127.0.0.1:20000/default"
+IBIS_TESTING_IMPALA_URL = "impala://ibis@127.0.0.1:21050/ibis_testing"
 # What the cargo tasks build: every crate with every feature, which compiles
 # DuckDB from source (ibis-duckdb's `bundled`). CI sets IBIS_CARGO_FLAGS to a
 # feature list without it and links the prebuilt DuckDB instead.

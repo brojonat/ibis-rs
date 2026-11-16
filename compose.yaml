@@ -72,7 +72,141 @@ services:
       timeout: 10s
       retries: 90
 
+  # Spark SQL behind its Thrift server (the HiveServer2 protocol), one local
+  # JVM. Tables live in the container: recreating it empties them.
+  spark:
+    image: apache/spark:4.3.0-scala
+    command:
+      - /opt/spark/bin/spark-submit
+      - --class
+      - org.apache.spark.sql.hive.thriftserver.HiveThriftServer2
+      - --name
+      - ibis_testing
+      - --master
+      - local[4]
+      - --driver-memory
+      - 1500m
+      # generated classes are unloaded once this much is in use, not kept forever
+      - --driver-java-options
+      - -XX:MaxMetaspaceSize=384m
+      - --conf
+      - spark.ui.enabled=false
+      # What the server remembers of finished statements, with their plans.
+      # An INSERT's plan holds its rows, and the defaults keep a thousand.
+      - --conf
+      - spark.sql.ui.retainedExecutions=20
+      - --conf
+      - spark.ui.retainedJobs=50
+      - --conf
+      - spark.ui.retainedStages=50
+      - --conf
+      - spark.sql.thriftServer.ui.retainedStatements=20
+      - --conf
+      - spark.sql.thriftServer.ui.retainedSessions=20
+      - --conf
+      - spark.sql.session.timeZone=UTC
+      # 200 by default: far too many for tables this small
+      - --conf
+      - spark.sql.shuffle.partitions=4
+      - spark-internal
+    environment:
+      # glibc otherwise gives each of the JVM's many threads its own malloc arena
+      MALLOC_ARENA_MAX: "2"
+    ports: ["127.0.0.1:20000:10000"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/10000"]
+      interval: 2s
+      timeout: 10s
+      retries: 90
+
+  # Impala is four processes: the Hive metastore (table definitions), the
+  # statestore (membership), the catalog (the metastore's cache) and one
+  # daemon that plans and runs queries. `mise run up impala` starts all four.
+  # They get a network of their own: the metastore client looks its server up
+  # by address and gets back `<container>.<network>`, and the default network's
+  # name has an underscore, which a URI's host may not.
+  impala-metastore:
+    image: apache/impala:4.5.3-impala_quickstart_hms
+    command: hms
+    networks: [impala]
+    volumes:
+      # The metastore's files and the warehouse (hive-site.xml puts it here).
+      # /var/lib/hive exists in this image and belongs to the user the
+      # services run as; a new volume takes that ownership from it, which is
+      # why the other two mount it at the same path, after this one.
+      - impala:/var/lib/hive
+      - ./docker/impala:/opt/hive/conf:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9083"]
+      interval: 2s
+      timeout: 10s
+      retries: 90
+
+  impala-statestore:
+    image: apache/impala:4.5.3-statestored
+    command: ["-redirect_stdout_stderr=false", "-logtostderr", "-v=1"]
+    networks: [impala]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/25010"]
+      interval: 2s
+      timeout: 10s
+      retries: 90
+
+  impala-catalog:
+    image: apache/impala:4.5.3-catalogd
+    depends_on:
+      impala-metastore: { condition: service_healthy }
+      impala-statestore: { condition: service_healthy }
+    networks: [impala]
+    command:
+      - -redirect_stdout_stderr=false
+      - -logtostderr
+      - -v=1
+      - -state_store_host=impala-statestore
+      - -hms_event_polling_interval_s=1
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx1g
+    volumes:
+      - impala:/var/lib/hive
+      - ./docker/impala:/opt/impala/conf:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/25020"]
+      interval: 2s
+      timeout: 10s
+      retries: 90
+
+  impala:
+    image: apache/impala:4.5.3-impalad_coord_exec
+    depends_on:
+      impala-catalog: { condition: service_healthy }
+    networks: [impala]
+    command:
+      - -redirect_stdout_stderr=false
+      - -logtostderr
+      - -v=1
+      - -state_store_host=impala-statestore
+      - -catalog_service_host=impala-catalog
+      - -mem_limit=4gb
+      - -default_query_options=default_file_format=parquet
+    environment:
+      # the JVM only plans queries; execution memory is -mem_limit
+      JAVA_TOOL_OPTIONS: -Xmx1g
+    ports: ["127.0.0.1:21050:21050"]
+    volumes:
+      - impala:/var/lib/hive
+      - ./docker/impala:/opt/impala/conf:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/21050"]
+      interval: 2s
+      timeout: 10s
+      retries: 90
+
 volumes:
   postgres:
   clickhouse:
   mysql:
+  impala:
+
+networks:
+  impala:
+    name: ibis-impala

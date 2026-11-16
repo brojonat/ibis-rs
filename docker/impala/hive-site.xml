@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!-- Hive configuration shared by the Impala test cluster in compose.yaml:
+     the metastore reads it from /opt/hive/conf, catalogd and impalad from
+     /opt/impala/conf. -->
+<configuration>
+  <property>
+    <name>hive.metastore.uris</name>
+    <value>thrift://impala-metastore:9083</value>
+  </property>
+  <!-- Tables live on the volume the three containers share. -->
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>/var/lib/hive/warehouse/managed</value>
+  </property>
+  <property>
+    <name>hive.metastore.warehouse.external.dir</name>
+    <value>/var/lib/hive/warehouse/external</value>
+  </property>
+  <!-- catalogd follows the metastore's event log to keep its cache current;
+       the user it runs as is not allowed to read that log by default. -->
+  <property>
+    <name>hive.metastore.dml.events</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>hive.metastore.event.db.notification.api.auth</name>
+    <value>false</value>
+  </property>
+  <!-- Statistics gathered on every DDL slow it down and Impala does not use them. -->
+  <property>
+    <name>hive.stats.autogather</name>
+    <value>false</value>
+  </property>
+</configuration>

@@ -6,7 +6,7 @@
 A portable dataframe API for Rust, modeled on Python's
 [Ibis](https://ibis-project.org): write a query once against a lazy
 `Table`/`Expr` API, then compile and run it on any backend. Develop against
-SQLite, switch to Postgres, MySQL, DuckDB, ClickHouse or Trino by changing the connection. Backends are
+SQLite, switch to Postgres, MySQL, DuckDB, ClickHouse, Trino, Spark or Impala by changing the connection. Backends are
 plugins: a core plus one crate per engine.
 
 **North star: Ibis parity, measured by Ibis's own backend test suite.** Each
@@ -17,7 +17,7 @@ The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
 test, whether it is ported, and how each backend does on it: 561 of 1,899
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Seven backends, 551 ported Ibis test cases and Ibis's 22
+Status: pre-alpha. Nine backends, 551 ported Ibis test cases and Ibis's 22
 TPC-H queries:
 
 | backend | Ibis cases (551) | TPC-H (22) |
@@ -29,6 +29,10 @@ TPC-H queries:
 | MySQL | 531 (20 expected failures: they need NaN or infinity, which MySQL does not have) | 22 |
 | ClickHouse | 550 (1 expected failure, as in Ibis: `x IN (NULL)` is false, not NULL) | 22 |
 | Trino | 551 | 22 |
+| Spark SQL | 551 | 22 |
+| Impala | 548 (3 expected failures, as in Ibis: no `NTH_VALUE`, and `IN (subquery)` only in `WHERE`) | 22 |
+
+Spark and Impala are in this repository but not in a crates.io release yet.
 
 Output column names and types match Ibis's on all 551. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
@@ -40,7 +44,7 @@ Output column names and types match Ibis's on all 551. Ported so far:
 ```toml
 [dependencies]
 ibis-rs = "0.1"                                                   # Polars, in process
-ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }  # more engines: duckdb, sqlite, postgres, mysql, clickhouse, trino
+ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }  # more engines: duckdb, sqlite, postgres, mysql, clickhouse, trino (spark, impala: not released yet)
 ```
 
 ```rust
@@ -48,7 +52,7 @@ use ibis_rs::prelude::*;
 
 // "polars://", "duckdb://", "sqlite://app.db", "postgres://user@host/db",
 // "mysql://user:pass@host/db", "clickhouse://user:pass@host:8123/db",
-// "trino://user@host:8080/catalog/schema": same code, different engine
+// "trino://user@host:8080/catalog/schema", "spark://user@host:10000/db", "impala://host:21050/db": same code, different engine
 let con = ibis_rs::connect(&std::env::var("DATABASE_URL")?)?;
 let t = con.table("functional_alltypes")?;
 
@@ -74,7 +78,7 @@ batches, or `ibis_rs::polars::Polars::register` for a Polars `DataFrame`).
 `ibis_rs::trino::Trino`) add engine-specific methods such as `raw_sql` or
 `Polars::lazy`, which hands back the Polars `LazyFrame` for a query. The crates
 behind it (`ibis-core`, `ibis-sql`, `ibis-polars`, `ibis-duckdb`, `ibis-sqlite`,
-`ibis-postgres`, `ibis-mysql`, `ibis-clickhouse`, `ibis-trino`) can also be used directly; a compiled example of that is
+`ibis-postgres`, `ibis-mysql`, `ibis-clickhouse`, `ibis-trino`, `ibis-spark`, `ibis-impala`) can also be used directly; a compiled example of that is
 `cargo run -p ibis-duckdb --example readme` (after `mise run setup`).
 
 Column references come in two forms, as in Ibis: `col("x")` is unbound (Ibis's
@@ -87,9 +91,11 @@ to `t` (Ibis's `t.x`), which is what joins, correlated subqueries and
 - Rust (edition 2024) and [mise](https://mise.jdx.dev/).
 - Docker with the compose plugin. Server backends run as containers defined in
   `compose.yaml` (Postgres on localhost:54330, MySQL on 13306, ClickHouse on
-  18123, Trino on 18080), holding throwaway test data. Nothing else needs
-  installing per backend. All four together use about 5.5 GB of memory, most
-  of it Trino's JVM.
+  18123, Trino on 18080, the Spark Thrift server on 20000, Impala on 21050),
+  holding throwaway test data. Nothing else needs installing per backend. All
+  of them together use about 10 GB of memory: Trino 3.4, Spark 2.3, Impala's
+  four containers 2, the rest under 1 each. Start only the ones you are
+  working on if that is too much.
 - `uv`, for the Python side (goldens, benchmark, id check). mise installs it.
 
 Run tests through mise. `IBIS_TESTING_DATA` and the backend URLs
@@ -115,9 +121,12 @@ A backend whose container is not running is skipped with a note on stderr, so
 | `crates/ibis-mysql` | MySQL backend (`mysql` crate, text protocol; no boolean, NaN, `FILTER` or `FULL JOIN`, each rewritten) |
 | `crates/ibis-clickhouse` | ClickHouse backend (HTTP interface, tab-separated results, every type `Nullable`) |
 | `crates/ibis-trino` | Trino backend (HTTP protocol, JSON pages; identifiers fold to lower case) |
+| `crates/ibis-hiveserver2` | HiveServer2 client (Thrift binary protocol written by hand, no dependencies): what Spark and Impala are reached over |
+| `crates/ibis-spark` | Spark SQL backend, over the Spark Thrift server (not the cluster master, not Spark Connect) |
+| `crates/ibis-impala` | Impala backend (no `FILTER`, `INTERSECT ALL` or `NTH_VALUE`; `OFFSET` needs an `ORDER BY`) |
 | `crates/ibis-conformance` | Rust side of the suite: `src/cases/<module>.rs`, `src/tpch.rs`, the runner, `tpch-bench` |
 | `conformance/` | Python side: `cases/test_<module>.py` (the Ibis expressions), `gen_goldens.py`, `check_ids.py`, `memtables.json`, `golden/` (parquet + `index.json`), `site.py` and `not_applicable.json` (the parity site) |
-| `compose.yaml`, `docker/` | one container per server backend |
+| `compose.yaml`, `docker/` | one container per server backend (four for Impala: metastore, statestore, catalog, daemon) |
 | `.github/workflows/ci.yml` | lint, test on every backend (DuckDB linked prebuilt), build the parity site and publish it to GitHub Pages from `main` |
 | `bench/` | TPC-H data generation, the Python Ibis baseline, the report script |
 | `scripts/` | `download-data.sh` (Ibis testing data) |
@@ -129,7 +138,7 @@ A backend whose container is not running is skipped with a note on stderr, so
 
 | task | does |
 |---|---|
-| `mise run setup` | start the Postgres container, download Ibis testing data, generate TPC-H sf=0.01 (DuckDB, SQLite, Postgres; MySQL, ClickHouse and Trino load it on first use) |
+| `mise run setup` | start the Postgres container, download Ibis testing data, generate TPC-H sf=0.01 (DuckDB, SQLite, Postgres; MySQL, ClickHouse, Trino, Spark and Impala load it on first use) |
 | `mise run up [service...]` / `down` | start backend containers and wait until healthy (all of them if none is named) / stop them and delete their data |
 | `mise run build` | `cargo build --workspace` |
 | `mise run test` | unit tests + conformance + TPC-H on every backend that is up, under a 12 GB memory cap |
@@ -157,7 +166,7 @@ all over again.
 ### Conformance runner
 
 ```
-ibis-conformance [--backend clickhouse,duckdb,mysql,polars,postgres,sqlite,trino] [ID_SUBSTRING]
+ibis-conformance [--backend clickhouse,duckdb,impala,mysql,polars,postgres,spark,sqlite,trino] [ID_SUBSTRING]
 ```
 
 stdout: one JSON object per (case, backend):
@@ -183,8 +192,8 @@ How a case is checked:
   today only Polars): it said it cannot run the op yet. That does not fail the
   run; a wrong answer or any other error does.
 - TPC-H goldens are per backend, from Python Ibis on the same engine and data.
-  Polars, MySQL, ClickHouse and Trino share DuckDB's: they load the same
-  parquet files.
+  Polars, MySQL, ClickHouse, Trino, Spark and Impala share DuckDB's: they
+  load the same parquet files.
 - A backend listed in `EXPERIMENTAL` (none today) is run and reported, but its
   failures do not fail the run and `cargo test` leaves it out. That is how a
   new backend lands before it passes everything.
@@ -228,7 +237,9 @@ libraries emit different SQL.
   differ. Port the Ibis tests that cover it.
 - **A SQL backend:** a crate with a `Dialect` impl plus a `Backend` impl that
   executes SQL and returns Arrow (`ibis-clickhouse` and `ibis-trino` are the
-  smallest examples; `ibis-mysql` shows an engine far from the defaults).
+  smallest examples; `ibis-mysql` shows an engine far from the defaults, and
+  `ibis-spark` one reached over HiveServer2: an engine that speaks it needs
+  only a dialect on top of `ibis-hiveserver2`).
   Add a service to `compose.yaml` and `IBIS_TESTING_<BACKEND>_URL` to
   `mise.toml`; add the backend to `ALL_BACKENDS`, `EXPERIMENTAL`, `SERVERS`,
   `connect()` and `tpch_backend()` in `crates/ibis-conformance/src/lib.rs`, a

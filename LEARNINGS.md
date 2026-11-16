@@ -331,3 +331,46 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
   directly (`target/debug/ibis-conformance`) needs `LD_LIBRARY_PATH`. `cargo run` does not
   take `--workspace`, so the task cannot simply go through it.
 
+
+## Spark and Impala are one protocol and two very different loaders
+- **What:** Both answer SQL over HiveServer2, so one client (`ibis-hiveserver2`, about 500
+  lines of hand-written Thrift) serves both. They differ at the socket: the Spark Thrift
+  server expects the SASL `PLAIN` handshake even with authentication off
+  (`hive.server2.authentication=NONE`), and an unauthenticated Impala expects none.
+  Talking the wrong one gets a closed connection, not an error message.
+- **Loading:** Spark takes megabyte `INSERT ... VALUES` statements without complaint.
+  Impala plans an expression per cell and keeps finished queries' plans: 100,000 rows
+  sent as `VALUES` took the daemon from 0.7 to 4.3 GB and then every statement failed
+  with "dropped due to backpressure" (the process memory limit, reported as an RPC
+  queue problem). What works is one string literal per statement, cut into rows by a
+  join against the numbers 1 to 10,000 and into cells by `SPLIT_PART`.
+- **The trap inside that:** Impala pastes a subquery's expressions into every use of them,
+  so the row extraction (a scan of the whole literal) ran once per cell, twice with
+  `NULLIF`: 17 seconds per statement. A `GROUP BY` on (row number, row text) in the
+  subquery materializes it: 0.3 seconds.
+- **Avoid:** Assuming `VALUES` is the portable way to load test data. It was wrong for
+  Trino too (see above), for the same reason.
+
+## Impala in compose: two things the quickstart images do not tell you
+- **Network name:** the metastore client resolves the server's address back to a name and
+  gets `<container>.<network>`. Compose's default network is `<project>_default`, and an
+  underscore is not legal in a URI host: `impalad` dies at startup with
+  `URISyntaxException`. The Impala services have a network of their own with a plain name.
+- **Volume ownership:** a new named volume is root-owned unless the mount point exists in
+  the image, in which case it takes that directory's owner. The services run as uid 1000,
+  so the warehouse is mounted at `/var/lib/hive` (which the metastore image owns) in all
+  three containers, and `hive-site.xml` points the warehouse there.
+- **Memory:** `-mem_limit` covers the embedded JVM's heap as well. 2 GB with `-Xmx1g` left
+  too little; it is 4 GB, of which about 1 GB is used.
+
+## Spark behaviours that needed handling
+- **ANSI mode** is on by default since Spark 4: `x / 0` raises. Off, it is NULL. Ibis wants
+  IEEE 754, so the dialect writes the `CASE` itself (as Postgres's does).
+- **`'it''s'` is `its`:** adjacent string literals concatenate, so a quote is escaped with a
+  backslash, and backslashes are doubled. Impala reads literals the same way.
+- **Java regex has no POSIX classes:** `[[:digit:]]` is not an error, it is the set of
+  characters `:digt`. Ibis's own test swaps the pattern for Java backends; here the
+  dialect rewrites `[:name:]` to `\p{Name}` in literal patterns.
+- **The JVM's resident memory was twice its heap** until `MALLOC_ARENA_MAX=2`
+  (3.3 GB and climbing became 2.3 GB and flat). The retention settings in compose.yaml
+  matter for the same reason as Trino's: an INSERT's plan holds its rows.

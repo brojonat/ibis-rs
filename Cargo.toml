@@ -45,6 +45,9 @@ ibis-clickhouse = { path = "crates/ibis-clickhouse", version = "0.1.0" }
 ibis-polars = { path = "crates/ibis-polars", version = "0.1.0" }
 ibis-mysql = { path = "crates/ibis-mysql", version = "0.1.0" }
 ibis-trino = { path = "crates/ibis-trino", version = "0.1.0" }
+ibis-hiveserver2 = { path = "crates/ibis-hiveserver2", version = "0.1.0" }
+ibis-spark = { path = "crates/ibis-spark", version = "0.1.0" }
+ibis-impala = { path = "crates/ibis-impala", version = "0.1.0" }
 
 # Line numbers in backtraces and nothing more: full debug info for Polars,
 # DuckDB and arrow in every test binary grew target/ past 180 GB.

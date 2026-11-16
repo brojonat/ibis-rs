@@ -1466,9 +1466,11 @@ dependencies = [
  "ibis-clickhouse",
  "ibis-core",
  "ibis-duckdb",
+ "ibis-impala",
  "ibis-mysql",
  "ibis-polars",
  "ibis-postgres",
+ "ibis-spark",
  "ibis-sqlite",
  "ibis-trino",
  "parquet",
@@ -1492,6 +1494,20 @@ dependencies = [
  "arrow-array",
  "duckdb",
  "ibis-core",
+ "ibis-sql",
+]
+
+[[package]]
+name = "ibis-hiveserver2"
+version = "0.1.0"
+
+[[package]]
+name = "ibis-impala"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "ibis-core",
+ "ibis-hiveserver2",
  "ibis-sql",
 ]
 
@@ -1533,12 +1549,24 @@ dependencies = [
  "ibis-clickhouse",
  "ibis-core",
  "ibis-duckdb",
+ "ibis-impala",
  "ibis-mysql",
  "ibis-polars",
  "ibis-postgres",
+ "ibis-spark",
  "ibis-sql",
  "ibis-sqlite",
  "ibis-trino",
+]
+
+[[package]]
+name = "ibis-spark"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "ibis-core",
+ "ibis-hiveserver2",
+ "ibis-sql",
 ]
 
 [[package]]

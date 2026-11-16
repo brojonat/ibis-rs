@@ -129,6 +129,9 @@ impl Select {
         if !self.order_sql.is_empty() {
             s.push_str(" ORDER BY ");
             s.push_str(&self.order_sql.join(", "));
+        } else if self.offset > 0 && d.offset_needs_order_by() {
+            // which rows an unordered OFFSET skips is the engine's choice; the first column's order is one
+            s.push_str(" ORDER BY 1");
         }
         s.push_str(&d.limit_offset(self.limit, self.offset));
         s
@@ -435,8 +438,15 @@ impl RelCompiler<'_> {
                     // DISTINCT operator over (row, number) then keeps or
                     // cancels duplicates one for one, which is what ALL means.
                     let cols = left.schema.names().map(q).collect::<Vec<_>>().join(", ");
+                    // The rows of a partition are all alike, so the order
+                    // within one means nothing: it is there for the engines
+                    // that will not number rows without one.
+                    let first = left.schema.names().next().map(q).unwrap_or_default();
+                    let n = self.d.quote_ident("_n");
                     let numbered = |src: &str| {
-                        format!("SELECT {cols}, ROW_NUMBER() OVER (PARTITION BY {cols}) AS \"_n\" FROM {src}")
+                        format!(
+                            "SELECT {cols}, ROW_NUMBER() OVER (PARTITION BY {cols} ORDER BY {first}) AS {n} FROM {src}"
+                        )
                     };
                     let kw = kw.trim_end_matches(" ALL");
                     format!("SELECT {cols} FROM ({} {kw} {}) AS {}", numbered(&l), numbered(&r), self.alias())

@@ -184,10 +184,11 @@ pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
         .collect()
 }
 
-pub const ALL_BACKENDS: [&str; 7] = ["clickhouse", "duckdb", "mysql", "polars", "postgres", "sqlite", "trino"];
+pub const ALL_BACKENDS: [&str; 9] =
+    ["clickhouse", "duckdb", "impala", "mysql", "polars", "postgres", "spark", "sqlite", "trino"];
 
 /// Backends that are a server to connect to, each a service in compose.yaml.
-const SERVERS: [&str; 4] = ["clickhouse", "mysql", "postgres", "trino"];
+const SERVERS: [&str; 6] = ["clickhouse", "impala", "mysql", "postgres", "spark", "trino"];
 
 /// Backends whose port is in progress. They are run and reported like the
 /// rest, but their failures do not fail the run and `cargo test` leaves them
@@ -210,8 +211,10 @@ fn server_url(name: &str) -> Result<String> {
 fn connect(name: &str, url: &str) -> Result<Box<dyn Backend>> {
     Ok(match name {
         "clickhouse" => Box::new(ibis_clickhouse::ClickHouse::connect(url)?),
+        "impala" => Box::new(ibis_impala::Impala::connect(url)?),
         "mysql" => Box::new(ibis_mysql::MySql::connect(url)?),
         "postgres" => Box::new(ibis_postgres::Postgres::connect(url)?),
+        "spark" => Box::new(ibis_spark::Spark::connect(url)?),
         "trino" => Box::new(ibis_trino::Trino::connect(url)?),
         other => return Err(Error::Other(format!("{other:?} is not a server backend"))),
     })
@@ -542,13 +545,15 @@ pub fn tpch_backend(paths: &Paths, name: &str) -> Result<Box<dyn Backend>> {
         }
         // loaded from the parquet files on first use, into a database of its
         // own (a schema, in Trino); the URL's last segment names it
-        "clickhouse" | "mysql" | "trino" => {
+        "clickhouse" | "impala" | "mysql" | "spark" | "trino" => {
             let url = server_url(name)?;
             let create =
                 format!("CREATE {} IF NOT EXISTS tpch_sf0_01", if name == "trino" { "SCHEMA" } else { "DATABASE" });
             match name {
                 "clickhouse" => ibis_clickhouse::ClickHouse::connect(&url)?.execute_statement(&create)?,
+                "impala" => ibis_impala::Impala::connect(&url)?.execute_statement(&create)?,
                 "mysql" => ibis_mysql::MySql::connect(&url)?.execute_statement(&create)?,
+                "spark" => ibis_spark::Spark::connect(&url)?.execute_statement(&create)?,
                 _ => ibis_trino::Trino::connect(&url)?.execute_statement(&create)?,
             }
             let server = url.rsplit_once('/').map_or(url.as_str(), |(server, _)| server);
@@ -590,7 +595,11 @@ pub fn run_tpch(paths: &Paths, names: &[&str], filter: &str) -> Result<Vec<Outco
             };
             // per backend: parity with Python Ibis on the same engine and data
             // engines loaded from the parquet files DuckDB was built from share DuckDB's goldens
-            let golden_dir = if matches!(*name, "polars" | "clickhouse" | "mysql" | "trino") { "duckdb" } else { name };
+            let golden_dir = if matches!(*name, "polars" | "clickhouse" | "impala" | "mysql" | "spark" | "trino") {
+                "duckdb"
+            } else {
+                name
+            };
             let golden = paths.golden.join(format!("tpch/{golden_dir}/{q}.parquet"));
             if !golden.exists() {
                 out.status = Status::NoGolden;

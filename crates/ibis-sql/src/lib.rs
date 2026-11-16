@@ -7,7 +7,7 @@ pub mod compiler;
 pub mod dialect;
 
 pub use compiler::{ExprCompiler, compile, create_table_sql, quote_str};
-pub use dialect::{Dialect, GenericDialect, default_type_name, strftime_to_date_format};
+pub use dialect::{Dialect, GenericDialect, default_type_name, strftime_to_date_format, strftime_to_java_format};
 
 #[cfg(test)]
 mod tests {
@@ -119,7 +119,8 @@ mod tests {
         assert_eq!(sql(&q), r#"SELECT (-t0."a") AS "a", t0."s" AS "s" FROM "t" AS t0 ORDER BY t0."a" ASC NULLS LAST"#);
     }
 
-    /// An engine without `FILTER (WHERE ...)`, `FULL OUTER JOIN` or `NULLS LAST`.
+    /// An engine without `FILTER (WHERE ...)`, `FULL OUTER JOIN`, `NULLS LAST`,
+    /// `INTERSECT ALL` or an `OFFSET` it takes without an `ORDER BY`.
     struct Bare;
 
     impl Dialect for Bare {
@@ -135,6 +136,45 @@ mod tests {
         fn supports_full_outer_join(&self) -> bool {
             false
         }
+        fn supports_intersect_except_all(&self) -> bool {
+            false
+        }
+        fn offset_needs_order_by(&self) -> bool {
+            true
+        }
+    }
+
+    #[test]
+    fn an_unordered_offset_is_ordered_by_the_first_column() {
+        let q = t().limit(5, 3);
+        assert_eq!(sql(&q), r#"SELECT * FROM "t" AS t0 LIMIT 5 OFFSET 3"#);
+        assert_eq!(compile(&Bare, &q).unwrap(), r#"SELECT * FROM "t" AS t0 ORDER BY 1 LIMIT 5 OFFSET 3"#);
+        // no offset, nothing to order; an order of its own, nothing to add
+        assert_eq!(compile(&Bare, &t().limit(5, 0)).unwrap(), r#"SELECT * FROM "t" AS t0 LIMIT 5"#);
+        let ordered = t().order_by(["a"]).unwrap().limit(5, 3);
+        assert_eq!(
+            compile(&Bare, &ordered).unwrap(),
+            r#"SELECT * FROM "t" AS t0 ORDER BY t0."a" ASC LIMIT 5 OFFSET 3"#
+        );
+    }
+
+    #[test]
+    fn intersect_all_numbers_the_duplicates_on_each_side() {
+        let q = t().intersect(&t(), false).unwrap();
+        assert_eq!(sql(&q), r#"SELECT * FROM (SELECT * FROM "t" AS t0 INTERSECT ALL SELECT * FROM "t" AS t1) AS t2"#);
+        let numbered = |alias: &str| {
+            format!(
+                r#"SELECT "a", "s", ROW_NUMBER() OVER (PARTITION BY "a", "s" ORDER BY "a") AS "_n" FROM "t" AS {alias}"#
+            )
+        };
+        assert_eq!(
+            compile(&Bare, &q).unwrap(),
+            format!(
+                r#"SELECT * FROM (SELECT "a", "s" FROM ({} INTERSECT {}) AS t2) AS t3"#,
+                numbered("t0"),
+                numbered("t1")
+            )
+        );
     }
 
     #[test]
@@ -164,5 +204,15 @@ mod tests {
                 r#"ORDER BY t2."a" ASC"#
             )
         );
+    }
+
+    #[test]
+    fn strftime_patterns_translate() {
+        assert_eq!(strftime_to_date_format("mysql", "%Y-%m-%d %H:%M:%S").unwrap(), "%Y-%m-%d %H:%i:%S");
+        assert_eq!(strftime_to_java_format("spark", "%Y-%m-%d %H:%M:%S.%f").unwrap(), "yyyy-MM-dd HH:mm:ss.SSSSSS");
+        // letters that are not directives are quoted: bare, Java reads them as fields
+        assert_eq!(strftime_to_java_format("spark", "%Y%m%dT%H h").unwrap(), "yyyyMMdd'T'HH 'h'");
+        assert_eq!(strftime_to_java_format("spark", "%A o'clock").unwrap(), "EEEE 'o''clock'");
+        assert!(strftime_to_java_format("spark", "%Q").is_err());
     }
 }

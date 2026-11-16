@@ -1,0 +1,14 @@
+[package]
+name = "ibis-hiveserver2"
+description = "Minimal HiveServer2 (Thrift) client: what the Spark and Impala backends of ibis-rs speak"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+# No dependencies: the Thrift binary protocol and the dozen TCLIService
+# structs a query needs are written out by hand in src/.
+[dependencies]

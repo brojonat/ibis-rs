@@ -1,6 +1,6 @@
 [package]
 name = "ibis-rs"
-description = "Portable lazy dataframe API for Rust, modeled on Python Ibis: write a query once, run it on Polars, DuckDB, SQLite, Postgres, MySQL, ClickHouse or Trino"
+description = "Portable lazy dataframe API for Rust, modeled on Python Ibis: write a query once, run it on Polars, DuckDB, SQLite, Postgres, MySQL, ClickHouse, Trino, Spark or Impala"
 # ahead of the workspace version: 0.1.1 added the polars feature and made it
 # the default, 0.1.2 the clickhouse feature, 0.1.3 mysql, trino and duckdb-linked
 version = "0.1.3"
@@ -25,6 +25,8 @@ postgres = ["dep:ibis-postgres"]
 clickhouse = ["dep:ibis-clickhouse"]
 mysql = ["dep:ibis-mysql"]
 trino = ["dep:ibis-trino"]
+spark = ["dep:ibis-spark"]
+impala = ["dep:ibis-impala"]
 
 [dependencies]
 ibis-core.workspace = true
@@ -36,8 +38,10 @@ ibis-postgres = { workspace = true, optional = true }
 ibis-clickhouse = { workspace = true, optional = true }
 ibis-mysql = { workspace = true, optional = true }
 ibis-trino = { workspace = true, optional = true }
+ibis-spark = { workspace = true, optional = true }
+ibis-impala = { workspace = true, optional = true }
 arrow-array.workspace = true
 
 # docs.rs cannot build bundled DuckDB within its limits; document the rest.
 [package.metadata.docs.rs]
-features = ["polars", "sqlite", "postgres", "mysql", "clickhouse", "trino"]
+features = ["polars", "sqlite", "postgres", "mysql", "clickhouse", "trino", "spark", "impala"]

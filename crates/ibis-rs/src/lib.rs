@@ -4,7 +4,8 @@
 //!
 //! This crate is the front door: it re-exports the API from `ibis-core` and
 //! puts each backend behind a cargo feature. `polars` is on by default;
-//! `duckdb`, `sqlite`, `postgres`, `mysql`, `clickhouse` and `trino` are opt-in.
+//! `duckdb`, `sqlite`, `postgres`, `mysql`, `clickhouse`, `trino`, `spark` and
+//! `impala` are opt-in.
 //!
 //! ```toml
 //! [dependencies]
@@ -47,7 +48,7 @@
 //! opening from an existing connection) live on the concrete types:
 //! [`polars::Polars`], [`sqlite::Sqlite`], [`duckdb::DuckDb`],
 //! [`postgres::Postgres`], [`mysql::MySql`], [`clickhouse::ClickHouse`],
-//! [`trino::Trino`].
+//! [`trino::Trino`], [`spark::Spark`], [`impala::Impala`].
 
 pub use ibis_core::*;
 
@@ -61,12 +62,16 @@ pub use arrow_array;
 pub use ibis_clickhouse as clickhouse;
 #[cfg(feature = "duckdb-linked")]
 pub use ibis_duckdb as duckdb;
+#[cfg(feature = "impala")]
+pub use ibis_impala as impala;
 #[cfg(feature = "mysql")]
 pub use ibis_mysql as mysql;
 #[cfg(feature = "polars")]
 pub use ibis_polars as polars;
 #[cfg(feature = "postgres")]
 pub use ibis_postgres as postgres;
+#[cfg(feature = "spark")]
+pub use ibis_spark as spark;
 #[cfg(feature = "sqlite")]
 pub use ibis_sqlite as sqlite;
 #[cfg(feature = "trino")]
@@ -83,6 +88,8 @@ pub use ibis_trino as trino;
 /// | `mysql://user:pass@host:3306/db` | MySQL | `mysql` |
 /// | `clickhouse://user:pass@host:8123/db` (HTTP), `clickhouses://...` (HTTPS) | ClickHouse | `clickhouse` |
 /// | `trino://user@host:8080/catalog/schema` (HTTP), `trinos://user:pass@...` (HTTPS) | Trino | `trino` |
+/// | `spark://user@host:10000/database` (a Spark Thrift server, not the cluster master) | Spark SQL | `spark` |
+/// | `impala://user@host:21050/database` | Impala | `impala` |
 ///
 /// Everything after `duckdb://` or `sqlite://` is a file path, so an absolute
 /// path has three slashes: `sqlite:///var/data/app.db`.
@@ -92,7 +99,7 @@ pub use ibis_trino as trino;
 pub fn connect(url: &str) -> Result<Box<dyn Backend>> {
     let Some((scheme, rest)) = url.split_once("://") else {
         return Err(Error::Other(format!(
-            "connect: `{url}` is not a URL; expected polars://, duckdb://, sqlite://, postgres://, mysql://, clickhouse:// or trino://"
+            "connect: `{url}` is not a URL; expected polars://, duckdb://, sqlite://, postgres://, mysql://, clickhouse://, trino://, spark:// or impala://"
         )));
     };
     match scheme {
@@ -103,8 +110,10 @@ pub fn connect(url: &str) -> Result<Box<dyn Backend>> {
         "mysql" => mysql_at(url),
         "clickhouse" | "clickhouses" => clickhouse_at(url),
         "trino" | "trinos" => trino_at(url),
+        "spark" => spark_at(url),
+        "impala" => impala_at(url),
         other => Err(Error::Other(format!(
-            "connect: unknown backend `{other}` in `{url}`; expected polars://, duckdb://, sqlite://, postgres://, mysql://, clickhouse:// or trino://"
+            "connect: unknown backend `{other}` in `{url}`; expected polars://, duckdb://, sqlite://, postgres://, mysql://, clickhouse://, trino://, spark:// or impala://"
         ))),
     }
 }
@@ -188,6 +197,24 @@ fn trino_at(url: &str) -> Result<Box<dyn Backend>> {
 #[cfg(not(feature = "trino"))]
 fn trino_at(_: &str) -> Result<Box<dyn Backend>> {
     disabled("trino")
+}
+
+#[cfg(feature = "spark")]
+fn spark_at(url: &str) -> Result<Box<dyn Backend>> {
+    Ok(Box::new(spark::Spark::connect(url)?))
+}
+#[cfg(not(feature = "spark"))]
+fn spark_at(_: &str) -> Result<Box<dyn Backend>> {
+    disabled("spark")
+}
+
+#[cfg(feature = "impala")]
+fn impala_at(url: &str) -> Result<Box<dyn Backend>> {
+    Ok(Box::new(impala::Impala::connect(url)?))
+}
+#[cfg(not(feature = "impala"))]
+fn impala_at(_: &str) -> Result<Box<dyn Backend>> {
+    disabled("impala")
 }
 
 #[cfg(test)]
@@ -311,5 +338,19 @@ mod tests {
         for url in ["trino://u@127.0.0.1:1/memory/default", "trinos://u@127.0.0.1:1/memory"] {
             assert!(err(url).contains("trino failed"), "{}", err(url));
         }
+    }
+
+    #[cfg(feature = "spark")]
+    #[test]
+    fn spark_urls_reach_the_spark_backend() {
+        let e = err("spark://u@127.0.0.1:1/default");
+        assert!(e.starts_with("spark: spark://u@127.0.0.1:1/default:"), "{e}");
+    }
+
+    #[cfg(feature = "impala")]
+    #[test]
+    fn impala_urls_reach_the_impala_backend() {
+        let e = err("impala://u@127.0.0.1:1/default");
+        assert!(e.starts_with("impala: impala://u@127.0.0.1:1/default:"), "{e}");
     }
 }

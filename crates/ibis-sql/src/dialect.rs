@@ -80,6 +80,12 @@ pub trait Dialect: Send + Sync {
         true
     }
 
+    /// Whether `OFFSET` is refused without an `ORDER BY`. If so, a query
+    /// that skips rows without ordering them is ordered by its first column.
+    fn offset_needs_order_by(&self) -> bool {
+        false
+    }
+
     /// `LIMIT`/`OFFSET` clause. SQLite needs `LIMIT -1` to use a bare OFFSET.
     fn limit_offset(&self, limit: Option<u64>, offset: u64) -> String {
         let mut s = String::new();
@@ -155,6 +161,69 @@ pub fn strftime_to_date_format(backend: &str, fmt: &str) -> Result<String> {
             }
         });
     }
+    Ok(out)
+}
+
+/// A C `strftime` pattern in the pattern language of Java's
+/// `DateTimeFormatter`, which Spark's `date_format` takes: letters are
+/// fields, so literal text is quoted.
+pub fn strftime_to_java_format(backend: &str, fmt: &str) -> Result<String> {
+    let mut out = String::new();
+    // literal letters waiting for their closing quote
+    let mut text = String::new();
+    let flush = |out: &mut String, text: &mut String| {
+        if !text.is_empty() {
+            out.push_str(&format!("'{text}'"));
+            text.clear();
+        }
+    };
+    let mut chars = fmt.chars();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '%' => {}
+            // inside quotes, a doubled quote is one quote
+            '\'' => {
+                text.push_str("''");
+                continue;
+            }
+            ch if ch.is_ascii_alphabetic() => {
+                text.push(ch);
+                continue;
+            }
+            ch => {
+                flush(&mut out, &mut text);
+                out.push(ch);
+                continue;
+            }
+        }
+        let field = match chars.next() {
+            Some('Y') => "yyyy",
+            Some('y') => "yy",
+            Some('m') => "MM",
+            Some('d') => "dd",
+            Some('H') => "HH",
+            Some('I') => "hh",
+            Some('M') => "mm",
+            Some('S') => "ss",
+            Some('f') => "SSSSSS",
+            Some('j') => "DDD",
+            Some('p') => "a",
+            Some('B') => "MMMM",
+            Some('b') => "MMM",
+            Some('A') => "EEEE",
+            Some('a') => "EEE",
+            Some('%') => "%",
+            other => {
+                return Err(ibis_core::Error::Unsupported {
+                    backend: backend.into(),
+                    op: format!("strftime directive %{}", other.map(String::from).unwrap_or_default()),
+                });
+            }
+        };
+        flush(&mut out, &mut text);
+        out.push_str(field);
+    }
+    flush(&mut out, &mut text);
     Ok(out)
 }
 

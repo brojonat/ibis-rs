@@ -56,7 +56,9 @@ pub fn register(v: &mut Vec<Case>) {
         ("count", |w| c("double_col").count().over(w)),
     ];
     for (id, f) in expanding_cases {
-        v.push(val(&format!("test_grouped_bounded_expanding_window[{id}]"), f, expanding));
+        let case = val(&format!("test_grouped_bounded_expanding_window[{id}]"), f, expanding);
+        // Impala has no NTH_VALUE
+        v.push(if id == "nth" { case.notimpl(&["impala"]) } else { case });
     }
 
     let mean: Fun = |w| c("double_col").mean().over(w);

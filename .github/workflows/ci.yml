@@ -23,7 +23,7 @@ env:
   # mise.toml's default is `--workspace --all-features`, which compiles it.
   IBIS_CARGO_FLAGS: >-
     --workspace --no-default-features --features
-    ibis-rs/polars,ibis-rs/duckdb-linked,ibis-rs/sqlite,ibis-rs/postgres,ibis-rs/mysql,ibis-rs/clickhouse,ibis-rs/trino
+    ibis-rs/polars,ibis-rs/duckdb-linked,ibis-rs/sqlite,ibis-rs/postgres,ibis-rs/mysql,ibis-rs/clickhouse,ibis-rs/trino,ibis-rs/spark,ibis-rs/impala
 
 jobs:
   test:
