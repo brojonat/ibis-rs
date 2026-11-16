@@ -189,7 +189,7 @@ services:
       - -mem_limit=4gb
       - -default_query_options=default_file_format=parquet
     environment:
-      # the JVM only plans queries; execution memory is -mem_limit
+      # the JVM only plans queries, and its heap counts toward -mem_limit
       JAVA_TOOL_OPTIONS: -Xmx1g
     ports: ["127.0.0.1:21050:21050"]
     volumes:
