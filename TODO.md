@@ -92,7 +92,8 @@ Steps are in dependency order.
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
 - [x] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run up`, `mise run test`, `mise run site`
 - [ ] Versions are uneven (ibis-rs 0.1.4, ibis-sql 0.1.3, ibis-duckdb 0.1.1, the rest 0.1.0): realign at the next minor release
-- [ ] CI memory: nine backends' containers take about 10 GB of the runner's 16; if it starts failing, split the server backends over two jobs
+- [ ] CI is 7 minutes, 4 of them the conformance run, CPU-bound on a 4-core runner. Splitting the backends over two jobs (results merged for the site) would roughly halve that, and also eases memory: the containers take about 10 GB of the runner's 16
+- [ ] Spark on versions before 3.4: `TIMESTAMP_NTZ`, `LIMIT ... OFFSET`, `STARTSWITH`/`CONTAINS`/`ILIKE` need older spellings; test against an older image
 - [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
 - [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body
 - [x] First publish: 0.1.0 of the five library crates is on crates.io (2026-11-14), tagged `v0.1.0`

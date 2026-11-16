@@ -382,3 +382,18 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
 - **The JVM's resident memory was twice its heap** until `MALLOC_ARENA_MAX=2`
   (3.3 GB and climbing became 2.3 GB and flat). The retention settings in compose.yaml
   matter for the same reason as Trino's: an INSERT's plan holds its rows.
+
+## CI time is the suite's CPU, and the runner has four cores
+- **What:** With nine backends CI went from 6 to 17.5 minutes: the suite ran twice (once
+  under `cargo test`, once for the site), one backend after another, about 6.5 minutes a
+  pass. Running it once with a thread per backend brought the job to 7 minutes.
+- **What did not help:** running the Ibis cases and TPC-H at the same time took a loaded
+  16-core machine from 241 s to 183 s and the runner from 238 s to about the same. Nine
+  engines on four cores are already CPU-bound; more concurrency moves nothing.
+- **Avoid:** judging a CI speedup locally. The next real lever is less work per runner
+  (two jobs with the backends split between them, results merged for the site), or a
+  cheaper harness (it is compiled unoptimized: `opt-level = 1` cut its CPU on Postgres
+  from 20 s to 7 s).
+- **Also:** image pulls started in the background at the top of the job (`nohup docker
+  compose pull &`) overlap with checkout, cache restore and compile; `mise run up` then
+  waits only for what is left. That step varies from 65 to 100 s run to run.
