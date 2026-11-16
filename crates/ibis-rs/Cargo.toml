@@ -1,8 +1,9 @@
 [package]
 name = "ibis-rs"
-description = "Portable lazy dataframe API for Rust, modeled on Python Ibis: write a query once, run it on Polars, DuckDB, SQLite or Postgres"
-# ahead of the workspace version: 0.1.1 added the polars feature and made it the default
-version = "0.1.1"
+description = "Portable lazy dataframe API for Rust, modeled on Python Ibis: write a query once, run it on Polars, DuckDB, SQLite, Postgres or ClickHouse"
+# ahead of the workspace version: 0.1.1 added the polars feature and made it
+# the default, 0.1.2 the clickhouse feature
+version = "0.1.2"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
