@@ -6,7 +6,7 @@
 A portable dataframe API for Rust, modeled on Python's
 [Ibis](https://ibis-project.org): write a query once against a lazy
 `Table`/`Expr` API, then compile and run it on any backend. Develop against
-SQLite, switch to Postgres, DuckDB or ClickHouse by changing the connection. Backends are
+SQLite, switch to Postgres, MySQL, DuckDB, ClickHouse or Trino by changing the connection. Backends are
 plugins: a core plus one crate per engine.
 
 **North star: Ibis parity, measured by Ibis's own backend test suite.** Each
@@ -17,7 +17,7 @@ The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
 test, whether it is ported, and how each backend does on it: 561 of 1,899
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Five backends, 551 ported Ibis test cases and Ibis's 22
+Status: pre-alpha. Seven backends, 551 ported Ibis test cases and Ibis's 22
 TPC-H queries:
 
 | backend | Ibis cases (551) | TPC-H (22) |
@@ -26,9 +26,11 @@ TPC-H queries:
 | DuckDB | 551 | 22 |
 | Postgres | 551 | 22 |
 | SQLite | 530 (21 expected failures: they need NaN, which SQLite cannot store) | 22 |
+| MySQL | 531 (20 expected failures: they need NaN or infinity, which MySQL does not have) | 22 |
 | ClickHouse | 550 (1 expected failure, as in Ibis: `x IN (NULL)` is false, not NULL) | 22 |
+| Trino | 551 | 22 |
 
-ClickHouse is in this repository but not in a crates.io release yet.
+MySQL and Trino are in this repository but not in a crates.io release yet.
 
 Output column names and types match Ibis's on all 551. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
@@ -40,14 +42,15 @@ Output column names and types match Ibis's on all 551. Ported so far:
 ```toml
 [dependencies]
 ibis-rs = "0.1"                                                   # Polars, in process
-ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }  # more engines: duckdb, sqlite, postgres, clickhouse
+ibis-rs = { version = "0.1", features = ["sqlite", "postgres"] }  # more engines: duckdb, sqlite, postgres, mysql, clickhouse, trino
 ```
 
 ```rust
 use ibis_rs::prelude::*;
 
 // "polars://", "duckdb://", "sqlite://app.db", "postgres://user@host/db",
-// "clickhouse://user:pass@host:8123/db": same code, different engine
+// "mysql://user:pass@host/db", "clickhouse://user:pass@host:8123/db",
+// "trino://user@host:8080/catalog/schema": same code, different engine
 let con = ibis_rs::connect(&std::env::var("DATABASE_URL")?)?;
 let t = con.table("functional_alltypes")?;
 
@@ -68,10 +71,11 @@ and no C++ toolchain, and holds its tables in memory (`create_table` from Arrow
 batches, or `ibis_rs::polars::Polars::register` for a Polars `DataFrame`).
 `connect` returns a `Box<dyn Backend>`; the concrete types
 (`ibis_rs::polars::Polars`, `ibis_rs::sqlite::Sqlite`, `ibis_rs::duckdb::DuckDb`,
-`ibis_rs::postgres::Postgres`, `ibis_rs::clickhouse::ClickHouse`) add engine-specific methods such as `raw_sql` or
+`ibis_rs::postgres::Postgres`, `ibis_rs::mysql::MySql`, `ibis_rs::clickhouse::ClickHouse`,
+`ibis_rs::trino::Trino`) add engine-specific methods such as `raw_sql` or
 `Polars::lazy`, which hands back the Polars `LazyFrame` for a query. The crates
 behind it (`ibis-core`, `ibis-sql`, `ibis-polars`, `ibis-duckdb`, `ibis-sqlite`,
-`ibis-postgres`, `ibis-clickhouse`) can also be used directly; a compiled example of that is
+`ibis-postgres`, `ibis-mysql`, `ibis-clickhouse`, `ibis-trino`) can also be used directly; a compiled example of that is
 `cargo run -p ibis-duckdb --example readme` (after `mise run setup`).
 
 Column references come in two forms, as in Ibis: `col("x")` is unbound (Ibis's
@@ -83,12 +87,14 @@ to `t` (Ibis's `t.x`), which is what joins, correlated subqueries and
 
 - Rust (edition 2024) and [mise](https://mise.jdx.dev/).
 - Docker with the compose plugin. Server backends run as containers defined in
-  `compose.yaml` (Postgres on localhost:54330, ClickHouse on localhost:18123),
-  holding throwaway test data. Nothing else needs installing per backend.
+  `compose.yaml` (Postgres on localhost:54330, MySQL on 13306, ClickHouse on
+  18123, Trino on 18080), holding throwaway test data. Nothing else needs
+  installing per backend. All four together use about 5.5 GB of memory, most
+  of it Trino's JVM.
 - `uv`, for the Python side (goldens, benchmark, id check). mise installs it.
 
 Run tests through mise. `IBIS_TESTING_DATA` and the backend URLs
-(`IBIS_TESTING_POSTGRES_URL`, `IBIS_TESTING_CLICKHOUSE_URL`) are set in
+(`IBIS_TESTING_<BACKEND>_URL`, one per server backend) are set in
 `mise.toml`; a bare `cargo test` fails without them.
 
 A backend whose container is not running is skipped with a note on stderr, so
@@ -107,7 +113,9 @@ A backend whose container is not running is skipped with a note on stderr, so
 | `crates/ibis-duckdb` | DuckDB backend (bundled DuckDB, Arrow-native results) |
 | `crates/ibis-postgres` | Postgres backend (`postgres` crate, binary protocol, `COPY` for loads) |
 | `crates/ibis-sqlite` | SQLite backend (bundled SQLite, Rust polyfills for missing functions) |
+| `crates/ibis-mysql` | MySQL backend (`mysql` crate, text protocol; no boolean, NaN, `FILTER` or `FULL JOIN`, each rewritten) |
 | `crates/ibis-clickhouse` | ClickHouse backend (HTTP interface, tab-separated results, every type `Nullable`) |
+| `crates/ibis-trino` | Trino backend (HTTP protocol, JSON pages; identifiers fold to lower case) |
 | `crates/ibis-conformance` | Rust side of the suite: `src/cases/<module>.rs`, `src/tpch.rs`, the runner, `tpch-bench` |
 | `conformance/` | Python side: `cases/test_<module>.py` (the Ibis expressions), `gen_goldens.py`, `check_ids.py`, `memtables.json`, `golden/` (parquet + `index.json`), `site.py` and `not_applicable.json` (the parity site) |
 | `compose.yaml`, `docker/` | one container per server backend |
@@ -122,7 +130,7 @@ A backend whose container is not running is skipped with a note on stderr, so
 
 | task | does |
 |---|---|
-| `mise run setup` | start the Postgres container, download Ibis testing data, generate TPC-H sf=0.01 (DuckDB, SQLite, Postgres; ClickHouse loads it on first use) |
+| `mise run setup` | start the Postgres container, download Ibis testing data, generate TPC-H sf=0.01 (DuckDB, SQLite, Postgres; MySQL, ClickHouse and Trino load it on first use) |
 | `mise run up [service...]` / `down` | start backend containers and wait until healthy (all of them if none is named) / stop them and delete their data |
 | `mise run build` | `cargo build --workspace` |
 | `mise run test` | unit tests + conformance + TPC-H on every backend that is up, under a 12 GB memory cap |
@@ -135,6 +143,8 @@ A backend whose container is not running is skipped with a note on stderr, so
 | `mise run dev` | rerun conformance on every file change, tee to `logs/dev.log` |
 
 The first build compiles DuckDB from source (10+ minutes) and Polars (about 5).
+Dev builds keep line tables only, not full debug info: with it, `target/` grew
+past 180 GB. It is about 9 GB now; `cargo clean` when it creeps up.
 On a machine short of memory, `CARGO_BUILD_JOBS=4`. Build with `--workspace`:
 `cargo build -p one-crate` picks a different feature set and compiles DuckDB
 all over again.
@@ -142,12 +152,12 @@ all over again.
 ### Conformance runner
 
 ```
-ibis-conformance [--backend clickhouse,duckdb,polars,postgres,sqlite] [ID_SUBSTRING]
+ibis-conformance [--backend clickhouse,duckdb,mysql,polars,postgres,sqlite,trino] [ID_SUBSTRING]
 ```
 
 stdout: one JSON object per (case, backend):
 `{"id": "test_string[upper]", "backend": "sqlite", "status": "pass|fail|error|xfail|xpass|no_golden|unsupported", "detail": ...}`.
-Besides the five engines there is a `schema` pseudo-backend: it checks each
+Besides the seven engines there is a `schema` pseudo-backend: it checks each
 case's output column names and inferred types against Ibis's, without running
 anything. stderr: a matrix of non-passing cases, per-backend totals, how often
 Python Ibis itself agrees with its own DuckDB result on SQLite and Postgres, and
@@ -168,7 +178,8 @@ How a case is checked:
   today only Polars): it said it cannot run the op yet. That does not fail the
   run; a wrong answer or any other error does.
 - TPC-H goldens are per backend, from Python Ibis on the same engine and data.
-  Polars and ClickHouse share DuckDB's: they load the same parquet files.
+  Polars, MySQL, ClickHouse and Trino share DuckDB's: they load the same
+  parquet files.
 - A backend listed in `EXPERIMENTAL` (none today) is run and reported, but its
   failures do not fail the run and `cargo test` leaves it out. That is how a
   new backend lands before it passes everything.
@@ -211,11 +222,12 @@ libraries emit different SQL.
   method, the default SQL in `ibis-sql`, and dialect overrides where engines
   differ. Port the Ibis tests that cover it.
 - **A SQL backend:** a crate with a `Dialect` impl plus a `Backend` impl that
-  executes SQL and returns Arrow (`ibis-clickhouse` is the smallest example).
-  Add a service to `compose.yaml` and its URL to `mise.toml`; add the backend
-  to `ALL_BACKENDS`, `EXPERIMENTAL`, `unavailable()`, `targets()` and
-  `tpch_backend()` in `crates/ibis-conformance/src/lib.rs`, a feature and URL
-  scheme to `crates/ibis-rs`, and a column to `BACKENDS` in
+  executes SQL and returns Arrow (`ibis-clickhouse` and `ibis-trino` are the
+  smallest examples; `ibis-mysql` shows an engine far from the defaults).
+  Add a service to `compose.yaml` and `IBIS_TESTING_<BACKEND>_URL` to
+  `mise.toml`; add the backend to `ALL_BACKENDS`, `EXPERIMENTAL`, `SERVERS`,
+  `connect()` and `tpch_backend()` in `crates/ibis-conformance/src/lib.rs`, a
+  feature and URL scheme to `crates/ibis-rs`, and a column to `BACKENDS` in
   `conformance/site.py`. Run `mise run up <backend>` and
   `mise run conformance --backend <backend>`, fix what fails, and take it out
   of `EXPERIMENTAL` when it passes. Optional: the fixture loaders in

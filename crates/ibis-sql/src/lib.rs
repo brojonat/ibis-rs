@@ -7,7 +7,7 @@ pub mod compiler;
 pub mod dialect;
 
 pub use compiler::{ExprCompiler, compile, create_table_sql, quote_str};
-pub use dialect::{Dialect, GenericDialect, default_type_name};
+pub use dialect::{Dialect, GenericDialect, default_type_name, strftime_to_date_format};
 
 #[cfg(test)]
 mod tests {
@@ -117,5 +117,52 @@ mod tests {
         // ORDER BY must mean the input column "a", not the output alias "a"
         let q = t().order_by(["a"]).unwrap().mutate([(-col("a")).name("a")]).unwrap();
         assert_eq!(sql(&q), r#"SELECT (-t0."a") AS "a", t0."s" AS "s" FROM "t" AS t0 ORDER BY t0."a" ASC NULLS LAST"#);
+    }
+
+    /// An engine without `FILTER (WHERE ...)`, `FULL OUTER JOIN` or `NULLS LAST`.
+    struct Bare;
+
+    impl Dialect for Bare {
+        fn name(&self) -> &str {
+            "bare"
+        }
+        fn sort_key(&self, expr: &str, ascending: bool, _nulls_first: bool) -> String {
+            format!("{expr} {}", if ascending { "ASC" } else { "DESC" })
+        }
+        fn supports_agg_filter(&self, _windowed: bool) -> bool {
+            false
+        }
+        fn supports_full_outer_join(&self) -> bool {
+            false
+        }
+    }
+
+    #[test]
+    fn aggregate_filter_moves_into_the_argument() {
+        let cond = || col("s").eq(lit("x"));
+        let q = t()
+            .aggregate([col("a").sum().filter_where(cond()).name("total"), count().filter_where(cond()).name("n")])
+            .unwrap();
+        assert_eq!(
+            sql(&q),
+            r#"SELECT SUM(t0."a") FILTER (WHERE (t0."s" = 'x')) AS "total", COUNT(*) FILTER (WHERE (t0."s" = 'x')) AS "n" FROM "t" AS t0"#
+        );
+        assert_eq!(
+            compile(&Bare, &q).unwrap(),
+            r#"SELECT SUM(CASE WHEN (t0."s" = 'x') THEN t0."a" END) AS "total", COUNT(CASE WHEN (t0."s" = 'x') THEN 1 END) AS "n" FROM "t" AS t0"#
+        );
+    }
+
+    #[test]
+    fn full_outer_join_is_a_left_join_plus_unmatched_right_rows() {
+        let q = t().join(&u(), [("a", "b")], JoinKind::Outer).unwrap().order_by(["a"]).unwrap();
+        assert_eq!(
+            compile(&Bare, &q).unwrap(),
+            concat!(
+                r#"SELECT * FROM (SELECT t0."a" AS "a", t0."s" AS "s", t1."a" AS "a_right", t1."b" AS "b" FROM "t" AS t0 LEFT OUTER JOIN "u" AS t1 ON (t0."a" = t1."b") "#,
+                r#"UNION ALL SELECT NULL AS "a", NULL AS "s", t1."a" AS "a_right", t1."b" AS "b" FROM "u" AS t1 WHERE NOT EXISTS (SELECT 1 FROM "t" AS t0 WHERE (t0."a" = t1."b"))) AS t2 "#,
+                r#"ORDER BY t2."a" ASC"#
+            )
+        );
     }
 }

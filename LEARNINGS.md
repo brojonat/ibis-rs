@@ -255,3 +255,56 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
   uses and which was already in the lockfile, being built with a different feature set.
 - **Avoid:** Add a new crate's dependencies once, before iterating on its code, and expect
   one long build.
+
+## A new dependency rebuilt DuckDB again (and why it is cheap to find out first)
+- **What:** Adding `ibis-mysql` and `ibis-trino` recompiled bundled DuckDB (11 minutes), as
+  `ibis-clickhouse` had. A feature diff showed crates elsewhere in the graph gaining
+  features with the `mysql` crate (`crc32fast`, `getrandom`, ...), which is the likely
+  trigger; which one DuckDB's build depends on was not pinned down.
+- **Avoid:** Before adding a dependency, diff `cargo tree --workspace --all-features -e
+  features --prefix none -f '{p} {f}' | sort -u` with and without it (a `git worktree` of
+  HEAD gives the "without"). If shared crates change features, add every new dependency
+  in one go and start the build before writing the code that uses them. To type-check new
+  crates meanwhile, `cargo check -p new-crate --target-dir target/check` does not wait
+  for the build lock.
+
+## `target/` reached 182 GB
+- **What:** Full debug info for Polars, DuckDB and arrow, linked into every test binary and
+  kept for every feature combination ever built.
+- **Avoid:** The workspace sets `debug = "line-tables-only"` for our crates and none for
+  dependencies; a clean rebuild is 9 GB. `cargo clean` is the only thing that removes
+  stale feature combinations.
+
+## Trino: a big `VALUES` list is the wrong way to load data
+- **What:** `INSERT ... VALUES` with 4,000 rows per statement loaded the fixtures at 1,300
+  rows a second, and the third consecutive test run killed the server with
+  `OutOfMemoryError` on a 3 GB heap.
+- **Why surprising:** The data is 20 MB. Trino plans one expression per cell and keeps every
+  finished query and task, with text and plan, for 15 minutes; the plans filled the heap.
+- **Avoid:** Send columns, not cells: `SELECT CAST(c0 AS ...) FROM UNNEST(CAST(JSON_PARSE('[...]')
+  AS ARRAY(VARCHAR)), ...) AS v (c0, ...)`. One literal per column, and twice as fast.
+- **And:** that alone still leaked 100 MB of live heap per test run (600 queries each).
+  `docker/trino/config.properties` sets `query.max-history`, `query.min-expire-age` and
+  `task.info.max-age` so the server forgets within 30 seconds; live heap then stays near
+  450 MB (it still creeps about 10 MB a run; cause not found). Measure with
+  `docker exec <container> jcmd 1 GC.run` then `GC.heap_info`: "used" before a collection
+  says nothing.
+- **Also:** the image sizes its heap at 80% of the memory it sees, so a container memory
+  limit gets it OOM-killed; `docker/trino/jvm.config` sets a fixed 2 GB heap instead. A
+  bind-mounted file edited with `sed -i` is a new inode the running container does not
+  see: `docker compose up --force-recreate`. Without
+  the `X-Trino-Client-Capabilities: PARAMETRIC_DATETIME` header, timestamps come back cut to
+  milliseconds. `FILTER` is not supported on window aggregates. Identifiers fold to lower
+  case, so the harness gives fixture columns their created names back (`bind` in
+  `crates/ibis-conformance/src/lib.rs`).
+
+## MySQL differences that needed a hook, not a function override
+- **What:** `CAST` only takes `SIGNED`, `UNSIGNED`, `CHAR`, `DOUBLE`, `DECIMAL`, `DATE`,
+  `DATETIME` (hence `Dialect::cast_type_name`); there is no `NULLS FIRST`/`LAST`
+  (`Dialect::sort_key`), no `FILTER (WHERE ...)`, no `FULL OUTER JOIN`; `NTH_VALUE` takes
+  only a literal position; `ROUND` and `CAST(... AS SIGNED)` of a DOUBLE round half to even;
+  `1.5` is an exact decimal (write `1.5e0`); `x / 0` is NULL and there is no NaN or infinity.
+- **Also:** string comparison follows the column collation, and the default is
+  case-insensitive. The test server runs with `utf8mb4_bin` (compose.yaml), the counterpart
+  of Postgres's `--no-locale`, and the backend sets the connection collation to match.
+

@@ -32,6 +32,8 @@ thiserror = "2"
 serde_json = "1"
 chrono = "0.4"
 ureq = "3.5"
+# text protocol only: no TLS, no derive macros
+mysql = { version = "28", default-features = false, features = ["minimal-rust"] }
 
 ibis-core = { path = "crates/ibis-core", version = "0.1.0" }
 ibis-sql = { path = "crates/ibis-sql", version = "0.1.1" }
@@ -40,6 +42,8 @@ ibis-sqlite = { path = "crates/ibis-sqlite", version = "0.1.0" }
 ibis-postgres = { path = "crates/ibis-postgres", version = "0.1.0" }
 ibis-clickhouse = { path = "crates/ibis-clickhouse", version = "0.1.0" }
 ibis-polars = { path = "crates/ibis-polars", version = "0.1.0" }
+ibis-mysql = { path = "crates/ibis-mysql", version = "0.1.0" }
+ibis-trino = { path = "crates/ibis-trino", version = "0.1.0" }
 
 # Line numbers in backtraces and nothing more: full debug info for Polars,
 # DuckDB and arrow in every test binary grew target/ past 180 GB.

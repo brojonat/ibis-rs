@@ -372,7 +372,7 @@ impl RelCompiler<'_> {
                     predicates.iter().map(|p| c.sql(p)).collect::<Result<Vec<_>>>()
                 })?;
                 let cond = if cond.is_empty() { "TRUE".to_string() } else { cond.join(" AND ") };
-                let items =
+                let items: Vec<String> =
                     outputs.iter().map(|(out, side, src)| format!("{} AS {}", col(*side, src), q(out))).collect();
                 let (lsrc, rsrc) = (self.source(left, &la)?, self.source(right, &ra)?);
                 let mut s = match how {
@@ -381,6 +381,27 @@ impl RelCompiler<'_> {
                         let mut s = Select::aliased(lsrc, la.clone());
                         s.wheres.push(format!("{not}EXISTS (SELECT 1 FROM {rsrc} WHERE {cond})"));
                         s
+                    }
+                    // Every left row with its matches, then the right rows
+                    // that have none.
+                    JoinKind::Outer if !self.d.supports_full_outer_join() => {
+                        let unmatched: Vec<String> = outputs
+                            .iter()
+                            .map(|(out, side, src)| match side {
+                                Side::Left => format!("NULL AS {}", q(out)),
+                                Side::Right => format!("{} AS {}", col(Side::Right, src), q(out)),
+                            })
+                            .collect();
+                        let a = self.alias();
+                        return Ok(Select::aliased(
+                            format!(
+                                "(SELECT {} FROM {lsrc} LEFT OUTER JOIN {rsrc} ON {cond} \
+                                 UNION ALL SELECT {} FROM {rsrc} WHERE NOT EXISTS (SELECT 1 FROM {lsrc} WHERE {cond})) AS {a}",
+                                items.join(", "),
+                                unmatched.join(", ")
+                            ),
+                            a,
+                        ));
                     }
                     _ => {
                         let kw = match how {
@@ -472,7 +493,7 @@ impl ExprCompiler<'_> {
             Expr::Alias(e, _) => self.sql(e)?,
             Expr::Cast(e, t) => match d.cast(self, e, t)? {
                 Some(s) => s,
-                None => format!("CAST({} AS {})", self.sql(e)?, d.type_name(t)?),
+                None => format!("CAST({} AS {})", self.sql(e)?, d.cast_type_name(t)?),
             },
             Expr::Unary(op, e) => {
                 let a = self.sql(e)?;
@@ -520,6 +541,17 @@ impl ExprCompiler<'_> {
     /// An aggregate call with its FILTER and OVER clauses. Both must follow
     /// the call itself, inside anything a dialect wraps around it.
     fn agg(&self, func: AggFunc, arg: Option<&Expr>, filter: Option<&Expr>, over: Option<&str>) -> Result<String> {
+        if let Some(f) = filter
+            && !self.d.supports_agg_filter(over.is_some())
+        {
+            // rows failing the condition become NULL, which aggregates skip
+            let when = |then: Expr| Expr::Case { branches: vec![(f.clone(), then)], default: None };
+            let (func, arg) = match arg {
+                Some(a) if func != AggFunc::CountStar => (func, when(a.clone())),
+                _ => (AggFunc::Count, when(Expr::Literal(Value::Int(1), DataType::Int8))),
+            };
+            return self.agg(func, Some(&arg), None, over);
+        }
         let mut tail = match filter {
             Some(f) => format!(" FILTER (WHERE {})", self.sql(f)?),
             None => String::new(),
@@ -535,12 +567,7 @@ impl ExprCompiler<'_> {
     }
 
     pub fn sort_key(&self, k: &SortKey) -> Result<String> {
-        Ok(format!(
-            "{} {} NULLS {}",
-            self.sql(&k.expr)?,
-            if k.ascending { "ASC" } else { "DESC" },
-            if k.nulls_first { "FIRST" } else { "LAST" }
-        ))
+        Ok(self.d.sort_key(&self.sql(&k.expr)?, k.ascending, k.nulls_first))
     }
 
     pub fn literal(&self, v: &Value, t: &DataType) -> Result<String> {
@@ -549,7 +576,7 @@ impl ExprCompiler<'_> {
         }
         Ok(match v {
             Value::Null if *t == DataType::Null => "NULL".into(),
-            Value::Null => format!("CAST(NULL AS {})", self.d.type_name(t)?),
+            Value::Null => format!("CAST(NULL AS {})", self.d.cast_type_name(t)?),
             Value::Bool(b) => if *b { "TRUE" } else { "FALSE" }.into(),
             Value::Int(i) => i.to_string(),
             Value::Float(f) if f.is_finite() => format!("{f:?}"),
@@ -562,7 +589,7 @@ impl ExprCompiler<'_> {
                 } else {
                     "-Infinity"
                 },
-                self.d.type_name(&DataType::Float64)?
+                self.d.cast_type_name(&DataType::Float64)?
             ),
             Value::String(s) => quote_str(s),
             Value::Binary(_) => return unsupported(self.d, "binary literal"),
@@ -572,7 +599,7 @@ impl ExprCompiler<'_> {
     }
 
     fn float(&self) -> Result<String> {
-        self.d.type_name(&DataType::Float64)
+        self.d.cast_type_name(&DataType::Float64)
     }
 
     pub fn default_binary(&self, op: BinaryOp, l: &Expr, r: &Expr) -> Result<String> {
@@ -592,10 +619,10 @@ impl ExprCompiler<'_> {
                 format!(
                     "CAST(FLOOR(CAST({ls} AS {}) / {rs}) AS {})",
                     self.float()?,
-                    self.d.type_name(&DataType::Int64)?
+                    self.d.cast_type_name(&DataType::Int64)?
                 )
             }
-            FloorDiv => format!("CAST(FLOOR({ls} / {rs}) AS {})", self.d.type_name(&DataType::Int64)?),
+            FloorDiv => format!("CAST(FLOOR({ls} / {rs}) AS {})", self.d.cast_type_name(&DataType::Int64)?),
             Mod => format!("({ls} % {rs})"),
             Pow => format!("POWER({ls}, {rs})"),
             Eq => format!("({ls} = {rs})"),
@@ -629,9 +656,10 @@ impl ExprCompiler<'_> {
     pub fn default_func(&self, f: Func, args: &[Expr]) -> Result<String> {
         let a = args.iter().map(|x| self.sql(x)).collect::<Result<Vec<_>>>()?;
         let x = a.first().cloned().unwrap_or_default();
-        let int = |s: String| -> Result<String> { Ok(format!("CAST({s} AS {})", self.d.type_name(&DataType::Int32)?)) };
+        let int =
+            |s: String| -> Result<String> { Ok(format!("CAST({s} AS {})", self.d.cast_type_name(&DataType::Int32)?)) };
         let bigint =
-            |s: String| -> Result<String> { Ok(format!("CAST({s} AS {})", self.d.type_name(&DataType::Int64)?)) };
+            |s: String| -> Result<String> { Ok(format!("CAST({s} AS {})", self.d.cast_type_name(&DataType::Int64)?)) };
         let to_int64 = self.dtype(&args[0]).map(|t| !t.is_integer()).unwrap_or(false);
         use Func::*;
         Ok(match f {
@@ -698,7 +726,7 @@ impl ExprCompiler<'_> {
             Minute => int(format!("EXTRACT(MINUTE FROM {x})"))?,
             Second => int(format!("FLOOR(EXTRACT(SECOND FROM {x}))"))?,
             DayOfWeekIndex => {
-                format!("CAST(EXTRACT(ISODOW FROM {x}) - 1 AS {})", self.d.type_name(&DataType::Int16)?)
+                format!("CAST(EXTRACT(ISODOW FROM {x}) - 1 AS {})", self.d.cast_type_name(&DataType::Int16)?)
             }
             IsNan => format!("ISNAN({x})"),
             DayOfYear => int(format!("EXTRACT(DOY FROM {x})"))?,
@@ -753,7 +781,7 @@ impl ExprCompiler<'_> {
                     s = format!("LEAST({s}, {})", a[2]);
                 }
                 // LEAST/GREATEST skip NULLs on some engines; a NULL input must stay NULL
-                let t = self.d.type_name(&self.dtype(&args[0])?)?;
+                let t = self.d.cast_type_name(&self.dtype(&args[0])?)?;
                 format!("CASE WHEN {x} IS NULL THEN NULL ELSE CAST({s} AS {t}) END")
             }
             DateFromYmd => format!("MAKE_DATE({})", a.join(", ")),
@@ -764,7 +792,7 @@ impl ExprCompiler<'_> {
     pub fn default_agg(&self, f: AggFunc, arg: Option<&Expr>, filter: &str) -> Result<String> {
         let x = match arg {
             Some(a) if self.dtype(a)? == DataType::Boolean && matches!(f, AggFunc::Sum | AggFunc::Mean) => {
-                format!("CAST({} AS {})", self.sql(a)?, self.d.type_name(&DataType::Int64)?)
+                format!("CAST({} AS {})", self.sql(a)?, self.d.cast_type_name(&DataType::Int64)?)
             }
             Some(a) => self.sql(a)?,
             None => String::new(),
@@ -826,7 +854,11 @@ impl ExprCompiler<'_> {
                     FirstValue => format!("FIRST_VALUE({}) {over}", a_sql[0]),
                     LastValue => format!("LAST_VALUE({}) {over}", a_sql[0]),
                     Ntile => format!("(NTILE({}) {over} - 1)", a_sql[0]),
-                    NthValue => format!("NTH_VALUE({}, {} + 1) {over}", a_sql[0], a_sql[1]),
+                    // Ibis counts from 0. A literal index stays a literal: MySQL takes nothing else.
+                    NthValue => match a_sql[1].parse::<i64>() {
+                        Ok(n) => format!("NTH_VALUE({}, {}) {over}", a_sql[0], n + 1),
+                        Err(_) => format!("NTH_VALUE({}, {} + 1) {over}", a_sql[0], a_sql[1]),
+                    },
                 }
             }
             other => return unsupported(self.d, format!("window over {other}")),

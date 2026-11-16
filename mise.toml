@@ -8,6 +8,8 @@ IBIS_TESTING_DATA = "{{config_root}}/ci/ibis-testing-data"
 IBIS_TESTING_POSTGRES_URL = "host=127.0.0.1 port=54330 user=postgres dbname=ibis_testing"
 # not a secret: the throwaway test container in compose.yaml
 IBIS_TESTING_CLICKHOUSE_URL = "clickhouse://ibis:ibis@127.0.0.1:18123/ibis_testing"
+IBIS_TESTING_MYSQL_URL = "mysql://root@127.0.0.1:13306/ibis_testing"
+IBIS_TESTING_TRINO_URL = "trino://ibis@127.0.0.1:18080/memory/default"
 
 [tasks.up]
 description = "Start backend containers and wait until they are healthy: mise run up [service...] (default: all in compose.yaml)"

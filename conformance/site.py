@@ -46,7 +46,7 @@ IBIS_TESTS = "ibis/backends/tests"
 IBIS_URL = f"https://github.com/ibis-project/ibis/blob/{ibis.__version__}"
 TPCH = "tpc/h/test_queries"
 # column order; "schema" is the engine-independent check of output names and types
-BACKENDS = ["polars", "duckdb", "postgres", "sqlite", "clickhouse", "schema"]
+BACKENDS = ["polars", "duckdb", "postgres", "sqlite", "mysql", "clickhouse", "trino", "schema"]
 PROBLEMS = {"fail", "error", "xpass", "no_golden"}
 
 

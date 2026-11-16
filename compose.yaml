@@ -41,6 +41,38 @@ services:
       timeout: 5s
       retries: 60
 
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: ibis_testing
+    # binary collation: strings compare and order bytewise, like DuckDB and the goldens
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_bin"]
+    ports: ["127.0.0.1:13306:3306"]
+    volumes:
+      - mysql:/var/lib/mysql
+    healthcheck:
+      # over TCP: during init the server only listens on its socket
+      test: ["CMD", "mysqladmin", "ping", "--protocol=tcp", "-h", "127.0.0.1", "-u", "root"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+
+  trino:
+    image: trinodb/trino:484
+    ports: ["127.0.0.1:18080:8080"]
+    volumes:
+      # the image's own, with a fixed 2 GB heap in place of 80% of the host's memory
+      - ./docker/trino/jvm.config:/etc/trino/jvm.config:ro
+      - ./docker/trino/config.properties:/etc/trino/config.properties:ro
+      - ./docker/trino/memory.properties:/etc/trino/catalog/memory.properties:ro
+    healthcheck:
+      test: ["CMD", "/usr/lib/trino/bin/health-check"]
+      interval: 2s
+      timeout: 10s
+      retries: 90
+
 volumes:
   postgres:
   clickhouse:
+  mysql:

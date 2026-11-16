@@ -18,6 +18,12 @@ pub trait Dialect: Send + Sync {
         default_type_name(self.name(), t)
     }
 
+    /// A type as the target of a `CAST`. Differs from `type_name` only where
+    /// casts take their own vocabulary (MySQL: `SIGNED`, `CHAR`, ...).
+    fn cast_type_name(&self, t: &DataType) -> Result<String> {
+        self.type_name(t)
+    }
+
     /// Spell a literal. Return `None` to use the default.
     fn literal(&self, _v: &Value, _t: &DataType) -> Result<Option<String>> {
         Ok(None)
@@ -44,6 +50,28 @@ pub trait Dialect: Send + Sync {
     }
     fn cast(&self, _c: &ExprCompiler, _e: &Expr, _to: &DataType) -> Result<Option<String>> {
         Ok(None)
+    }
+
+    /// One `ORDER BY` key over the compiled expression `expr`.
+    fn sort_key(&self, expr: &str, ascending: bool, nulls_first: bool) -> String {
+        format!(
+            "{expr} {} NULLS {}",
+            if ascending { "ASC" } else { "DESC" },
+            if nulls_first { "FIRST" } else { "LAST" }
+        )
+    }
+
+    /// Whether aggregates take `FILTER (WHERE ...)`; `windowed` asks about
+    /// one with an `OVER` clause. If not, the condition moves into the
+    /// argument: `SUM(CASE WHEN cond THEN x END)`.
+    fn supports_agg_filter(&self, _windowed: bool) -> bool {
+        true
+    }
+
+    /// Whether the engine has `FULL OUTER JOIN`. If not it is a left join
+    /// plus the right rows no left row matches.
+    fn supports_full_outer_join(&self) -> bool {
+        true
     }
 
     /// Whether the engine has `INTERSECT ALL` and `EXCEPT ALL`. If not they
@@ -89,6 +117,45 @@ pub fn default_type_name(backend: &str, t: &DataType) -> Result<String> {
             return Err(ibis_core::Error::Unsupported { backend: backend.into(), op: "timestamp with tz".into() });
         }
     })
+}
+
+/// A C `strftime` pattern in the pattern language of MySQL's `DATE_FORMAT`,
+/// which Trino's `date_format` shares. The two agree except that MySQL reads
+/// `%M` as the month name (`%i` is minutes) and `%W` as the weekday name.
+pub fn strftime_to_date_format(backend: &str, fmt: &str) -> Result<String> {
+    let mut out = String::new();
+    let mut chars = fmt.chars();
+    while let Some(ch) = chars.next() {
+        if ch != '%' {
+            out.push(ch);
+            continue;
+        }
+        out.push_str(match chars.next() {
+            Some('Y') => "%Y",
+            Some('y') => "%y",
+            Some('m') => "%m",
+            Some('d') => "%d",
+            Some('H') => "%H",
+            Some('I') => "%I",
+            Some('M') => "%i",
+            Some('S') => "%S",
+            Some('f') => "%f",
+            Some('j') => "%j",
+            Some('p') => "%p",
+            Some('B') => "%M",
+            Some('b') => "%b",
+            Some('A') => "%W",
+            Some('a') => "%a",
+            Some('%') => "%%",
+            other => {
+                return Err(ibis_core::Error::Unsupported {
+                    backend: backend.into(),
+                    op: format!("strftime directive %{}", other.map(String::from).unwrap_or_default()),
+                });
+            }
+        });
+    }
+    Ok(out)
 }
 
 /// A dialect with no overrides; useful for tests and as documentation of the defaults.

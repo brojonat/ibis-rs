@@ -5,7 +5,20 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ## [Unreleased]
 
 ### Added
-- `ibis-clickhouse`: ClickHouse backend over the HTTP interface. Every type is `Nullable`, each request carries the settings that give standard SQL semantics (NULLs from outer joins, NULL for aggregates of no rows, `UNION` meaning `UNION DISTINCT`), and floats round half away from zero. Passes 550 of the 551 Ibis cases (the other is marked `notyet` for ClickHouse in Ibis itself) and the 22 TPC-H queries. Not on crates.io yet.
+- `ibis-mysql`: MySQL backend (`mysql` crate, text protocol). MySQL has no boolean type, NaN or infinity, `FILTER (WHERE ...)`, `NULLS FIRST`/`LAST` or `FULL OUTER JOIN`, and its `CAST` has its own type names; each is rewritten. Passes 531 of the 551 Ibis cases (the other 20 need NaN or infinity) and the 22 TPC-H queries. Not on crates.io yet.
+- `ibis-trino`: Trino backend over the HTTP protocol. Floats are written with an exponent (a bare `1.5` is a decimal there), and `create_table` sends rows as one JSON array per column. Passes all 551 Ibis cases and the 22 TPC-H queries. Not on crates.io yet.
+- `ibis-rs`: `mysql` and `trino` features; `mysql://`, `trino://` and `trinos://` URLs in `connect`.
+- `ibis-sql`: `Dialect::cast_type_name` (type names inside `CAST`), `Dialect::sort_key` (how an `ORDER BY` key and its NULL placement are spelled), `Dialect::supports_agg_filter` (without it the condition moves into the argument as a `CASE`), `Dialect::supports_full_outer_join` (without it the join becomes a left join plus the unmatched right rows) and `strftime_to_date_format`.
+- `compose.yaml`: MySQL 8.4 and Trino 484 services.
+
+### Changed
+- `ibis-sql`: a literal `nth` index compiles to a literal (`NTH_VALUE(x, 4)`, not `NTH_VALUE(x, 3 + 1)`).
+- Dev builds keep line tables only (`[profile.dev] debug = "line-tables-only"`, none for dependencies): `target/` had grown past 180 GB.
+
+## [ibis-sql 0.1.1, ibis-clickhouse 0.1.0, ibis-rs 0.1.2] - 2026-11-15
+
+### Added
+- `ibis-clickhouse`: ClickHouse backend over the HTTP interface. Every type is `Nullable`, each request carries the settings that give standard SQL semantics (NULLs from outer joins, NULL for aggregates of no rows, `UNION` meaning `UNION DISTINCT`), and floats round half away from zero. Passes 550 of the 551 Ibis cases (the other is marked `notyet` for ClickHouse in Ibis itself) and the 22 TPC-H queries.
 - `ibis-rs`: `clickhouse` feature and `clickhouse://` / `clickhouses://` URLs in `connect`.
 - `ibis-sql`: `Dialect::analytic`, a hook for how a dialect spells ranking and offset window functions.
 - `compose.yaml`: one container per server backend (Postgres, ClickHouse). `mise run up [service...]` and `mise run down`.

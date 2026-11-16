@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, rows_to_batch};
 use ibis_core::prelude::*;
-use ibis_core::{Error, Result, Value};
+use ibis_core::{Error, Field, Result, Value};
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde_json::{Value as Json, json};
 
@@ -138,8 +138,27 @@ impl FixtureData {
         for (name, batches) in &self.tables {
             b.create_table(name, batches)?;
         }
-        self.fx(|name| b.table(name))
+        self.fx(|name| {
+            let (_, batches) = self.tables.iter().find(|(n, _)| n == name).expect("known fixture");
+            bind(b, name, &Schema::from_arrow(&batches[0].schema())?)
+        })
     }
+}
+
+/// `b`'s table `name`, under the column names it was created with (`created`).
+/// Trino folds identifiers to lower case and resolves them case-insensitively,
+/// so its `playerid` is given back the name the cases use, `playerID`.
+fn bind(b: &dyn Backend, name: &str, created: &Schema) -> Result<Table> {
+    let t = b.table(name)?;
+    let fields = &t.schema().fields;
+    let folded = fields.len() == created.len()
+        && fields.iter().zip(&created.fields).all(|(f, c)| f.name.eq_ignore_ascii_case(&c.name))
+        && fields.iter().zip(&created.fields).any(|(f, c)| f.name != c.name);
+    if !folded {
+        return Ok(t);
+    }
+    let renamed = fields.iter().zip(&created.fields).map(|(f, c)| Field::new(&c.name, f.dtype.clone())).collect();
+    Ok(Table::named(name, Schema::new(renamed)))
 }
 
 /// A backend under test and its fixture tables.
@@ -155,9 +174,8 @@ pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
             let backend: Box<dyn Backend> = match *n {
                 "duckdb" => Box::new(ibis_duckdb::DuckDb::open_in_memory()?),
                 "sqlite" => Box::new(ibis_sqlite::Sqlite::open_in_memory()?),
-                "postgres" => Box::new(ibis_postgres::Postgres::connect(&postgres_url()?)?),
                 "polars" => Box::new(ibis_polars::Polars::new()),
-                "clickhouse" => Box::new(ibis_clickhouse::ClickHouse::connect(&clickhouse_url()?)?),
+                server if SERVERS.contains(&server) => connect(server, &server_url(server)?)?,
                 other => return Err(Error::Other(format!("unknown backend {other:?}"))),
             };
             let fx = data.load(backend.as_ref())?;
@@ -166,7 +184,10 @@ pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
         .collect()
 }
 
-pub const ALL_BACKENDS: [&str; 5] = ["clickhouse", "duckdb", "polars", "postgres", "sqlite"];
+pub const ALL_BACKENDS: [&str; 7] = ["clickhouse", "duckdb", "mysql", "polars", "postgres", "sqlite", "trino"];
+
+/// Backends that are a server to connect to, each a service in compose.yaml.
+const SERVERS: [&str; 4] = ["clickhouse", "mysql", "postgres", "trino"];
 
 /// Backends whose port is in progress. They are run and reported like the
 /// rest, but their failures do not fail the run and `cargo test` leaves them
@@ -178,35 +199,31 @@ pub fn gated() -> Vec<&'static str> {
     ALL_BACKENDS.into_iter().filter(|b| !EXPERIMENTAL.contains(b)).collect()
 }
 
-fn clickhouse_url() -> Result<String> {
-    std::env::var("IBIS_TESTING_CLICKHOUSE_URL").map_err(|_| {
-        Error::Other(
-            "clickhouse: set IBIS_TESTING_CLICKHOUSE_URL (mise.toml does; `mise run up clickhouse` starts the server)"
-                .into(),
-        )
+/// Where the test instance of a server backend is: `IBIS_TESTING_<NAME>_URL`.
+fn server_url(name: &str) -> Result<String> {
+    let var = format!("IBIS_TESTING_{}_URL", name.to_uppercase());
+    std::env::var(&var).map_err(|_| {
+        Error::Other(format!("{name}: set {var} (mise.toml does; `mise run up {name}` starts the server)"))
     })
 }
 
-fn postgres_url() -> Result<String> {
-    std::env::var("IBIS_TESTING_POSTGRES_URL").map_err(|_| {
-        Error::Other(
-            "postgres: set IBIS_TESTING_POSTGRES_URL (mise.toml does; `mise run up postgres` starts the server)".into(),
-        )
+fn connect(name: &str, url: &str) -> Result<Box<dyn Backend>> {
+    Ok(match name {
+        "clickhouse" => Box::new(ibis_clickhouse::ClickHouse::connect(url)?),
+        "mysql" => Box::new(ibis_mysql::MySql::connect(url)?),
+        "postgres" => Box::new(ibis_postgres::Postgres::connect(url)?),
+        "trino" => Box::new(ibis_trino::Trino::connect(url)?),
+        other => return Err(Error::Other(format!("{other:?} is not a server backend"))),
     })
 }
 
 /// Why `name` cannot be tested right now, if it cannot: its server is not
 /// running. In-process backends are always available.
 fn unavailable(name: &str) -> Option<String> {
-    match name {
-        "postgres" => {
-            postgres_url().and_then(|url| ibis_postgres::Postgres::connect(&url)).err().map(|e| e.to_string())
-        }
-        "clickhouse" => {
-            clickhouse_url().and_then(|url| ibis_clickhouse::ClickHouse::connect(&url)).err().map(|e| e.to_string())
-        }
-        _ => None,
+    if !SERVERS.contains(&name) {
+        return None;
     }
+    server_url(name).and_then(|url| connect(name, &url)).err().map(|e| e.to_string())
 }
 
 /// The backends in `names` that are up. One that is not is skipped with a
@@ -515,7 +532,7 @@ pub fn tpch_backend(paths: &Paths, name: &str) -> Result<Box<dyn Backend>> {
     Ok(match name {
         "duckdb" => Box::new(ibis_duckdb::DuckDb::open(&file("tpch.duckdb")?)?),
         "sqlite" => Box::new(ibis_sqlite::Sqlite::open(&file("tpch.sqlite")?)?),
-        "postgres" => Box::new(ibis_postgres::Postgres::connect(&format!("{} dbname=tpch_sf0_01", postgres_url()?))?),
+        "postgres" => connect(name, &format!("{} dbname=tpch_sf0_01", server_url(name)?))?,
         "polars" => {
             let b = ibis_polars::Polars::new();
             for t in TPCH_TABLES {
@@ -523,20 +540,26 @@ pub fn tpch_backend(paths: &Paths, name: &str) -> Result<Box<dyn Backend>> {
             }
             Box::new(b)
         }
-        // loaded from the parquet files on first use, into its own database
-        "clickhouse" => {
-            let url = clickhouse_url()?;
-            ibis_clickhouse::ClickHouse::connect(&url)?
-                .execute_statement("CREATE DATABASE IF NOT EXISTS tpch_sf0_01")?;
+        // loaded from the parquet files on first use, into a database of its
+        // own (a schema, in Trino); the URL's last segment names it
+        "clickhouse" | "mysql" | "trino" => {
+            let url = server_url(name)?;
+            let create =
+                format!("CREATE {} IF NOT EXISTS tpch_sf0_01", if name == "trino" { "SCHEMA" } else { "DATABASE" });
+            match name {
+                "clickhouse" => ibis_clickhouse::ClickHouse::connect(&url)?.execute_statement(&create)?,
+                "mysql" => ibis_mysql::MySql::connect(&url)?.execute_statement(&create)?,
+                _ => ibis_trino::Trino::connect(&url)?.execute_statement(&create)?,
+            }
             let server = url.rsplit_once('/').map_or(url.as_str(), |(server, _)| server);
-            let b = ibis_clickhouse::ClickHouse::connect(&format!("{server}/tpch_sf0_01"))?;
+            let b = connect(name, &format!("{server}/tpch_sf0_01"))?;
             let have = b.list_tables()?;
             for t in TPCH_TABLES {
                 if !have.iter().any(|h| h == t) {
                     b.create_table(t, &read_parquet(Path::new(&file(&format!("{t}.parquet"))?))?)?;
                 }
             }
-            Box::new(b)
+            b
         }
         other => return Err(Error::Other(format!("unknown backend {other:?}"))),
     })
@@ -567,7 +590,7 @@ pub fn run_tpch(paths: &Paths, names: &[&str], filter: &str) -> Result<Vec<Outco
             };
             // per backend: parity with Python Ibis on the same engine and data
             // engines loaded from the parquet files DuckDB was built from share DuckDB's goldens
-            let golden_dir = if matches!(*name, "polars" | "clickhouse") { "duckdb" } else { name };
+            let golden_dir = if matches!(*name, "polars" | "clickhouse" | "mysql" | "trino") { "duckdb" } else { name };
             let golden = paths.golden.join(format!("tpch/{golden_dir}/{q}.parquet"));
             if !golden.exists() {
                 out.status = Status::NoGolden;

@@ -52,12 +52,13 @@ pub fn register(v: &mut Vec<Case>) {
     v.push(scalar(&p("test_scalar_fill_null_nullif", "nullif_null"), || Ok(lit(5).nullif(5))));
     v.push(scalar(&p("test_scalar_fill_null_nullif", "nullif_not_null"), || Ok(lit(10).nullif(5))));
 
-    // SQLite has no NaN (it stores NULL); Ibis marks it notimpl there too.
+    // SQLite has no NaN (it stores NULL) and neither has MySQL; Ibis marks
+    // it notimpl on both.
     v.push(
         table(&p("test_isna", "nan_col"), |t| {
             t.select([lit(f64::NAN).name("nan_col")])?.filter([c("nan_col").isnan()])
         })
-        .notimpl(&["sqlite"]),
+        .notimpl(&["sqlite", "mysql"]),
     );
     v.push(table(&p("test_isna", "none_col"), |t| {
         t.select([untyped_null().cast(DataType::Float64).name("none_col")])?.filter([c("none_col").isnull()])
@@ -129,7 +130,7 @@ pub fn register(v: &mut Vec<Case>) {
             let t = t.mutate([c("float_col").cast(DataType::Float64).name("float_col")])?;
             t.select(["id", "float_col"])
         })
-        .notimpl(&["sqlite"]),
+        .notimpl(&["sqlite", "mysql"]),
     );
 
     v.push(table(&p("test_table_fill_null_mapping", "int"), |t| {

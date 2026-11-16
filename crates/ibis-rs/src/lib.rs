@@ -4,7 +4,7 @@
 //!
 //! This crate is the front door: it re-exports the API from `ibis-core` and
 //! puts each backend behind a cargo feature. `polars` is on by default;
-//! `duckdb`, `sqlite`, `postgres` and `clickhouse` are opt-in.
+//! `duckdb`, `sqlite`, `postgres`, `mysql`, `clickhouse` and `trino` are opt-in.
 //!
 //! ```toml
 //! [dependencies]
@@ -46,7 +46,8 @@
 //! Backend-specific methods (`raw_sql`, registering a Polars `DataFrame`,
 //! opening from an existing connection) live on the concrete types:
 //! [`polars::Polars`], [`sqlite::Sqlite`], [`duckdb::DuckDb`],
-//! [`postgres::Postgres`], [`clickhouse::ClickHouse`].
+//! [`postgres::Postgres`], [`mysql::MySql`], [`clickhouse::ClickHouse`],
+//! [`trino::Trino`].
 
 pub use ibis_core::*;
 
@@ -60,12 +61,16 @@ pub use arrow_array;
 pub use ibis_clickhouse as clickhouse;
 #[cfg(feature = "duckdb")]
 pub use ibis_duckdb as duckdb;
+#[cfg(feature = "mysql")]
+pub use ibis_mysql as mysql;
 #[cfg(feature = "polars")]
 pub use ibis_polars as polars;
 #[cfg(feature = "postgres")]
 pub use ibis_postgres as postgres;
 #[cfg(feature = "sqlite")]
 pub use ibis_sqlite as sqlite;
+#[cfg(feature = "trino")]
+pub use ibis_trino as trino;
 
 /// Connect to a backend by URL, like Python's `ibis.connect`.
 ///
@@ -75,7 +80,9 @@ pub use ibis_sqlite as sqlite;
 /// | `duckdb://` (in memory), `duckdb://path/to/file.db` | DuckDB | `duckdb` |
 /// | `sqlite://` (in memory), `sqlite://path/to/file.db` | SQLite | `sqlite` |
 /// | `postgres://user:pass@host:5432/db`, `postgresql://...` | Postgres | `postgres` |
+/// | `mysql://user:pass@host:3306/db` | MySQL | `mysql` |
 /// | `clickhouse://user:pass@host:8123/db` (HTTP), `clickhouses://...` (HTTPS) | ClickHouse | `clickhouse` |
+/// | `trino://user@host:8080/catalog/schema` (HTTP), `trinos://user:pass@...` (HTTPS) | Trino | `trino` |
 ///
 /// Everything after `duckdb://` or `sqlite://` is a file path, so an absolute
 /// path has three slashes: `sqlite:///var/data/app.db`.
@@ -85,7 +92,7 @@ pub use ibis_sqlite as sqlite;
 pub fn connect(url: &str) -> Result<Box<dyn Backend>> {
     let Some((scheme, rest)) = url.split_once("://") else {
         return Err(Error::Other(format!(
-            "connect: `{url}` is not a URL; expected polars://, duckdb://, sqlite://, postgres:// or clickhouse://"
+            "connect: `{url}` is not a URL; expected polars://, duckdb://, sqlite://, postgres://, mysql://, clickhouse:// or trino://"
         )));
     };
     match scheme {
@@ -93,9 +100,11 @@ pub fn connect(url: &str) -> Result<Box<dyn Backend>> {
         "duckdb" => duckdb_at(rest),
         "sqlite" => sqlite_at(rest),
         "postgres" | "postgresql" => postgres_at(url),
+        "mysql" => mysql_at(url),
         "clickhouse" | "clickhouses" => clickhouse_at(url),
+        "trino" | "trinos" => trino_at(url),
         other => Err(Error::Other(format!(
-            "connect: unknown backend `{other}` in `{url}`; expected polars://, duckdb://, sqlite://, postgres:// or clickhouse://"
+            "connect: unknown backend `{other}` in `{url}`; expected polars://, duckdb://, sqlite://, postgres://, mysql://, clickhouse:// or trino://"
         ))),
     }
 }
@@ -163,6 +172,24 @@ fn clickhouse_at(_: &str) -> Result<Box<dyn Backend>> {
     disabled("clickhouse")
 }
 
+#[cfg(feature = "mysql")]
+fn mysql_at(url: &str) -> Result<Box<dyn Backend>> {
+    Ok(Box::new(mysql::MySql::connect(url)?))
+}
+#[cfg(not(feature = "mysql"))]
+fn mysql_at(_: &str) -> Result<Box<dyn Backend>> {
+    disabled("mysql")
+}
+
+#[cfg(feature = "trino")]
+fn trino_at(url: &str) -> Result<Box<dyn Backend>> {
+    Ok(Box::new(trino::Trino::connect(url)?))
+}
+#[cfg(not(feature = "trino"))]
+fn trino_at(_: &str) -> Result<Box<dyn Backend>> {
+    disabled("trino")
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -181,7 +208,7 @@ mod tests {
     #[test]
     fn rejects_what_it_cannot_dispatch() {
         assert!(err("app.db").contains("is not a URL"));
-        assert!(err("mysql://localhost/db").contains("unknown backend `mysql`"));
+        assert!(err("oracle://localhost/db").contains("unknown backend `oracle`"));
     }
 
     #[cfg(not(feature = "duckdb"))]
@@ -269,6 +296,20 @@ mod tests {
     fn clickhouse_urls_reach_the_clickhouse_backend() {
         for url in ["clickhouse://u@127.0.0.1:1/db", "clickhouses://u@127.0.0.1:1/db"] {
             assert!(err(url).contains("clickhouse failed"), "{}", err(url));
+        }
+    }
+
+    #[cfg(feature = "mysql")]
+    #[test]
+    fn mysql_urls_reach_the_mysql_backend() {
+        assert!(err("mysql://u@127.0.0.1:1/db").contains("mysql failed"), "{}", err("mysql://u@127.0.0.1:1/db"));
+    }
+
+    #[cfg(feature = "trino")]
+    #[test]
+    fn trino_urls_reach_the_trino_backend() {
+        for url in ["trino://u@127.0.0.1:1/memory/default", "trinos://u@127.0.0.1:1/memory"] {
+            assert!(err(url).contains("trino failed"), "{}", err(url));
         }
     }
 }

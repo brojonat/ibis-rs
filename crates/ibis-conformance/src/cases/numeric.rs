@@ -43,6 +43,8 @@ fn more(v: &mut Vec<Case>) {
     // SQLite has no NaN: it stores NULL, so nothing there can be (or be
     // tested for) NaN. Ibis marks these notimpl on SQLite too.
     let no_nan: &[&str] = &["sqlite"];
+    // MySQL has neither NaN nor infinity, and no way to write one.
+    let no_inf: &[&str] = &["mysql"];
 
     let literals: [(&str, Num); 4] = [
         ("float-literal", || lit(1.3)),
@@ -58,7 +60,8 @@ fn more(v: &mut Vec<Case>) {
         }
         for (oid, operand) in literals {
             let case = scalar(&format!("test_isnan_isinf[{fid}-{oid}]"), move || Ok(f(operand())));
-            v.push(if fid == "isnan" || oid == "nan-literal" { case.notimpl(no_nan) } else { case });
+            let case = if fid == "isnan" || oid == "nan-literal" { case.notimpl(no_nan) } else { case };
+            v.push(if oid == "float-literal" { case } else { case.notimpl(no_inf) });
         }
     }
 
@@ -136,13 +139,14 @@ fn more(v: &mut Vec<Case>) {
     v.push(scalar("test_integer_truediv", || Ok(lit(1) / lit(2))));
 
     // x / 0 is +/-Infinity and 0 / 0 is NaN. Every column has zeros, so
-    // every case has NaNs, which SQLite can't represent.
+    // every case has NaNs, which SQLite and MySQL can't represent.
     for (did, zero) in [("0", lit(0) as Expr), ("0.0", lit(0.0))] {
         for col in ["tinyint_col", "smallint_col", "int_col", "bigint_col", "float_col", "double_col"] {
             let zero = zero.clone();
             v.push(
                 column(&format!("test_divide_by_zero[{col}-{did}]"), move |_| Ok(c(col) / zero.clone()))
-                    .notimpl(no_nan),
+                    .notimpl(no_nan)
+                    .notimpl(no_inf),
             );
         }
     }

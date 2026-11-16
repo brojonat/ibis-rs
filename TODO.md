@@ -2,7 +2,7 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, SQLite 530 (21 need NaN), ClickHouse 550 (1 marked notyet in Ibis too).
+Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, Trino 551, ClickHouse 550 (1 marked notyet in Ibis too), MySQL 531 (20 need NaN or infinity), SQLite 530 (21 need NaN).
 Coverage of the Ibis suite: 561 of 1,899 applicable test ids (30%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
@@ -25,6 +25,9 @@ Coverage of the Ibis suite: 561 of 1,899 applicable test ids (30%); per module a
 - [x] Parity site (`mise run site`, conformance/site.py), published to GitHub Pages by CI
 - [x] CI: lint + test on every backend + site (.github/workflows/ci.yml)
 - [x] `mise run test` under a memory cap
+- [x] Published 2026-11-15: ibis-sql 0.1.1, ibis-clickhouse 0.1.0, ibis-rs 0.1.2 (the `clickhouse` feature)
+- [x] ibis-mysql backend: 531/551 + 20 xfail, 22/22. Full outer joins are emulated (Ibis's own MySQL backend has none)
+- [x] ibis-trino backend (HTTP): 551/551, 22/22
 
 ## Next: parity
 - [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
@@ -42,17 +45,19 @@ Coverage of the Ibis suite: 561 of 1,899 applicable test ids (30%); per module a
 
 ## Next: backends
 One compose service + one crate each; start in `EXPERIMENTAL` (README: "Adding things").
-- [ ] MySQL (single container; `mysql` crate)
-- [ ] Trino (single container, HTTP)
+- [ ] Publish `ibis-mysql` and `ibis-trino` (needs ibis-sql 0.1.2 for the new `Dialect` hooks, then an ibis-rs release with the `mysql` and `trino` features)
+- [ ] MySQL: TLS (the `mysql` crate is built without it), `caching_sha2_password` over plain TCP is untested (the test server has an empty root password)
+- [ ] Trino: a load path that is not SQL text (`create_table` sends rows inside INSERT statements); the test server's memory catalog loses its tables on restart
 - [ ] Spark (Spark Connect container) and Impala (needs a metastore and storage: start from Ibis's `compose.yaml`)
 - [ ] Cloud-only backends (BigQuery, Snowflake): credentials from environment variables, tests skipped without them
-- [ ] ClickHouse: publish `ibis-clickhouse` and an `ibis-rs` release with the `clickhouse` feature; the native protocol or Arrow format instead of tab-separated text for large results; add it to `mise run bench` and to the Python Ibis cross-check in gen_goldens.py
+- [ ] ClickHouse: the native protocol or Arrow format instead of tab-separated text for large results
+- [ ] Add MySQL, ClickHouse and Trino to `mise run bench` and to the Python Ibis cross-check in gen_goldens.py
 - [ ] `x IN (NULL)` on ClickHouse is false, not NULL (the one xfail)
 
 ## Next: parity site
 - [ ] Per-backend operation matrix on the same site, shaped like Ibis's support matrix, generated from the cases and `notimpl` marks
 - [ ] Rust line links are best-effort when a case id is built with `format!`; give cases a `file!()`/`line!()` at registration
-- [ ] Trim page weight (4.9 MB; the generated queries are most of it)
+- [ ] Trim page weight (6.6 MB with seven backends; the generated queries are most of it)
 
 ## Next: Polars
 - [ ] Arrow in and out through the C Data Interface. Today `create_table` and results go through rows of `Value`, which is slow and memory-hungry on large tables
@@ -78,7 +83,7 @@ Steps are in dependency order.
 - [ ] Features: make `bundled` an opt-out default feature of ibis-duckdb and ibis-sqlite, so users can link a system library; check the docs.rs build of ibis-duckdb fits its time limit
 - [ ] Pin the toolchain (`rust-toolchain.toml`) and set the MSRV
 - [x] CI workflow (`.github/workflows/ci.yml`) on push and PR: `mise run lint`, `mise run up`, `mise run test`, `mise run site`
-- [ ] Versions are uneven (ibis-rs 0.1.1, the rest 0.1.0, ibis-clickhouse unpublished): realign at the next release
+- [ ] Versions are uneven (ibis-rs 0.1.2, ibis-sql 0.1.1, the rest 0.1.0; ibis-mysql and ibis-trino unpublished): realign at the next release
 - [ ] `mise run release <version>`: bump the workspace version and internal dep versions, rename `[Unreleased]` in CHANGELOG.md to `[X.Y.Z] - date`, commit, tag. Pushing stays manual
 - [ ] Release workflow (`.github/workflows/release.yml`) on `v*` tags: check tag == workspace version, run the gate, `cargo publish --workspace`, `gh release create` with the CHANGELOG section as the body
 - [x] First publish: 0.1.0 of the five library crates is on crates.io (2026-11-14), tagged `v0.1.0`
@@ -91,7 +96,7 @@ Steps are in dependency order.
 ## Later
 - [ ] `connect` with a registry, so third-party backends can add URL schemes
 - [ ] ibis-datafusion backend: IR -> LogicalPlan; arrow 59 vs 60 needs C Data Interface hop
-- [ ] More SQL backends: BigQuery, Snowflake, Trino, ClickHouse, MySQL (dialect + driver each)
+- [ ] More SQL backends: BigQuery, Snowflake, MSSQL, Oracle (dialect + driver each)
 - [ ] Upstream DataFusion unparser bug reports from spikes/unparser/FINDINGS.md
 - [ ] Selectors (s.numeric(), s.matches(...)), deferred-style sugar, typed derive layer
 - [ ] UDF escape hatch
