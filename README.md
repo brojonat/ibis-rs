@@ -125,7 +125,7 @@ A backend whose container is not running is skipped with a note on stderr, so
 | `crates/ibis-conformance` | Rust side of the suite: `src/cases/<module>.rs`, `src/tpch.rs`, the runner, `tpch-bench` |
 | `conformance/` | Python side: `cases/test_<module>.py` (the Ibis expressions), `gen_goldens.py`, `check_ids.py`, `memtables.json`, `golden/` (parquet + `index.json`), `site.py` and `not_applicable.json` (the parity site) |
 | `compose.yaml`, `docker/` | one container per server backend (four for Impala: metastore, statestore, catalog, daemon) |
-| `.github/workflows/ci.yml` | lint, test on every backend (DuckDB linked prebuilt), build the parity site and publish it to GitHub Pages from `main` |
+| `.github/workflows/ci.yml` | lint, unit tests, one conformance run on every backend (DuckDB linked prebuilt) that gates the build and feeds the parity site, published to GitHub Pages from `main` |
 | `bench/` | TPC-H data generation, the Python Ibis baseline, the report script |
 | `scripts/` | `download-data.sh` (Ibis testing data) |
 | `spikes/unparser` | spike: DataFusion's Unparser as a multi-backend compiler ([findings](spikes/unparser/FINDINGS.md)) |
@@ -140,6 +140,7 @@ A backend whose container is not running is skipped with a note on stderr, so
 | `mise run up [service...]` / `down` | start backend containers and wait until healthy (all of them if none is named) / stop them and delete their data |
 | `mise run build` | `cargo build --workspace` |
 | `mise run test` | unit tests + conformance + TPC-H on every backend that is up, under a 12 GB memory cap |
+| `mise run unit` | unit tests and doctests only; no containers needed |
 | `mise run lint` | `cargo fmt --check` + `cargo clippy -D warnings` |
 | `mise run conformance` | run the runner: JSONL to `logs/conformance.jsonl`, matrix to stderr and `logs/conformance.txt` |
 | `mise run site` | run conformance, then build the parity site into `site/` (open `site/index.html`) |

@@ -31,6 +31,9 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
+      # Several gigabytes of images: fetch them while the code is checked and
+      # compiled. `mise run up` below waits for whatever is still coming.
+      - run: nohup docker compose pull --quiet > "$RUNNER_TEMP/pull.log" 2>&1 &
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -43,6 +46,7 @@ jobs:
           echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
       - uses: jdx/mise-action@v5
       - run: mise run lint
+      - run: mise run unit
       # libduckdb.so, for binaries started outside cargo (the conformance
       # runner). The build script's own copy of it is the one a restored cache
       # still has; target/duckdb-download is only there after a download.
@@ -52,7 +56,9 @@ jobs:
           echo "LD_LIBRARY_PATH=$(dirname "$lib")" >> "$GITHUB_ENV"
       # every backend in compose.yaml, so none is skipped
       - run: mise run up
-      - run: mise run test
+      # The conformance run is the gate: it exits non-zero on any case that
+      # fails, as the `cargo test` gate of `mise run test` does, and the site
+      # is built from its results. Running both would run the suite twice.
       - run: mise run site
       - run: ${SCCACHE_PATH} --show-stats
         if: always()

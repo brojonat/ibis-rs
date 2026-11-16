@@ -51,6 +51,10 @@ run = [
   "cargo test $CARGO_FLAGS --doc",
 ]
 
+[tasks.unit]
+description = "Unit tests and doctests only: no backend has to be up"
+run = ["cargo test $CARGO_FLAGS --lib --bins --examples", "cargo test $CARGO_FLAGS --doc"]
+
 [tasks.lint]
 description = "rustfmt check + clippy"
 run = ["cargo fmt --all --check", "cargo clippy $CARGO_FLAGS --all-targets -- -D warnings"]

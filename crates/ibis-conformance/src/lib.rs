@@ -167,21 +167,30 @@ pub struct Target {
     pub fx: Fx,
 }
 
+/// One result per item, in order, each computed on a thread of its own.
+/// The backends are separate engines, most of them separate servers: run one
+/// after another, the suite spends its time waiting on one of them at a time.
+fn each<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    std::thread::scope(|scope| {
+        let workers: Vec<_> = items.iter().map(|item| scope.spawn(|| f(item))).collect();
+        workers.into_iter().map(|w| w.join().unwrap_or_else(|panic| std::panic::resume_unwind(panic))).collect()
+    })
+}
+
 pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
-    names
-        .iter()
-        .map(|n| {
-            let backend: Box<dyn Backend> = match *n {
-                "duckdb" => Box::new(ibis_duckdb::DuckDb::open_in_memory()?),
-                "sqlite" => Box::new(ibis_sqlite::Sqlite::open_in_memory()?),
-                "polars" => Box::new(ibis_polars::Polars::new()),
-                server if SERVERS.contains(&server) => connect(server, &server_url(server)?)?,
-                other => return Err(Error::Other(format!("unknown backend {other:?}"))),
-            };
-            let fx = data.load(backend.as_ref())?;
-            Ok(Target { backend, fx })
-        })
-        .collect()
+    each(names, |n| {
+        let backend: Box<dyn Backend> = match *n {
+            "duckdb" => Box::new(ibis_duckdb::DuckDb::open_in_memory()?),
+            "sqlite" => Box::new(ibis_sqlite::Sqlite::open_in_memory()?),
+            "polars" => Box::new(ibis_polars::Polars::new()),
+            server if SERVERS.contains(&server) => connect(server, &server_url(server)?)?,
+            other => return Err(Error::Other(format!("unknown backend {other:?}"))),
+        };
+        let fx = data.load(backend.as_ref())?;
+        Ok(Target { backend, fx })
+    })
+    .into_iter()
+    .collect()
 }
 
 pub const ALL_BACKENDS: [&str; 9] =
@@ -474,9 +483,21 @@ fn run_one(case: &Case, target: &Target, meta: &Json, paths: &Paths) -> Outcome 
 pub fn run(paths: &Paths, data: &FixtureData, targets: &[Target], filter: &str) -> Result<Vec<Outcome>> {
     let index = load_index(paths)?;
     let unbound = data.unbound()?;
+    let golden = |case: &Case| index.get(&case.id).filter(|m| m.get("file").is_some());
+    // Each target runs the cases on its own thread, with its own copy of them
+    // (a case holds closures, which do not cross threads).
+    let mut per_target: Vec<_> = each(targets, |t| {
+        let cases = cases::all();
+        let run = |case: &Case| golden(case).map(|meta| run_one(case, t, meta, paths));
+        cases.iter().filter(|c| c.id.contains(filter)).filter_map(run).collect::<Vec<_>>()
+    })
+    .into_iter()
+    .map(Vec::into_iter)
+    .collect();
+    // in case order: the schema check, then each target's outcome
     let mut outcomes = vec![];
     for case in cases::all().iter().filter(|c| c.id.contains(filter)) {
-        let Some(meta) = index.get(&case.id).filter(|m| m.get("file").is_some()) else {
+        let Some(meta) = golden(case) else {
             outcomes.push(Outcome {
                 id: case.id.clone(),
                 backend: SCHEMA.into(),
@@ -487,9 +508,7 @@ pub fn run(paths: &Paths, data: &FixtureData, targets: &[Target], filter: &str) 
             continue;
         };
         outcomes.push(check_schema(case, &unbound, meta));
-        for t in targets {
-            outcomes.push(run_one(case, t, meta, paths));
-        }
+        outcomes.extend(per_target.iter_mut().filter_map(Iterator::next));
     }
     Ok(outcomes)
 }
@@ -578,11 +597,11 @@ pub fn run_tpch(paths: &Paths, names: &[&str], filter: &str) -> Result<Vec<Outco
         .map(|(q, f)| (format!("tpch::test_{}", &q[1..]), *q, *f))
         .filter(|(id, _, _)| id.contains(filter))
         .collect();
-    let mut outcomes = vec![];
     if queries.is_empty() {
-        return Ok(outcomes);
+        return Ok(vec![]);
     }
-    for name in names {
+    let per_backend = each(names, |name| -> Result<Vec<Outcome>> {
+        let mut outcomes = vec![];
         let backend = tpch_backend(paths, name)?;
         let db = tpch::Tpch::load(backend.as_ref())?;
         for (id, q, f) in &queries {
@@ -626,6 +645,7 @@ pub fn run_tpch(paths: &Paths, names: &[&str], filter: &str) -> Result<Vec<Outco
             }
             outcomes.push(out);
         }
-    }
-    Ok(outcomes)
+        Ok(outcomes)
+    });
+    Ok(per_backend.into_iter().collect::<Result<Vec<_>>>()?.into_iter().flatten().collect())
 }
