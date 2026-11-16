@@ -12,6 +12,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ibis-sql`: `Dialect::offset_needs_order_by` (a query that skips rows without ordering them is ordered by its first column) and `strftime_to_java_format`.
 - `compose.yaml`: Spark 4.3.0 (Thrift server) and Impala 4.5.3 (metastore, statestore, catalog, daemon) services.
 
+### Fixed
+- CI: the step that puts the prebuilt `libduckdb.so` on the loader path looked where the library is only after a fresh download. With a restored build cache it found nothing and the site build could not start (the run after the one that introduced it).
+
 ### Changed
 - `ibis-sql`: the `INTERSECT ALL` / `EXCEPT ALL` emulation numbers rows with an `ORDER BY` (Impala will not number them without one) and quotes its helper column the dialect's way.
 

@@ -43,8 +43,13 @@ jobs:
           echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
       - uses: jdx/mise-action@v5
       - run: mise run lint
-      # libduckdb.so, for binaries started outside cargo (the conformance runner)
-      - run: echo "LD_LIBRARY_PATH=$(dirname "$(find "$PWD/target/duckdb-download" -name libduckdb.so | head -n 1)")" >> "$GITHUB_ENV"
+      # libduckdb.so, for binaries started outside cargo (the conformance
+      # runner). The build script's own copy of it is the one a restored cache
+      # still has; target/duckdb-download is only there after a download.
+      - run: |
+          lib=$(find "$PWD/target" -name libduckdb.so -print -quit)
+          test -n "$lib"
+          echo "LD_LIBRARY_PATH=$(dirname "$lib")" >> "$GITHUB_ENV"
       # every backend in compose.yaml, so none is skipped
       - run: mise run up
       - run: mise run test

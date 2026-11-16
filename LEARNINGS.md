@@ -330,6 +330,14 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
 - **Avoid:** `cargo test` and `cargo run` put the library on the loader path; a binary run
   directly (`target/debug/ibis-conformance`) needs `LD_LIBRARY_PATH`. `cargo run` does not
   take `--workspace`, so the task cannot simply go through it.
+- **And where the library is depends on the cache:** the download lands in
+  `target/duckdb-download/` and is copied into the build script's output directory
+  (`target/debug/build/libduckdb-sys-*/out/`). `rust-cache` keeps the second and drops the
+  first, and a cached build script does not run again. The CI step looked only in
+  `duckdb-download`, so it worked on the run that downloaded and set
+  `LD_LIBRARY_PATH=.` on the next one: `mise run site` failed with "cannot open shared
+  object file" one push after the change went green. Look under all of `target/`, and
+  fail the step when nothing is found.
 
 
 ## Spark and Impala are one protocol and two very different loaders
