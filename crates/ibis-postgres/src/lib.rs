@@ -17,7 +17,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, rows_to_batch};
 use ibis_core::{AggFunc, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Lambda, Result, Schema, Table, Value};
 use ibis_sql::json::{decode_nested, value_to_json};
-use ibis_sql::{Dialect, ExprCompiler, compile, create_table_sql, quote_str};
+use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile, create_table_sql, quote_str};
 use postgres::types::{FromSql, Kind, Type};
 use postgres::{Client, NoTls, Row};
 
@@ -481,7 +481,32 @@ impl Postgres {
     }
 }
 
+impl SqlClient for Postgres {
+    fn dialect(&self) -> &dyn Dialect {
+        &self.dialect
+    }
+
+    fn statement(&self, sql: &str) -> Result<()> {
+        self.execute_batch(sql)
+    }
+
+    fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
+        let _ = schema;
+        let copy = format!("COPY {} FROM STDIN (FORMAT csv)", self.dialect.quote_ident(name));
+        let mut client = self.client.lock().unwrap();
+        let mut w = client.copy_in(&copy).map_err(|e| exec_err(&copy, e))?;
+        for b in data {
+            for row in batch_to_rows(b)? {
+                let line = row.iter().map(csv_field).collect::<Vec<_>>().join(",");
+                writeln!(w, "{line}").map_err(|e| exec_err(&copy, e))?;
+            }
+        }
+        w.finish().map(|_| ()).map_err(|e| pg_err(&copy, e))
+    }
+}
+
 impl Backend for Postgres {
+    ibis_sql::sql_client_methods!();
     fn name(&self) -> &str {
         "postgres"
     }
@@ -548,25 +573,14 @@ impl Backend for Postgres {
         };
         let schema = Schema::from_arrow(&first.schema())?;
         let q = self.dialect.quote_ident(name);
-        let mut client = self.client.lock().unwrap();
-        let mut tx = client.transaction().map_err(|e| exec_err("BEGIN", e))?;
         let mut ddl = format!("DROP TABLE IF EXISTS {q}; {}", create_table_sql(&self.dialect, name, &schema)?);
         // a struct and a map are both JSONB: the comment says which, and of what
         for f in schema.fields.iter().filter(|f| f.dtype.is_nested()) {
             let comment = quote_str(&format!("{TYPE_COMMENT}{}", f.dtype));
             ddl.push_str(&format!("; COMMENT ON COLUMN {q}.{} IS {comment}", self.dialect.quote_ident(&f.name)));
         }
-        tx.batch_execute(&ddl).map_err(|e| pg_err(&ddl, e))?;
-        let copy = format!("COPY {q} FROM STDIN (FORMAT csv)");
-        let mut w = tx.copy_in(&copy).map_err(|e| exec_err(&copy, e))?;
-        for b in data {
-            for row in batch_to_rows(b)? {
-                let line = row.iter().map(csv_field).collect::<Vec<_>>().join(",");
-                writeln!(w, "{line}").map_err(|e| exec_err(&copy, e))?;
-            }
-        }
-        w.finish().map_err(|e| pg_err(&copy, e))?;
-        tx.commit().map_err(|e| exec_err("COMMIT", e))
+        self.execute_batch(&ddl)?;
+        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

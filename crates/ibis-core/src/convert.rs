@@ -364,3 +364,25 @@ pub fn conform_batch(b: &RecordBatch, schema: &Schema) -> Result<RecordBatch> {
     let opts = RecordBatchOptions::new().with_row_count(Some(b.num_rows()));
     Ok(RecordBatch::try_new_with_options(target, cols, &opts)?)
 }
+
+/// `data` shaped like the table it is going into: its columns matched to
+/// `schema`'s by name (by position if the names differ) and cast to the
+/// table's types.
+pub fn conform_to(data: &[RecordBatch], schema: &Schema) -> Result<Vec<RecordBatch>> {
+    data.iter()
+        .map(|b| {
+            if b.num_columns() != schema.len() {
+                return Err(Error::Invalid(format!(
+                    "data has {} columns, the table has {} ({schema})",
+                    b.num_columns(),
+                    schema.len()
+                )));
+            }
+            let by_name: Option<Vec<usize>> = schema.names().map(|n| b.schema().index_of(n).ok()).collect();
+            match by_name {
+                Some(order) => conform_batch(&b.project(&order)?, schema),
+                None => conform_batch(b, schema),
+            }
+        })
+        .collect()
+}

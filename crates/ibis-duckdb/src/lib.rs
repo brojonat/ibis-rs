@@ -11,7 +11,7 @@ use duckdb::Connection;
 use duckdb::arrow::datatypes::SchemaRef;
 use ibis_core::convert::conform_batch;
 use ibis_core::{Backend, Error, Result, Schema, Table};
-use ibis_sql::{Dialect, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
 
 pub struct DuckDbDialect;
 
@@ -61,7 +61,27 @@ impl DuckDb {
     }
 }
 
+impl SqlClient for DuckDb {
+    fn dialect(&self) -> &dyn Dialect {
+        &self.dialect
+    }
+
+    fn statement(&self, sql: &str) -> Result<()> {
+        self.execute_batch(sql)
+    }
+
+    fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        let mut app = conn.appender(name).map_err(|e| exec_err("<appender>", e))?;
+        for b in data {
+            app.append_record_batch(conform_batch(b, schema)?).map_err(|e| exec_err("<append>", e))?;
+        }
+        app.flush().map_err(|e| exec_err("<append>", e))
+    }
+}
+
 impl Backend for DuckDb {
+    ibis_sql::sql_client_methods!();
     fn name(&self) -> &str {
         "duckdb"
     }
@@ -89,12 +109,7 @@ impl Backend for DuckDb {
         let schema = Schema::from_arrow(&first.schema())?;
         let q = self.dialect.quote_ident(name);
         self.execute_batch(&format!("DROP TABLE IF EXISTS {q}; {}", create_table_sql(&self.dialect, name, &schema)?))?;
-        let conn = self.conn.lock().unwrap();
-        let mut app = conn.appender(name).map_err(|e| exec_err("<appender>", e))?;
-        for b in data {
-            app.append_record_batch(conform_batch(b, &schema)?).map_err(|e| exec_err("<append>", e))?;
-        }
-        app.flush().map_err(|e| exec_err("<append>", e))
+        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

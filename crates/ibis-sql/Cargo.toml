@@ -13,3 +13,4 @@ categories.workspace = true
 [dependencies]
 ibis-core.workspace = true
 serde_json.workspace = true
+arrow-array.workspace = true

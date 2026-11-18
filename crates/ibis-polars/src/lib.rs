@@ -26,7 +26,7 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use arrow_array::RecordBatch;
-use ibis_core::convert::{batch_to_rows, rows_to_batch};
+use ibis_core::convert::{batch_to_rows, conform_to, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use polars::prelude as pl;
 use polars::prelude::{IntoLazy, NamedFrom};
@@ -153,6 +153,24 @@ pub(crate) fn series(name: &str, dtype: &DataType, vals: &[Value]) -> Result<pl:
     s.cast(&to_pl(dtype)).map_err(pl_err)
 }
 
+/// A frame with the columns of `schema` from Arrow data shaped like it.
+fn frame(schema: &Schema, data: &[RecordBatch]) -> Result<pl::DataFrame> {
+    let mut rows = vec![];
+    for b in data {
+        rows.extend(batch_to_rows(b)?);
+    }
+    let cols = schema
+        .fields
+        .iter()
+        .enumerate()
+        .map(|(i, f)| {
+            let vals: Vec<Value> = rows.iter().map(|r| r[i].clone()).collect();
+            Ok(series(&f.name, &f.dtype, &vals)?.into())
+        })
+        .collect::<Result<Vec<pl::Column>>>()?;
+    pl::DataFrame::new(rows.len(), cols).map_err(pl_err)
+}
+
 fn value(av: pl::AnyValue) -> Result<Value> {
     use pl::AnyValue as A;
     Ok(match av {
@@ -263,21 +281,34 @@ impl Backend for Polars {
             return Err(Error::Invalid("create_table needs at least one batch (for the schema)".into()));
         };
         let schema = Schema::from_arrow(&first.schema())?;
-        let mut rows = vec![];
-        for b in data {
-            rows.extend(batch_to_rows(b)?);
-        }
-        let cols = schema
-            .fields
-            .iter()
-            .enumerate()
-            .map(|(i, f)| {
-                let vals: Vec<Value> = rows.iter().map(|r| r[i].clone()).collect();
-                Ok(series(&f.name, &f.dtype, &vals)?.into())
-            })
-            .collect::<Result<Vec<pl::Column>>>()?;
-        let df = pl::DataFrame::new(rows.len(), cols).map_err(pl_err)?;
+        let df = frame(&schema, data)?;
         self.tables.lock().unwrap().insert(name.to_string(), (df, schema));
+        Ok(())
+    }
+
+    fn drop_table(&self, name: &str, force: bool) -> Result<()> {
+        match self.tables.lock().unwrap().remove(name) {
+            None if !force => Err(Error::Invalid(format!("polars: no table named {name:?}"))),
+            _ => Ok(()),
+        }
+    }
+
+    fn rename_table(&self, old: &str, new: &str) -> Result<()> {
+        let mut tables = self.tables.lock().unwrap();
+        match tables.remove(old) {
+            Some(table) => drop(tables.insert(new.to_string(), table)),
+            None => return Err(Error::Invalid(format!("polars: no table named {old:?}"))),
+        }
+        Ok(())
+    }
+
+    fn insert(&self, name: &str, data: &[RecordBatch], overwrite: bool) -> Result<()> {
+        let mut tables = self.tables.lock().unwrap();
+        let Some((df, schema)) = tables.get_mut(name) else {
+            return Err(Error::Invalid(format!("polars: no table named {name:?}")));
+        };
+        let new = frame(schema, &conform_to(data, schema)?)?;
+        *df = if overwrite { new } else { df.vstack(&new).map_err(pl_err)? };
         Ok(())
     }
 

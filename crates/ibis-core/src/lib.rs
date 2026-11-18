@@ -84,6 +84,7 @@ mod tests {
             "array<array<string>>",
             "map<string, int64>",
             "struct<a: float64, b: string, c: array<int8>>",
+            "struct<left join: int64, select: string>",
             "decimal(10, 2)",
             "timestamp('UTC')",
         ] {

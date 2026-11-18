@@ -21,7 +21,7 @@ use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_sql::json::{value_from_json, value_to_json};
-use ibis_sql::{Dialect, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
 
 pub use dialect::ClickHouseDialect;
 use dialect::quote_str;
@@ -344,7 +344,52 @@ impl ClickHouse {
     }
 }
 
+impl SqlClient for ClickHouse {
+    fn dialect(&self) -> &dyn Dialect {
+        &self.dialect
+    }
+
+    fn statement(&self, sql: &str) -> Result<()> {
+        self.execute_statement(sql)
+    }
+
+    fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
+        let q = self.dialect.quote_ident(name);
+        let mut body = String::new();
+        if schema.fields.iter().any(|f| f.dtype.is_nested()) {
+            // arrays, tuples and maps travel as JSON; a NULL one becomes the type's default
+            for b in data {
+                for row in batch_to_rows(b)? {
+                    let cells: Vec<serde_json::Value> = row.iter().map(value_to_json).collect();
+                    body.push_str(&serde_json::Value::Array(cells).to_string());
+                    body.push('\n');
+                }
+            }
+            if body.is_empty() {
+                return Ok(());
+            }
+            return self.send(&format!("INSERT INTO {q} FORMAT JSONCompactEachRow"), Some(body)).map(|_| ());
+        }
+        for b in data {
+            for row in batch_to_rows(b)? {
+                for (i, v) in row.iter().enumerate() {
+                    if i > 0 {
+                        body.push('\t');
+                    }
+                    tsv_field(v, &mut body);
+                }
+                body.push('\n');
+            }
+        }
+        if body.is_empty() {
+            return Ok(());
+        }
+        self.send(&format!("INSERT INTO {q} FORMAT TabSeparated"), Some(body)).map(|_| ())
+    }
+}
+
 impl Backend for ClickHouse {
+    ibis_sql::sql_client_methods!();
     fn name(&self) -> &str {
         "clickhouse"
     }
@@ -394,36 +439,7 @@ impl Backend for ClickHouse {
             "{} ENGINE = MergeTree ORDER BY tuple()",
             create_table_sql(&self.dialect, name, &schema)?
         ))?;
-        let mut body = String::new();
-        if schema.fields.iter().any(|f| f.dtype.is_nested()) {
-            // arrays, tuples and maps travel as JSON; a NULL one becomes the type's default
-            for b in data {
-                for row in batch_to_rows(b)? {
-                    let cells: Vec<serde_json::Value> = row.iter().map(value_to_json).collect();
-                    body.push_str(&serde_json::Value::Array(cells).to_string());
-                    body.push('\n');
-                }
-            }
-            if body.is_empty() {
-                return Ok(());
-            }
-            return self.send(&format!("INSERT INTO {q} FORMAT JSONCompactEachRow"), Some(body)).map(|_| ());
-        }
-        for b in data {
-            for row in batch_to_rows(b)? {
-                for (i, v) in row.iter().enumerate() {
-                    if i > 0 {
-                        body.push('\t');
-                    }
-                    tsv_field(v, &mut body);
-                }
-                body.push('\n');
-            }
-        }
-        if body.is_empty() {
-            return Ok(());
-        }
-        self.send(&format!("INSERT INTO {q} FORMAT TabSeparated"), Some(body)).map(|_| ())
+        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

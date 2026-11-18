@@ -19,7 +19,7 @@ use std::sync::Mutex;
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, rows_to_batch};
 use ibis_core::{AggFunc, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Result, Schema, Table, Value};
-use ibis_sql::{Dialect, ExprCompiler, compile, create_table_sql, quote_str};
+use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile, create_table_sql, quote_str};
 use rusqlite::Connection;
 use rusqlite::types::Value as SqlValue;
 
@@ -59,6 +59,11 @@ impl Dialect for SqliteDialect {
             }
             t => ibis_sql::default_type_name("sqlite", t)?,
         })
+    }
+
+    /// No TRUNCATE.
+    fn truncate_table(&self, name: &str) -> String {
+        format!("DELETE FROM {name}")
     }
 
     fn literal(&self, v: &Value, _t: &DataType) -> Result<Option<String>> {
@@ -318,7 +323,36 @@ impl Sqlite {
     }
 }
 
+impl SqlClient for Sqlite {
+    fn dialect(&self) -> &dyn Dialect {
+        &self.dialect
+    }
+
+    fn statement(&self, sql: &str) -> Result<()> {
+        self.conn.lock().unwrap().execute_batch(sql).map_err(|e| exec_err(sql, e))
+    }
+
+    fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
+        let q = self.dialect.quote_ident(name);
+        let mut conn = self.conn.lock().unwrap();
+        let tx = conn.transaction().map_err(|e| exec_err("BEGIN", e))?;
+        let placeholders = vec!["?"; schema.len()].join(", ");
+        let ins = format!("INSERT INTO {q} VALUES ({placeholders})");
+        {
+            let mut stmt = tx.prepare(&ins).map_err(|e| exec_err(&ins, e))?;
+            for b in data {
+                for row in batch_to_rows(b)? {
+                    let vals: Vec<SqlValue> = row.into_iter().map(to_sql_value).collect();
+                    stmt.execute(rusqlite::params_from_iter(vals)).map_err(|e| exec_err(&ins, e))?;
+                }
+            }
+        }
+        tx.commit().map_err(|e| exec_err("COMMIT", e))
+    }
+}
+
 impl Backend for Sqlite {
+    ibis_sql::sql_client_methods!();
     fn name(&self) -> &str {
         "sqlite"
     }
@@ -355,22 +389,9 @@ impl Backend for Sqlite {
         };
         let schema = Schema::from_arrow(&first.schema())?;
         let q = self.dialect.quote_ident(name);
-        let mut conn = self.conn.lock().unwrap();
-        let tx = conn.transaction().map_err(|e| exec_err("BEGIN", e))?;
         let ddl = format!("DROP TABLE IF EXISTS {q}; {}", create_table_sql(&self.dialect, name, &schema)?);
-        tx.execute_batch(&ddl).map_err(|e| exec_err(&ddl, e))?;
-        let placeholders = vec!["?"; schema.len()].join(", ");
-        let ins = format!("INSERT INTO {q} VALUES ({placeholders})");
-        {
-            let mut stmt = tx.prepare(&ins).map_err(|e| exec_err(&ins, e))?;
-            for b in data {
-                for row in batch_to_rows(b)? {
-                    let vals: Vec<SqlValue> = row.into_iter().map(to_sql_value).collect();
-                    stmt.execute(rusqlite::params_from_iter(vals)).map_err(|e| exec_err(&ins, e))?;
-                }
-            }
-        }
-        tx.commit().map_err(|e| exec_err("COMMIT", e))
+        self.statement(&ddl)?;
+        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

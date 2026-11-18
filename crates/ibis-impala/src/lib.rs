@@ -28,7 +28,7 @@ use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_hiveserver2::{Connection, Options, ResultSet, Values};
-use ibis_sql::{Dialect, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
 
 pub use dialect::ImpalaDialect;
 use dialect::quote_str;
@@ -254,7 +254,25 @@ impl Impala {
     }
 }
 
+impl SqlClient for Impala {
+    fn dialect(&self) -> &dyn Dialect {
+        &self.dialect
+    }
+
+    fn statement(&self, sql: &str) -> Result<()> {
+        self.execute_statement(sql)
+    }
+
+    fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
+        for statement in insert_statements(&self.dialect, &self.dialect.quote_ident(name), schema, data)? {
+            self.execute_statement(&statement)?;
+        }
+        Ok(())
+    }
+}
+
 impl Backend for Impala {
+    ibis_sql::sql_client_methods!();
     fn name(&self) -> &str {
         "impala"
     }
@@ -292,10 +310,7 @@ impl Backend for Impala {
         let q = self.dialect.quote_ident(name);
         self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
         self.execute_statement(&format!("{} STORED AS PARQUET", create_table_sql(&self.dialect, name, &schema)?))?;
-        for statement in insert_statements(&self.dialect, &q, &schema, data)? {
-            self.execute_statement(&statement)?;
-        }
-        Ok(())
+        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

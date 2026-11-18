@@ -412,8 +412,13 @@ impl TypeParser<'_> {
                     if !fields.is_empty() {
                         self.expect(",")?;
                     }
-                    let name = self.word().to_string();
-                    self.expect(":")?;
+                    // a field name is anything up to the colon: `left join: int64`
+                    let rest = self.rest.trim_start();
+                    let Some((name, after)) = rest.split_once(':') else {
+                        return invalid(format!("type: expected `name: type` at {rest:?}"));
+                    };
+                    let name = name.trim_end().to_string();
+                    self.rest = after;
                     fields.push((name, self.dtype()?));
                 }
                 Struct(fields)

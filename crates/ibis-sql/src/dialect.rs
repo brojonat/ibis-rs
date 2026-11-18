@@ -145,6 +145,14 @@ pub trait Dialect: Send + Sync {
         false
     }
 
+    /// The statement renaming a table; both names are already quoted.
+    fn rename_table(&self, old: &str, new: &str) -> String {
+        format!("ALTER TABLE {old} RENAME TO {new}")
+    }
+    /// The statement deleting every row of a table; the name is already quoted.
+    fn truncate_table(&self, name: &str) -> String {
+        format!("TRUNCATE TABLE {name}")
+    }
     /// `LIMIT`/`OFFSET` clause. SQLite needs `LIMIT -1` to use a bare OFFSET.
     fn limit_offset(&self, limit: Option<u64>, offset: u64) -> String {
         let mut s = String::new();

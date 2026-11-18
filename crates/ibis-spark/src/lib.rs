@@ -27,7 +27,7 @@ use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_dat
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_hiveserver2::{Connection, Options, ResultSet, Values};
 use ibis_sql::json::{parse_json, value_to_json};
-use ibis_sql::{Dialect, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
 
 pub use dialect::SparkDialect;
 use dialect::quote_str;
@@ -223,7 +223,25 @@ impl Spark {
     }
 }
 
+impl SqlClient for Spark {
+    fn dialect(&self) -> &dyn Dialect {
+        &self.dialect
+    }
+
+    fn statement(&self, sql: &str) -> Result<()> {
+        self.execute_statement(sql)
+    }
+
+    fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
+        for statement in insert_statements(&self.dialect, &self.dialect.quote_ident(name), schema, data)? {
+            self.execute_statement(&statement)?;
+        }
+        Ok(())
+    }
+}
+
 impl Backend for Spark {
+    ibis_sql::sql_client_methods!();
     fn name(&self) -> &str {
         "spark"
     }
@@ -291,10 +309,7 @@ impl Backend for Spark {
         let q = self.dialect.quote_ident(name);
         self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
         self.execute_statement(&create_table_sql(&self.dialect, name, &schema)?)?;
-        for statement in insert_statements(&self.dialect, &q, &schema, data)? {
-            self.execute_statement(&statement)?;
-        }
-        Ok(())
+        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

@@ -25,7 +25,7 @@ use std::sync::Mutex;
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
-use ibis_sql::{Dialect, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
 use mysql::consts::ColumnType;
 use mysql::prelude::Queryable;
 use mysql::{Conn, Opts};
@@ -167,7 +167,45 @@ impl MySql {
     }
 }
 
+impl SqlClient for MySql {
+    fn dialect(&self) -> &dyn Dialect {
+        &self.dialect
+    }
+
+    fn statement(&self, sql: &str) -> Result<()> {
+        self.execute_statement(sql)
+    }
+
+    fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
+        let _ = schema;
+        let head = format!("INSERT INTO {} VALUES ", self.dialect.quote_ident(name));
+        let mut stmt = String::new();
+        for b in data {
+            for row in batch_to_rows(b)? {
+                stmt.push_str(if stmt.is_empty() { &head } else { ", " });
+                stmt.push('(');
+                for (i, v) in row.iter().enumerate() {
+                    if i > 0 {
+                        stmt.push_str(", ");
+                    }
+                    insert_literal(v, &mut stmt)?;
+                }
+                stmt.push(')');
+                if stmt.len() >= INSERT_BYTES {
+                    self.execute_statement(&stmt)?;
+                    stmt.clear();
+                }
+            }
+        }
+        if !stmt.is_empty() {
+            self.execute_statement(&stmt)?;
+        }
+        Ok(())
+    }
+}
+
 impl Backend for MySql {
+    ibis_sql::sql_client_methods!();
     fn name(&self) -> &str {
         "mysql"
     }
@@ -215,29 +253,7 @@ impl Backend for MySql {
         let q = self.dialect.quote_ident(name);
         self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
         self.execute_statement(&create_table_sql(&self.dialect, name, &schema)?)?;
-        let head = format!("INSERT INTO {q} VALUES ");
-        let mut stmt = String::new();
-        for b in data {
-            for row in batch_to_rows(b)? {
-                stmt.push_str(if stmt.is_empty() { &head } else { ", " });
-                stmt.push('(');
-                for (i, v) in row.iter().enumerate() {
-                    if i > 0 {
-                        stmt.push_str(", ");
-                    }
-                    insert_literal(v, &mut stmt)?;
-                }
-                stmt.push(')');
-                if stmt.len() >= INSERT_BYTES {
-                    self.execute_statement(&stmt)?;
-                    stmt.clear();
-                }
-            }
-        }
-        if !stmt.is_empty() {
-            self.execute_statement(&stmt)?;
-        }
-        Ok(())
+        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

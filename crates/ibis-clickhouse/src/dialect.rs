@@ -101,6 +101,10 @@ impl Dialect for ClickHouseDialect {
         })
     }
 
+    fn rename_table(&self, old: &str, new: &str) -> String {
+        format!("RENAME TABLE {old} TO {new}")
+    }
+
     fn nested_literal(&self, c: &ExprCompiler, v: &Value, t: &DataType) -> Result<Option<String>> {
         nested::literal(self, c, v, t)
     }

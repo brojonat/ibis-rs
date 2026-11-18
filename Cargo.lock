@@ -1575,6 +1575,7 @@ dependencies = [
 name = "ibis-sql"
 version = "0.1.3"
 dependencies = [
+ "arrow-array",
  "ibis-core",
  "serde_json",
 ]

@@ -4,11 +4,13 @@
 //! spells differently, and call [`compile`].
 
 pub mod compiler;
+pub mod ddl;
 pub mod dialect;
 pub mod json;
 mod nested;
 
 pub use compiler::{ExprCompiler, compile, create_table_sql, quote_str};
+pub use ddl::SqlClient;
 pub use dialect::{
     Dialect, GenericDialect, Unnest, default_type_name, strftime_to_date_format, strftime_to_java_format,
 };

@@ -140,6 +140,20 @@ def ported(repo: str) -> dict[str, dict[str, list[dict]]]:
     return out
 
 
+def client_cases(repo: str, ids: list[str], mine: dict[str, dict[str, list[dict]]]) -> None:
+    """Add the tests of the connection API (crates/ibis-conformance/src/client.rs)
+    to `mine`. They have no Python side: results ids are `client::<module>::<pytest id>`."""
+    rel = "crates/ibis-conformance/src/client.rs"
+    lines = (ROOT / rel).read_text().splitlines()
+    for case_id in ids:
+        _, module, test_id = case_id.split("::", 2)
+        line = rust_line(lines, test_id)
+        rs = f"{repo}/blob/main/{rel}" + (f"#L{line}" if line else "")
+        mine.setdefault(module, {}).setdefault(test_id, []).append(
+            {"id": case_id, "python": None, "rust": rs, "results": {}}
+        )
+
+
 def tpch_cases(repo: str, ids: list[str]) -> dict[str, list[dict]]:
     rel = "crates/ibis-conformance/src/tpch.rs"
     lines = (ROOT / rel).read_text().splitlines()
@@ -163,6 +177,7 @@ def build(results_path: Path) -> dict:
 
     mine = ported(repo)
     mine[TPCH] = tpch_cases(repo, sorted(i for i in results if i.startswith("tpch::")))
+    client_cases(repo, sorted(i for i in results if i.startswith("client::")), mine)
     for by_id in mine.values():
         for group in by_id.values():
             for case in group:

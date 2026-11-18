@@ -2,6 +2,7 @@
 //! goldens produced by Python Ibis (conformance/golden).
 
 pub mod cases;
+pub mod client;
 pub mod tpch;
 
 use std::collections::BTreeMap;
@@ -561,14 +562,16 @@ pub fn run(paths: &Paths, data: &FixtureData, targets: &[Target], filter: &str) 
     let golden = |case: &Case| index.get(&case.id).filter(|m| m.get("file").is_some());
     // Each target runs the cases on its own thread, with its own copy of them
     // (a case holds closures, which do not cross threads).
-    let mut per_target: Vec<_> = each(targets, |t| {
+    // The tests of the connection itself follow on the same thread: they
+    // create and drop tables of their own.
+    let (mut per_target, client): (Vec<_>, Vec<_>) = each(targets, |t| {
         let cases = cases::all();
         let run = |case: &Case| golden(case).map(|meta| run_one(case, t, meta, paths));
-        cases.iter().filter(|c| c.id.contains(filter)).filter_map(run).collect::<Vec<_>>()
+        let outcomes = cases.iter().filter(|c| c.id.contains(filter)).filter_map(run).collect::<Vec<_>>();
+        (outcomes.into_iter(), client::run(t, filter))
     })
     .into_iter()
-    .map(Vec::into_iter)
-    .collect();
+    .unzip();
     // in case order: the schema check, then each target's outcome
     let mut outcomes = vec![];
     for case in cases::all().iter().filter(|c| c.id.contains(filter)) {
@@ -584,6 +587,12 @@ pub fn run(paths: &Paths, data: &FixtureData, targets: &[Target], filter: &str) 
         };
         outcomes.push(check_schema(case, &unbound, meta));
         outcomes.extend(per_target.iter_mut().filter_map(Iterator::next));
+    }
+    // the client tests, test by test across the targets like the cases
+    let mut client: Vec<_> = client.into_iter().map(Vec::into_iter).collect();
+    while let Some(first) = client.first_mut().and_then(Iterator::next) {
+        outcomes.push(first);
+        outcomes.extend(client.iter_mut().skip(1).filter_map(Iterator::next));
     }
     Ok(outcomes)
 }

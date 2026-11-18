@@ -26,7 +26,7 @@ use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_sql::json::{value_from_json, value_to_json};
-use ibis_sql::{Dialect, compile, create_table_sql, quote_str};
+use ibis_sql::{Dialect, SqlClient, compile, create_table_sql, quote_str};
 use serde_json::Value as Json;
 
 pub use dialect::TrinoDialect;
@@ -350,7 +350,33 @@ fn insert_statements(d: &TrinoDialect, q: &str, schema: &Schema, data: &[RecordB
     Ok(statements)
 }
 
+impl SqlClient for Trino {
+    fn dialect(&self) -> &dyn Dialect {
+        &self.dialect
+    }
+
+    fn statement(&self, sql: &str) -> Result<()> {
+        self.execute_statement(sql)
+    }
+
+    fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
+        let statements = insert_statements(&self.dialect, &self.dialect.quote_ident(name), schema, data)?;
+        let next = AtomicUsize::new(0);
+        let worker = || -> Result<()> {
+            while let Some(stmt) = statements.get(next.fetch_add(1, Ordering::Relaxed)) {
+                self.execute_statement(stmt)?;
+            }
+            Ok(())
+        };
+        std::thread::scope(|scope| {
+            let workers: Vec<_> = (0..INSERT_WORKERS.min(statements.len())).map(|_| scope.spawn(worker)).collect();
+            workers.into_iter().try_for_each(|w| w.join().expect("insert worker panicked"))
+        })
+    }
+}
+
 impl Backend for Trino {
+    ibis_sql::sql_client_methods!();
     fn name(&self) -> &str {
         "trino"
     }
@@ -391,18 +417,7 @@ impl Backend for Trino {
         let q = self.dialect.quote_ident(name);
         self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
         self.execute_statement(&create_table_sql(&self.dialect, name, &schema)?)?;
-        let statements = insert_statements(&self.dialect, &q, &schema, data)?;
-        let next = AtomicUsize::new(0);
-        let worker = || -> Result<()> {
-            while let Some(stmt) = statements.get(next.fetch_add(1, Ordering::Relaxed)) {
-                self.execute_statement(stmt)?;
-            }
-            Ok(())
-        };
-        std::thread::scope(|scope| {
-            let workers: Vec<_> = (0..INSERT_WORKERS.min(statements.len())).map(|_| scope.spawn(worker)).collect();
-            workers.into_iter().try_for_each(|w| w.join().expect("insert worker panicked"))
-        })
+        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

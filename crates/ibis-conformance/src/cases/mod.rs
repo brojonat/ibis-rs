@@ -6,7 +6,7 @@
 //! known not to pass yet. A marked case that passes is reported as `xpass`.
 
 mod aggregation;
-mod array;
+pub mod array;
 mod conditionals;
 mod generic;
 mod join;
@@ -19,6 +19,8 @@ mod string;
 mod structs;
 mod temporal;
 mod window;
+
+pub use array::NO_ARRAYS as NO_NESTED;
 
 use std::collections::BTreeMap;
 
