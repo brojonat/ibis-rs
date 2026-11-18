@@ -179,7 +179,13 @@ impl Tx<'_> {
                     UnaryOp::NotNull => a.is_not_null(),
                 }
             }
-            Expr::Binary(op, l, r) => self.binary(e, *op, l, r)?,
+            Expr::Binary(op, l, r) => {
+                // `+` and `*` on arrays and maps are functions
+                match ibis_core::expr::nested_binary(*op, l, r, &self.dtype(l)?, &self.dtype(r)?) {
+                    Some(call) => self.expr(&call)?,
+                    None => self.binary(e, *op, l, r)?,
+                }
+            }
             Expr::Func(f, args) => {
                 let first = args.first().map(|a| self.dtype(a)).transpose()?;
                 self.func(e, f.resolve(first.as_ref()), args)?

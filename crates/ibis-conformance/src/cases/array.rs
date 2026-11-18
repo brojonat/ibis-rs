@@ -7,7 +7,7 @@
 use ibis_core::prelude::*;
 use ibis_core::{Expr, Result};
 
-use super::{Case, c, column, scalar, tables};
+use super::{Case, c, column, mark, scalar, tables};
 
 /// Engines with no array type (Ibis `NO_ARRAY_SUPPORT_MARKS`).
 pub const NO_ARRAYS: [&str; 3] = ["impala", "mysql", "sqlite"];
@@ -70,6 +70,14 @@ pub fn register(v: &mut Vec<Case>) {
     for case in &mut v[start..] {
         case.notimpl.extend(NO_ARRAYS);
     }
+    // Postgres has no arrays of arrays (its multidimensional arrays are
+    // rectangular), so `array_types` is there without `multi_dim`.
+    mark(&mut v[start..], "postgres", |id| {
+        ["test_array_discovery", "test_table_unnest[", "test_array_flatten[", "test_flatten"]
+            .iter()
+            .any(|test| id.starts_with(test))
+            || id == "test_array_literal_with_exprs[array]"
+    });
 }
 
 fn int_array() -> DataType {

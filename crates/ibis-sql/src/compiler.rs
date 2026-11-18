@@ -670,7 +670,10 @@ impl ExprCompiler<'_> {
             Value::Binary(_) => return unsupported(self.d, "binary literal"),
             Value::Date(days) => format!("DATE '{}'", ibis_core::convert::format_date(*days)),
             Value::Timestamp(us) => format!("TIMESTAMP '{}'", ibis_core::convert::format_timestamp(*us)),
-            Value::Array(_) | Value::Struct(_) | Value::Map(_) => self.nested_literal(v, t)?,
+            Value::Array(_) | Value::Struct(_) | Value::Map(_) => match self.d.nested_literal(self, v, t)? {
+                Some(s) => s,
+                None => self.nested_literal(v, t)?,
+            },
         })
     }
 

@@ -1575,6 +1575,7 @@ name = "ibis-sql"
 version = "0.1.3"
 dependencies = [
  "ibis-core",
+ "serde_json",
 ]
 
 [[package]]

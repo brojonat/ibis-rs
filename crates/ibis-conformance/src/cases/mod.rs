@@ -30,10 +30,20 @@ pub struct Fx {
     pub awards_players: Table,
     /// The small in-memory tables of conformance/memtables.json.
     pub mem: BTreeMap<String, Table>,
+    /// The backend these tables are on, and the memtables it has no column
+    /// types for: ones with arrays, structs or maps.
+    pub backend: String,
+    pub skipped: Vec<String>,
 }
 
 impl Fx {
     pub fn mem(&self, name: &str) -> Result<Table> {
+        if self.skipped.iter().any(|s| s == name) {
+            return Err(Error::Unsupported {
+                backend: self.backend.clone(),
+                op: format!("the column types of the table {name:?}"),
+            });
+        }
         self.mem.get(name).cloned().ok_or_else(|| Error::Other(format!("no memtable {name:?}")))
     }
 }
@@ -85,6 +95,13 @@ impl Case {
                 if e.is_reduction() { t.aggregate([e]) } else { t.select([col("id"), e]) }
             }
         }
+    }
+}
+
+/// Mark the cases whose id `matches` as not passing on `backend`.
+fn mark(cases: &mut [Case], backend: &'static str, matches: impl Fn(&str) -> bool) {
+    for case in cases.iter_mut().filter(|c| matches(&c.id)) {
+        case.notimpl.push(backend);
     }
 }
 

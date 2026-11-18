@@ -5,6 +5,7 @@
 
 pub mod compiler;
 pub mod dialect;
+pub mod json;
 mod nested;
 
 pub use compiler::{ExprCompiler, compile, create_table_sql, quote_str};

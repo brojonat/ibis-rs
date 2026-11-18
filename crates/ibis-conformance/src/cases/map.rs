@@ -8,7 +8,7 @@ use ibis_core::prelude::*;
 use ibis_core::{Expr, Value};
 
 use super::array::NO_ARRAYS;
-use super::{Case, c, column, scalar, tables};
+use super::{Case, c, column, mark, scalar, tables};
 
 fn strings() -> DataType {
     DataType::array(DataType::String)
@@ -172,4 +172,9 @@ pub fn register(v: &mut Vec<Case>) {
     for case in &mut v[start..] {
         case.notimpl.extend(NO_ARRAYS);
     }
+    // arrays as keys or values are arrays of arrays where the map is built
+    mark(&mut v[start..], "postgres", |id| {
+        id.starts_with("test_map_get_all_types[") && (id.contains("[array-") || id.ends_with("-array]"))
+            || id == "test_map_contains_all_types[array]"
+    });
 }

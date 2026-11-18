@@ -129,6 +129,8 @@ pub(crate) fn series(name: &str, dtype: &DataType, vals: &[Value]) -> Result<pl:
     };
     let name: pl::PlSmallStr = name.into();
     let s = match dtype {
+        // TODO(nested)
+        t if t.is_nested() => return unsupported(format!("storing a column of type {t}")),
         DataType::Boolean => pl::Series::new(
             name,
             vals.iter().map(|v| if let Value::Bool(b) = v { Some(*b) } else { None }).collect::<Vec<_>>(),

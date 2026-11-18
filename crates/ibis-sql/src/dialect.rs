@@ -42,6 +42,11 @@ pub trait Dialect: Send + Sync {
         Ok(None)
     }
 
+    /// Spell an array, struct or map literal; `c.literal_parts(v, t)` compiles
+    /// its parts. Return `None` for DuckDB's `[..]`, `{'a': ..}` and `MAP`.
+    fn nested_literal(&self, _c: &ExprCompiler, _v: &Value, _t: &DataType) -> Result<Option<String>> {
+        Ok(None)
+    }
     /// Per-op overrides. Return `Ok(None)` to use the default spelling;
     /// call `c.sql(arg)` to compile arguments.
     fn func(&self, _c: &ExprCompiler, _f: Func, _args: &[Expr]) -> Result<Option<String>> {

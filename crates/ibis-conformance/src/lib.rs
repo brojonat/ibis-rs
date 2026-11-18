@@ -136,20 +136,22 @@ impl FixtureData {
     }
 
     /// `skip` names the memtables this backend has no column types for.
-    fn fx(&self, skip: &[&str], table: impl Fn(&str) -> Result<Table>) -> Result<Fx> {
+    fn fx(&self, backend: &str, skip: &[&str], table: impl Fn(&str) -> Result<Table>) -> Result<Fx> {
         let mem = self.memtables.iter().filter(|n| !skip.contains(&n.as_str()));
         Ok(Fx {
             alltypes: table("functional_alltypes")?,
             batting: table("batting")?,
             awards_players: table("awards_players")?,
             mem: mem.map(|n| Ok((n.clone(), table(n)?))).collect::<Result<_>>()?,
+            backend: backend.to_string(),
+            skipped: skip.iter().map(|s| s.to_string()).collect(),
         })
     }
 
     /// Fixtures with the schemas Python Ibis saw, attached to no backend:
     /// what type inference is checked against.
     pub fn unbound(&self) -> Result<Fx> {
-        self.fx(&[], |name| {
+        self.fx(SCHEMA, &[], |name| {
             let (_, batches) = self.tables.iter().find(|(n, _)| n == name).expect("known fixture");
             Ok(Table::named(name, Schema::from_arrow(&batches[0].schema())?))
         })
@@ -163,18 +165,41 @@ impl FixtureData {
     /// `notimpl` marks expect.
     pub fn load(&self, b: &dyn Backend) -> Result<Fx> {
         let mut skipped = vec![];
+        // tables created without their arrays of arrays (Postgres has none)
+        let mut flat: BTreeMap<&str, Vec<RecordBatch>> = BTreeMap::new();
         for (name, batches) in &self.tables {
             let nested = batches[0].schema().fields().iter().any(|f| f.data_type().is_nested());
             match b.create_table(name, batches) {
-                Err(Error::Unsupported { .. }) if nested => skipped.push(name.as_str()),
+                Err(Error::Unsupported { .. }) if nested => {
+                    let without = without_arrays_of_arrays(batches)?;
+                    match without.as_deref().map(|batches| b.create_table(name, batches)) {
+                        Some(Ok(())) => drop(flat.insert(name.as_str(), without.expect("just created"))),
+                        Some(Err(Error::Unsupported { .. })) | None => skipped.push(name.as_str()),
+                        Some(other) => other?,
+                    }
+                }
                 other => other?,
             }
         }
-        self.fx(&skipped, |name| {
+        self.fx(b.name(), &skipped, |name| {
             let (_, batches) = self.tables.iter().find(|(n, _)| n == name).expect("known fixture");
-            bind(b, name, &Schema::from_arrow(&batches[0].schema())?)
+            let created = flat.get(name).unwrap_or(batches);
+            bind(b, name, &Schema::from_arrow(&created[0].schema())?)
         })
     }
+}
+
+/// `batches` without the columns that are arrays of arrays; `None` if there
+/// are no such columns, or no others.
+fn without_arrays_of_arrays(batches: &[RecordBatch]) -> Result<Option<Vec<RecordBatch>>> {
+    let schema = Schema::from_arrow(&batches[0].schema())?;
+    let keep: Vec<usize> = (0..schema.len())
+        .filter(|i| !matches!(&schema.fields[*i].dtype, DataType::Array(item) if matches!(**item, DataType::Array(_))))
+        .collect();
+    if keep.len() == schema.len() || keep.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(batches.iter().map(|b| b.project(&keep)).collect::<std::result::Result<_, _>>()?))
 }
 
 /// `b`'s table `name`, under the column names it was created with (`created`).

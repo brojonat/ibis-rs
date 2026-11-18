@@ -15,10 +15,13 @@ use std::sync::Mutex;
 use arrow_array::RecordBatch;
 use chrono::{NaiveDate, NaiveDateTime};
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, rows_to_batch};
-use ibis_core::{AggFunc, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Result, Schema, Table, Value};
+use ibis_core::{AggFunc, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Lambda, Result, Schema, Table, Value};
+use ibis_sql::json::{decode_nested, value_to_json};
 use ibis_sql::{Dialect, ExprCompiler, compile, create_table_sql, quote_str};
-use postgres::types::{FromSql, Type};
+use postgres::types::{FromSql, Kind, Type};
 use postgres::{Client, NoTls, Row};
+
+mod nested;
 
 pub struct PostgresDialect;
 
@@ -28,6 +31,9 @@ impl Dialect for PostgresDialect {
     }
 
     fn type_name(&self, t: &DataType) -> Result<String> {
+        if let Some(name) = nested::type_name(self, t)? {
+            return Ok(name);
+        }
         Ok(match t {
             DataType::Int8 | DataType::UInt8 => "SMALLINT".into(),
             DataType::UInt16 => "INTEGER".into(),
@@ -65,9 +71,28 @@ impl Dialect for PostgresDialect {
         Ok(None)
     }
 
+    fn nested_literal(&self, c: &ExprCompiler, v: &Value, t: &DataType) -> Result<Option<String>> {
+        nested::literal(c, v, t)
+    }
+
+    fn array_lambda(
+        &self,
+        c: &ExprCompiler,
+        kind: Lambda,
+        arg: &Expr,
+        param: &str,
+        index: Option<&str>,
+        body: &Expr,
+    ) -> Result<Option<String>> {
+        nested::array_lambda(c, kind, arg, param, index, body).map(Some)
+    }
+
     fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {
+        if let Some(sql) = nested::func(self, c, f, args)? {
+            return Ok(Some(sql));
+        }
         let a = |i: usize| c.sql(&args[i]);
-        let float_arg = c.dtype(&args[0]).map(|t| !t.is_integer()).unwrap_or(false);
+        let float_arg = args.first().is_some_and(|x| c.dtype(x).map(|t| !t.is_integer()).unwrap_or(false));
         Ok(match f {
             Func::RegexSearch => Some(format!("({} ~ {})", a(0)?, a(1)?)),
             // Wrap the whole pattern in a group so Ibis's index 0 (whole match)
@@ -239,6 +264,26 @@ fn parse_type(name: &str, precision: Option<i32>, scale: Option<i32>) -> DataTyp
     }
 }
 
+/// What a column comment written by `create_table` starts with; the Ibis
+/// type of the column follows.
+const TYPE_COMMENT: &str = "ibis-rs type: ";
+
+/// The `information_schema` name of an array's element type, from the
+/// element's `udt_name`.
+fn udt_type(udt: &str) -> &str {
+    match udt {
+        "bool" => "boolean",
+        "int2" => "smallint",
+        "int4" => "integer",
+        "int8" => "bigint",
+        "float4" => "real",
+        "float8" => "double precision",
+        "timestamp" => "timestamp without time zone",
+        "timestamptz" => "timestamp with time zone",
+        other => other,
+    }
+}
+
 /// NUMERIC in binary form, decoded to exact decimal text (`as_f64`/`as_i64`
 /// in `ibis_core::convert` parse it to the output type).
 struct NumericText(String);
@@ -317,14 +362,79 @@ fn cell(row: &Row, i: usize) -> Result<Value> {
         Type::TIMESTAMPTZ => {
             get::<chrono::DateTime<chrono::Utc>>(row, i)?.map(|t| Value::Timestamp(t.timestamp_micros()))
         }
-        ref other => {
-            return Err(Error::Unsupported {
-                backend: "postgres".into(),
-                op: format!("result column of type {other}"),
-            });
-        }
+        Type::JSONB | Type::JSON => get::<JsonText>(row, i)?.map(|j| Value::String(j.0)),
+        ref other => match other.kind() {
+            Kind::Array(item) => array_cell(row, i, item)?,
+            _ => {
+                return Err(Error::Unsupported {
+                    backend: "postgres".into(),
+                    op: format!("result column of type {other}"),
+                });
+            }
+        },
     };
     Ok(v.unwrap_or(Value::Null))
+}
+
+/// A one-dimensional array column, element type `item`. JSONB elements stay
+/// JSON text here; `execute` reads them as the Ibis type says.
+fn array_cell(row: &Row, i: usize, item: &Type) -> Result<Option<Value>> {
+    fn items<'a, T: FromSql<'a>>(row: &'a Row, i: usize, f: impl Fn(T) -> Value) -> Result<Option<Value>> {
+        let cells = get::<Vec<Option<T>>>(row, i)?;
+        Ok(cells.map(|cells| Value::Array(cells.into_iter().map(|c| c.map_or(Value::Null, &f)).collect())))
+    }
+    match *item {
+        Type::BOOL => items(row, i, Value::Bool),
+        Type::INT2 => items(row, i, |x: i16| Value::Int(x.into())),
+        Type::INT4 => items(row, i, |x: i32| Value::Int(x.into())),
+        Type::INT8 => items(row, i, Value::Int),
+        Type::FLOAT4 => items(row, i, |x: f32| Value::Float(x.into())),
+        Type::FLOAT8 => items(row, i, Value::Float),
+        Type::NUMERIC => items(row, i, |n: NumericText| Value::String(n.0)),
+        Type::TEXT | Type::VARCHAR | Type::BPCHAR | Type::NAME | Type::UNKNOWN => items(row, i, Value::String),
+        Type::BYTEA => items(row, i, Value::Binary),
+        Type::DATE => items(row, i, |d: NaiveDate| Value::Date((d - epoch()).num_days() as i32)),
+        Type::TIMESTAMP => items(row, i, |t: NaiveDateTime| Value::Timestamp(t.and_utc().timestamp_micros())),
+        Type::TIMESTAMPTZ => items(row, i, |t: chrono::DateTime<chrono::Utc>| Value::Timestamp(t.timestamp_micros())),
+        Type::JSONB | Type::JSON => items(row, i, |j: JsonText| Value::String(j.0)),
+        ref other => {
+            Err(Error::Unsupported { backend: "postgres".into(), op: format!("result column of type {other}[]") })
+        }
+    }
+}
+
+/// JSON or JSONB in binary form, as its text. JSONB leads with a version byte.
+struct JsonText(String);
+
+impl<'a> FromSql<'a> for JsonText {
+    fn from_sql(ty: &Type, raw: &'a [u8]) -> std::result::Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        let text = if *ty == Type::JSONB { raw.get(1..).ok_or("empty jsonb")? } else { raw };
+        Ok(JsonText(std::str::from_utf8(text)?.to_string()))
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        matches!(*ty, Type::JSONB | Type::JSON)
+    }
+}
+
+/// One element of an array literal: quoted, unless it is a number, a
+/// boolean or NULL.
+fn array_element(v: &Value) -> String {
+    let q = |s: &str| format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""));
+    match v {
+        Value::Null => "NULL".into(),
+        Value::Bool(b) => b.to_string(),
+        Value::Int(i) => i.to_string(),
+        Value::Float(f) if f.is_nan() => "NaN".into(),
+        Value::Float(f) if f.is_infinite() => if *f > 0.0 { "Infinity" } else { "-Infinity" }.into(),
+        Value::Float(f) => format!("{f:?}"),
+        Value::String(s) => q(s),
+        Value::Binary(b) => q(&format!("\\x{}", b.iter().map(|x| format!("{x:02x}")).collect::<String>())),
+        Value::Date(d) => q(&format_date(*d)),
+        Value::Timestamp(t) => q(&format_timestamp(*t)),
+        Value::Array(items) => format!("{{{}}}", items.iter().map(array_element).collect::<Vec<_>>().join(",")),
+        json @ (Value::Struct(_) | Value::Map(_)) => q(&value_to_json(json).to_string()),
+    }
 }
 
 /// One CSV field for `COPY ... (FORMAT csv)`: unquoted empty is NULL,
@@ -342,8 +452,8 @@ fn csv_field(v: &Value) -> String {
         Value::Binary(b) => q(&format!("\\x{}", b.iter().map(|x| format!("{x:02x}")).collect::<String>())),
         Value::Date(d) => format_date(*d),
         Value::Timestamp(t) => format_timestamp(*t),
-        // TODO(nested)
-        Value::Array(_) | Value::Struct(_) | Value::Map(_) => String::new(),
+        Value::Array(_) => q(&array_element(v)),
+        Value::Struct(_) | Value::Map(_) => q(&value_to_json(v).to_string()),
     }
 }
 
@@ -382,13 +492,29 @@ impl Backend for Postgres {
 
     fn execute(&self, table: &Table) -> Result<Vec<RecordBatch>> {
         let sql = self.compile(table)?;
-        let rows = self.raw_sql(&sql)?;
+        let mut rows = self.raw_sql(&sql)?;
+        // structs and maps arrive as JSON text
+        let nested: Vec<(usize, &DataType)> = table
+            .schema()
+            .fields
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.dtype.is_nested())
+            .map(|(i, f)| (i, &f.dtype))
+            .collect();
+        for row in &mut rows {
+            for (i, t) in &nested {
+                row[*i] = decode_nested(std::mem::replace(&mut row[*i], Value::Null), t);
+            }
+        }
         Ok(vec![rows_to_batch(table.schema(), &rows)?])
     }
 
     fn table(&self, name: &str) -> Result<Table> {
+        // the comment is where `create_table` wrote the Ibis type of a nested column
         let sql = format!(
-            "SELECT column_name::text, data_type::text, numeric_precision, numeric_scale \
+            "SELECT column_name::text, data_type::text, numeric_precision, numeric_scale, udt_name::text, \
+             col_description(format('%I.%I', table_schema, table_name)::regclass, ordinal_position) \
              FROM information_schema.columns \
              WHERE table_schema = current_schema() AND table_name = {} ORDER BY ordinal_position",
             quote_str(name)
@@ -402,7 +528,15 @@ impl Backend for Postgres {
             .map(|r| {
                 let col: String = r.get(0);
                 let ty: String = r.get(1);
-                Field::new(&col, parse_type(&ty, r.get(2), r.get(3)))
+                let (element, comment): (Option<String>, Option<String>) = (r.get(4), r.get(5));
+                let declared =
+                    comment.as_deref().and_then(|c| c.strip_prefix(TYPE_COMMENT)).and_then(|t| t.parse().ok());
+                let dtype = match (declared, ty.as_str(), element.as_deref().and_then(|e| e.strip_prefix('_'))) {
+                    (Some(t), _, _) => t,
+                    (None, "ARRAY", Some(item)) => DataType::array(parse_type(udt_type(item), None, None)),
+                    _ => parse_type(&ty, r.get(2), r.get(3)),
+                };
+                Field::new(&col, dtype)
             })
             .collect();
         Ok(Table::named(name, Schema::new(fields)))
@@ -416,7 +550,12 @@ impl Backend for Postgres {
         let q = self.dialect.quote_ident(name);
         let mut client = self.client.lock().unwrap();
         let mut tx = client.transaction().map_err(|e| exec_err("BEGIN", e))?;
-        let ddl = format!("DROP TABLE IF EXISTS {q}; {}", create_table_sql(&self.dialect, name, &schema)?);
+        let mut ddl = format!("DROP TABLE IF EXISTS {q}; {}", create_table_sql(&self.dialect, name, &schema)?);
+        // a struct and a map are both JSONB: the comment says which, and of what
+        for f in schema.fields.iter().filter(|f| f.dtype.is_nested()) {
+            let comment = quote_str(&format!("{TYPE_COMMENT}{}", f.dtype));
+            ddl.push_str(&format!("; COMMENT ON COLUMN {q}.{} IS {comment}", self.dialect.quote_ident(&f.name)));
+        }
         tx.batch_execute(&ddl).map_err(|e| pg_err(&ddl, e))?;
         let copy = format!("COPY {q} FROM STDIN (FORMAT csv)");
         let mut w = tx.copy_in(&copy).map_err(|e| exec_err(&copy, e))?;
