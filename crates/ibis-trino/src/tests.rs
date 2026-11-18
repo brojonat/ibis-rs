@@ -83,3 +83,25 @@ fn inserted_text_is_what_a_cast_reads() {
     assert_eq!(insert_text(&Value::Binary(vec![0, 255]), &DataType::Binary).unwrap(), "00ff");
     assert_eq!(insert_text(&Value::Null, &DataType::Int64), None);
 }
+
+#[test]
+fn nested_column_types() {
+    let t = |name: &str| parse_type(name).to_string();
+    assert_eq!(t("array(bigint)"), "array<int64>");
+    assert_eq!(t("map(varchar, bigint)"), "map<string, int64>");
+    assert_eq!(
+        t("row(a double, b varchar, c array(decimal(10, 2)))"),
+        "struct<a: float64, b: string, c: array<decimal(10, 2)>>"
+    );
+    assert_eq!(t("row(\"left join\" integer)"), "struct<left join: int32>");
+    // unnamed fields get Ibis's names
+    assert_eq!(t("row(bigint, varchar)"), "struct<f1: int64, f2: string>");
+}
+
+#[test]
+fn nested_types_are_named_for_ddl() {
+    let t = DataType::structure(&[("a", DataType::array(DataType::Int64))]);
+    assert_eq!(TrinoDialect.type_name(&t).unwrap(), "ROW(\"a\" ARRAY(BIGINT))");
+    let m = DataType::map(DataType::String, DataType::Float64);
+    assert_eq!(TrinoDialect.type_name(&m).unwrap(), "MAP(VARCHAR, DOUBLE)");
+}

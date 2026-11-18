@@ -604,6 +604,26 @@ mod tests {
     }
 
     #[test]
+    fn arrays_are_copied_as_array_literals_and_structs_as_json() {
+        let array = Value::Array(vec!["a\"b".into(), Value::Null, "c,d".into()]);
+        assert_eq!(array_element(&array), r#"{"a\"b",NULL,"c,d"}"#);
+        // the literal is then one CSV field
+        assert_eq!(csv_field(&Value::Array(vec![1.into(), Value::Null])), "\"{1,NULL}\"");
+        let s = Value::Struct(vec![("a".into(), 1.into()), ("b".into(), "x".into())]);
+        assert_eq!(csv_field(&s), r#""{""a"":1,""b"":""x""}""#);
+    }
+
+    #[test]
+    fn structs_and_maps_are_jsonb_and_arrays_of_arrays_are_refused() {
+        let d = PostgresDialect;
+        assert_eq!(d.type_name(&DataType::array(DataType::Int64)).unwrap(), "BIGINT[]");
+        assert_eq!(d.type_name(&DataType::map(DataType::String, DataType::Int64)).unwrap(), "JSONB");
+        assert_eq!(d.type_name(&DataType::array(DataType::structure(&[("a", DataType::Int64)]))).unwrap(), "JSONB[]");
+        let nested = DataType::array(DataType::array(DataType::Int64));
+        assert!(matches!(d.type_name(&nested), Err(Error::Unsupported { .. })));
+    }
+
+    #[test]
     fn csv_quoting() {
         assert_eq!(csv_field(&Value::Null), "");
         assert_eq!(csv_field(&Value::from("")), "\"\"");

@@ -16,6 +16,7 @@
 //!   tables, not a way to load a lake.
 
 mod dialect;
+mod nested;
 #[cfg(test)]
 mod tests;
 
@@ -25,6 +26,7 @@ use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_hiveserver2::{Connection, Options, ResultSet, Values};
+use ibis_sql::json::{parse_json, value_to_json};
 use ibis_sql::{Dialect, compile, create_table_sql};
 
 pub use dialect::SparkDialect;
@@ -47,6 +49,9 @@ fn exec_err(sql: &str, message: impl std::fmt::Display) -> Error {
 
 /// A type as `DESCRIBE` and result metadata spell it -> Ibis type.
 fn parse_type(name: &str) -> DataType {
+    if let Some(nested) = nested::parse_type(name, &parse_type) {
+        return nested;
+    }
     let name = name.to_ascii_lowercase();
     match name.as_str() {
         "boolean" => DataType::Boolean,
@@ -120,8 +125,7 @@ fn insert_text(v: &Value, dtype: &DataType) -> Option<String> {
         Value::Binary(b) => b.iter().map(|byte| format!("{byte:02x}")).collect(),
         Value::Date(d) => format_date(*d),
         Value::Timestamp(t) => format_timestamp(*t),
-        // TODO(nested)
-        Value::Array(_) | Value::Struct(_) | Value::Map(_) => return None,
+        Value::Array(_) | Value::Struct(_) | Value::Map(_) => format!("{{\"v\":{}}}", value_to_json(v)),
     })
 }
 
@@ -137,6 +141,10 @@ fn insert_statements(d: &SparkDialect, q: &str, schema: &Schema, data: &[RecordB
         .map(|(i, f)| {
             Ok(match f.dtype {
                 DataType::Binary => format!("UNHEX(c{i})"),
+                // sent as JSON, inside an object: FROM_JSON reads a struct on every version
+                ref t if t.is_nested() => {
+                    format!("FROM_JSON(c{i}, {}).v", quote_str(&format!("v {}", d.type_name(t)?)))
+                }
                 _ => format!("CAST(c{i} AS {})", d.type_name(&f.dtype)?),
             })
         })
@@ -195,6 +203,8 @@ impl Spark {
         let conn = Connection::open(&options).map_err(|e| Error::Other(format!("spark: {url}: {e}")))?;
         let spark = Spark { conn: Mutex::new(conn), dialect: SparkDialect };
         spark.execute_statement("SET spark.sql.session.timeZone=UTC")?;
+        // merging maps: the right one's value for a key both have, as in Ibis
+        spark.execute_statement("SET spark.sql.mapKeyDedupPolicy=LAST_WIN")?;
         Ok(spark)
     }
 
@@ -223,8 +233,36 @@ impl Backend for Spark {
     }
 
     fn execute(&self, table: &Table) -> Result<Vec<RecordBatch>> {
-        let rows = self.raw_sql(&self.compile(table)?)?;
-        Ok(vec![rows_to_batch(table.schema(), &rows)?])
+        let sql = self.compile(table)?;
+        let schema = table.schema();
+        if !schema.fields.iter().any(|f| f.dtype.is_nested()) {
+            return Ok(vec![rows_to_batch(schema, &self.raw_sql(&sql)?)?]);
+        }
+        // Over Thrift an array, struct or map arrives as display text that
+        // cannot be read back with certainty. Each is asked for as JSON
+        // instead, inside an object: TO_JSON takes a struct on every version.
+        let q = |name: &str| self.dialect.quote_ident(name);
+        let columns: Vec<String> = schema
+            .fields
+            .iter()
+            .map(|f| match f.dtype.is_nested() {
+                true => format!("TO_JSON(NAMED_STRUCT('v', {})) AS {}", q(&f.name), q(&f.name)),
+                false => q(&f.name),
+            })
+            .collect();
+        let mut rows = self.raw_sql(&format!("SELECT {} FROM ({sql}) AS ibis_result", columns.join(", ")))?;
+        for row in &mut rows {
+            for (cell, f) in row.iter_mut().zip(&schema.fields).filter(|(_, f)| f.dtype.is_nested()) {
+                if let Value::String(text) = cell {
+                    let wrapped = DataType::Struct(vec![("v".into(), f.dtype.clone())]);
+                    *cell = match parse_json(text, &wrapped) {
+                        Some(Value::Struct(mut fields)) if fields.len() == 1 => fields.remove(0).1,
+                        _ => return Err(exec_err(&sql, format!("unreadable {} value {text:?}", f.dtype))),
+                    };
+                }
+            }
+        }
+        Ok(vec![rows_to_batch(schema, &rows)?])
     }
 
     fn table(&self, name: &str) -> Result<Table> {

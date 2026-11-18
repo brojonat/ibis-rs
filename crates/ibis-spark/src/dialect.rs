@@ -1,8 +1,10 @@
 //! What Spark SQL spells or means differently from the defaults in `ibis-sql`.
 
 use ibis_core::convert::format_timestamp;
-use ibis_core::{BinaryOp, DataType, Error, Expr, Func, Result, Value};
-use ibis_sql::{Dialect, ExprCompiler, strftime_to_java_format};
+use ibis_core::{AggFunc, BinaryOp, DataType, Error, Expr, Func, Lambda, Result, Value};
+use ibis_sql::{Dialect, ExprCompiler, Unnest, strftime_to_java_format};
+
+use crate::nested;
 
 pub struct SparkDialect;
 
@@ -34,7 +36,7 @@ pub(crate) fn java_regex(pattern: &str) -> String {
     CLASSES.iter().fold(pattern.to_string(), |p, (posix, java)| p.replace(posix, java))
 }
 
-fn unsupported<T>(op: impl Into<String>) -> Result<T> {
+pub(crate) fn unsupported<T>(op: impl Into<String>) -> Result<T> {
     Err(Error::Unsupported { backend: "spark".into(), op: op.into() })
 }
 
@@ -51,6 +53,9 @@ impl Dialect for SparkDialect {
     /// `TIMESTAMP` is an instant shown in the session time zone;
     /// `TIMESTAMP_NTZ` is the zone-less one.
     fn type_name(&self, t: &DataType) -> Result<String> {
+        if let Some(name) = nested::type_name(self, t)? {
+            return Ok(name);
+        }
         Ok(match t {
             DataType::Null => "VOID".into(),
             DataType::Int32 => "INT".into(),
@@ -96,7 +101,43 @@ impl Dialect for SparkDialect {
         Ok(None)
     }
 
+    fn nested_literal(&self, c: &ExprCompiler, v: &Value, t: &DataType) -> Result<Option<String>> {
+        nested::literal(self, c, v, t)
+    }
+
+    fn array_lambda(
+        &self,
+        c: &ExprCompiler,
+        kind: Lambda,
+        arg: &Expr,
+        param: &str,
+        index: Option<&str>,
+        body: &Expr,
+    ) -> Result<Option<String>> {
+        nested::array_lambda(c, kind, arg, param, index, body).map(Some)
+    }
+
+    /// A generator stands alone in a SELECT list: not inside an expression.
+    fn unnest_in_select(&self) -> bool {
+        false
+    }
+
+    fn unnest(&self, array: &str, _item: &DataType, alias: &str, with_offset: bool, keep_empty: bool) -> Unnest {
+        nested::unnest(array, alias, with_offset, keep_empty)
+    }
+
+    /// `COLLECT_LIST` leaves NULLs out by itself.
+    fn agg(&self, c: &ExprCompiler, f: AggFunc, arg: Option<&Expr>, tail: &str) -> Result<Option<String>> {
+        Ok(match (f, arg) {
+            (AggFunc::Collect, Some(x)) => Some(format!("COLLECT_LIST({}){tail}", c.sql(x)?)),
+            _ => None,
+        })
+    }
+
     fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {
+        if let Some(sql) = nested::func(self, c, f, args)? {
+            return Ok(Some(sql));
+        }
         let a = |i: usize| c.sql(&args[i]);
         // a literal pattern is rewritten for Java; a computed one is the caller's business
         let pattern = |i: usize| match ExprCompiler::lit_str(&args[i]) {

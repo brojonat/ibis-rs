@@ -14,6 +14,8 @@ mod map;
 mod numeric;
 mod set_ops;
 mod string;
+// `struct` is a keyword; the file is named after the Ibis module like the rest
+#[path = "struct.rs"]
 mod structs;
 mod temporal;
 mod window;

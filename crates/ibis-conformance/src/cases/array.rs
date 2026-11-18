@@ -78,7 +78,10 @@ pub fn register(v: &mut Vec<Case>) {
             .any(|test| id.starts_with(test))
             || id == "test_array_literal_with_exprs[array]"
     });
-    mark(&mut v[start..], "trino", |id| id.ends_with("-modes]"));
+    // no function for the most frequent element
+    for backend in ["spark", "trino"] {
+        mark(&mut v[start..], backend, |id| id.ends_with("-modes]"));
+    }
     // ClickHouse has no NULL array: one is stored, and comes back, as an
     // empty array. It has no mode of an array either.
     mark(&mut v[start..], "clickhouse", |id| {

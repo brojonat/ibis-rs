@@ -43,3 +43,25 @@ fn cells_take_the_column_type() {
     // too big for i64: left as text for the output conversion
     assert_eq!(cell("18446744073709551615", &DataType::UInt64), Value::from("18446744073709551615"));
 }
+
+#[test]
+fn nested_column_types() {
+    let t = |name: &str| parse_type(name).to_string();
+    assert_eq!(t("Array(Nullable(Int64))"), "array<int64>");
+    assert_eq!(t("Array(Array(Nullable(String)))"), "array<array<string>>");
+    assert_eq!(t("Map(String, Nullable(Int64))"), "map<string, int64>");
+    assert_eq!(t("Tuple(a Nullable(Float64), b Nullable(String))"), "struct<a: float64, b: string>");
+    assert_eq!(t("Tuple(`left join` Nullable(Int32))"), "struct<left join: int32>");
+    // unnamed fields get Ibis's names
+    assert_eq!(t("Tuple(Nullable(Int64), Array(Nullable(String)))"), "struct<f1: int64, f2: array<string>>");
+}
+
+#[test]
+fn nested_types_cannot_be_nullable() {
+    let d = dialect::ClickHouseDialect;
+    assert_eq!(d.type_name(&DataType::array(DataType::Int64)).unwrap(), "Array(Nullable(Int64))");
+    let m = DataType::map(DataType::String, DataType::Int64);
+    assert_eq!(d.type_name(&m).unwrap(), "Map(String, Nullable(Int64))");
+    let s = DataType::structure(&[("a", DataType::Float64)]);
+    assert_eq!(d.type_name(&s).unwrap(), "Tuple(\"a\" Nullable(Float64))");
+}

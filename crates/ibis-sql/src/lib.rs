@@ -210,6 +210,63 @@ mod tests {
         );
     }
 
+    fn nested() -> Table {
+        Table::named(
+            "t",
+            Schema::of(&[
+                ("xs", DataType::array(DataType::Int64)),
+                ("m", DataType::map(DataType::String, DataType::Int64)),
+                ("s", DataType::structure(&[("a", DataType::Int64)])),
+            ]),
+        )
+    }
+
+    #[test]
+    fn one_method_name_compiles_by_argument_type() {
+        let q = sql(&nested().select([col("xs").length().name("n"), col("m").contains("k").name("has")]).unwrap());
+        assert!(q.contains("LEN(t0.\"xs\")"), "{q}");
+        assert!(q.contains("ELEMENT_AT(t0.\"m\", 'k')"), "{q}");
+        // `+` on arrays is a concatenation
+        let q = sql(&nested().select([(col("xs") + lit(vec![1])).name("more")]).unwrap());
+        assert!(q.contains("LIST_CONCAT(t0.\"xs\", CAST([1] AS TINYINT[]))"), "{q}");
+    }
+
+    #[test]
+    fn lambdas_name_their_parameters_by_depth() {
+        let inner = |x: Expr| array([x]).map(|y| y + 1);
+        let q = sql(&nested().select([col("xs").map(inner).name("out")]).unwrap());
+        // the inner lambda is ibis_x1, the outer one ibis_x2
+        assert!(q.contains("LAMBDA ibis_x2: LIST_APPLY("), "{q}");
+        assert!(q.contains("LAMBDA ibis_x1: (ibis_x1 + 1)"), "{q}");
+        // the position counts from 0, DuckDB's from 1
+        let q = sql(&nested().select([col("xs").map_with_index(|x, i| x + i).name("out")]).unwrap());
+        assert!(q.contains("LAMBDA ibis_x1, ibis_i1: (ibis_x1 + (ibis_i1 - 1))"), "{q}");
+    }
+
+    struct NoUnnestInSelect;
+    impl Dialect for NoUnnestInSelect {
+        fn name(&self) -> &str {
+            "lateral"
+        }
+        fn unnest_in_select(&self) -> bool {
+            false
+        }
+    }
+
+    #[test]
+    fn unnest_is_a_join_where_select_takes_no_set_returning_function() {
+        let t = nested().select([(col("xs").unnest() * 2).name("x")]).unwrap();
+        assert_eq!(sql(&t), "SELECT (UNNEST(t0.\"xs\") * 2) AS \"x\" FROM \"t\" AS t0");
+        assert_eq!(
+            compile(&NoUnnestInSelect, &t).unwrap(),
+            "SELECT (t1.v * 2) AS \"x\" FROM \"t\" AS t0 CROSS JOIN UNNEST(t0.\"xs\") AS t1(v)"
+        );
+        let u = nested().unnest("xs", Some("i"), true).unwrap().select(["xs", "i"]).unwrap();
+        let q = sql(&u);
+        assert!(q.contains("LEFT JOIN UNNEST(t1.\"xs\") WITH ORDINALITY AS t2(v, i) ON TRUE"), "{q}");
+        assert!(q.contains("CAST(t2.i - 1 AS BIGINT) AS \"i\""), "{q}");
+    }
+
     #[test]
     fn strftime_patterns_translate() {
         assert_eq!(strftime_to_date_format("mysql", "%Y-%m-%d %H:%M:%S").unwrap(), "%Y-%m-%d %H:%i:%S");

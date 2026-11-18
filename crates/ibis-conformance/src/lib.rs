@@ -190,13 +190,14 @@ impl FixtureData {
 }
 
 /// `batches` without the columns that are arrays of arrays; `None` if there
-/// are no such columns, or no others.
+/// are no such columns, or no other array, struct or map column.
 fn without_arrays_of_arrays(batches: &[RecordBatch]) -> Result<Option<Vec<RecordBatch>>> {
     let schema = Schema::from_arrow(&batches[0].schema())?;
     let keep: Vec<usize> = (0..schema.len())
         .filter(|i| !matches!(&schema.fields[*i].dtype, DataType::Array(item) if matches!(**item, DataType::Array(_))))
         .collect();
-    if keep.len() == schema.len() || keep.is_empty() {
+    // nothing to leave out, or nothing nested left: the table is no use then
+    if keep.len() == schema.len() || !keep.iter().any(|i| schema.fields[*i].dtype.is_nested()) {
         return Ok(None);
     }
     Ok(Some(batches.iter().map(|b| b.project(&keep)).collect::<std::result::Result<_, _>>()?))
