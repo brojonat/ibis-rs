@@ -62,24 +62,41 @@ pub struct FixtureData {
     memtables: Vec<String>,
 }
 
+/// A column type in memtables.json, spelled as Ibis spells it.
 fn dtype_of(name: &str) -> Result<DataType> {
-    Ok(match name {
-        "int64" => DataType::Int64,
-        "float64" => DataType::Float64,
-        "string" => DataType::String,
-        "boolean" => DataType::Boolean,
-        other => return Err(Error::Other(format!("memtables.json: unsupported type {other:?}"))),
-    })
+    name.parse().map_err(|e| Error::Other(format!("memtables.json: {e}")))
 }
 
-fn json_value(v: &Json) -> Result<Value> {
-    Ok(match v {
-        Json::Null => Value::Null,
-        Json::Bool(b) => Value::Bool(*b),
-        Json::Number(n) if n.is_i64() => Value::Int(n.as_i64().unwrap()),
-        Json::Number(n) => Value::Float(n.as_f64().unwrap()),
-        Json::String(s) => Value::String(s.clone()),
-        other => return Err(Error::Other(format!("memtables.json: unsupported value {other}"))),
+/// A cell of memtables.json as a value of `dtype`. An array is a JSON array,
+/// a struct an object, and a map an array of `[key, value]` pairs.
+fn json_value(v: &Json, dtype: &DataType) -> Result<Value> {
+    let bad = || Error::Other(format!("memtables.json: {v} is not a value of type {dtype}"));
+    Ok(match (v, dtype) {
+        (Json::Null, _) => Value::Null,
+        (Json::Bool(b), _) => Value::Bool(*b),
+        (Json::Number(n), DataType::Float32 | DataType::Float64) => Value::Float(n.as_f64().ok_or_else(bad)?),
+        (Json::Number(n), _) if n.is_i64() => Value::Int(n.as_i64().unwrap()),
+        (Json::Number(n), _) => Value::Float(n.as_f64().ok_or_else(bad)?),
+        (Json::String(s), _) => Value::String(s.clone()),
+        (Json::Array(items), DataType::Array(item)) => {
+            Value::Array(items.iter().map(|v| json_value(v, item)).collect::<Result<_>>()?)
+        }
+        (Json::Array(entries), DataType::Map(key, value)) => Value::Map(
+            entries
+                .iter()
+                .map(|entry| match entry.as_array().map(Vec::as_slice) {
+                    Some([k, v]) => Ok((json_value(k, key)?, json_value(v, value)?)),
+                    _ => Err(bad()),
+                })
+                .collect::<Result<_>>()?,
+        ),
+        (Json::Object(object), DataType::Struct(fields)) => Value::Struct(
+            fields
+                .iter()
+                .map(|(name, t)| Ok((name.clone(), json_value(object.get(name).unwrap_or(&Json::Null), t)?)))
+                .collect::<Result<_>>()?,
+        ),
+        _ => return Err(bad()),
     })
 }
 
@@ -107,7 +124,10 @@ impl FixtureData {
                 .as_array()
                 .ok_or_else(|| bad(name))?
                 .iter()
-                .map(|r| r.as_array().ok_or_else(|| bad(name))?.iter().map(json_value).collect())
+                .map(|r| {
+                    let cells = r.as_array().ok_or_else(|| bad(name))?;
+                    cells.iter().zip(&fields).map(|(v, (_, t))| json_value(v, t)).collect()
+                })
                 .collect::<Result<Vec<Vec<Value>>>>()?;
             tables.push((name.clone(), vec![rows_to_batch(&Schema::of(&fields), &rows)?]));
             memtables.push(name.clone());
@@ -115,30 +135,42 @@ impl FixtureData {
         Ok(FixtureData { tables, memtables })
     }
 
-    fn fx(&self, table: impl Fn(&str) -> Result<Table>) -> Result<Fx> {
+    /// `skip` names the memtables this backend has no column types for.
+    fn fx(&self, skip: &[&str], table: impl Fn(&str) -> Result<Table>) -> Result<Fx> {
+        let mem = self.memtables.iter().filter(|n| !skip.contains(&n.as_str()));
         Ok(Fx {
             alltypes: table("functional_alltypes")?,
             batting: table("batting")?,
             awards_players: table("awards_players")?,
-            mem: self.memtables.iter().map(|n| Ok((n.clone(), table(n)?))).collect::<Result<_>>()?,
+            mem: mem.map(|n| Ok((n.clone(), table(n)?))).collect::<Result<_>>()?,
         })
     }
 
     /// Fixtures with the schemas Python Ibis saw, attached to no backend:
     /// what type inference is checked against.
     pub fn unbound(&self) -> Result<Fx> {
-        self.fx(|name| {
+        self.fx(&[], |name| {
             let (_, batches) = self.tables.iter().find(|(n, _)| n == name).expect("known fixture");
             Ok(Table::named(name, Schema::from_arrow(&batches[0].schema())?))
         })
     }
 
     /// Create every fixture table on `b` and return them as the backend sees them.
+    ///
+    /// A table with arrays, structs or maps is left out on a backend that
+    /// says it has no such types (SQLite, MySQL and Impala, as in Ibis); the
+    /// cases that use it then fail for want of the table, which their
+    /// `notimpl` marks expect.
     pub fn load(&self, b: &dyn Backend) -> Result<Fx> {
+        let mut skipped = vec![];
         for (name, batches) in &self.tables {
-            b.create_table(name, batches)?;
+            let nested = batches[0].schema().fields().iter().any(|f| f.data_type().is_nested());
+            match b.create_table(name, batches) {
+                Err(Error::Unsupported { .. }) if nested => skipped.push(name.as_str()),
+                other => other?,
+            }
         }
-        self.fx(|name| {
+        self.fx(&skipped, |name| {
             let (_, batches) = self.tables.iter().find(|(n, _)| n == name).expect("known fixture");
             bind(b, name, &Schema::from_arrow(&batches[0].schema())?)
         })
@@ -271,6 +303,9 @@ enum Cell {
     Bool(bool),
     Str(String),
     Ts(i64),
+    /// An array's elements, a struct's field values in order, or a map's
+    /// entries as `[key, value]` pairs sorted by key.
+    List(Vec<Cell>),
 }
 
 impl Cell {
@@ -285,6 +320,16 @@ impl Cell {
             // goldens from pandas may carry dates as timestamps
             Value::Date(d) => Cell::Ts(d as i64 * 86_400_000_000),
             Value::Timestamp(t) => Cell::Ts(t),
+            Value::Array(items) => Cell::List(items.into_iter().map(Cell::from_value).collect()),
+            Value::Struct(fields) => Cell::List(fields.into_iter().map(|(_, v)| Cell::from_value(v)).collect()),
+            Value::Map(entries) => {
+                let mut entries: Vec<Cell> = entries
+                    .into_iter()
+                    .map(|(k, v)| Cell::List(vec![Cell::from_value(k), Cell::from_value(v)]))
+                    .collect();
+                entries.sort_by_cached_key(Cell::key);
+                Cell::List(entries)
+            }
         }
     }
 
@@ -294,6 +339,7 @@ impl Cell {
             Cell::Null => "\u{0}".into(),
             Cell::Num(f) if f.is_nan() => "NaN".into(),
             Cell::Num(f) => format!("{f:+.6e}"),
+            Cell::List(items) => format!("[{}]", items.iter().map(Cell::key).collect::<Vec<_>>().join(",")),
             other => format!("{other:?}"),
         }
     }
@@ -303,6 +349,7 @@ impl Cell {
             (Cell::Num(a), Cell::Num(b)) => {
                 (a.is_nan() && b.is_nan()) || a == b || (a - b).abs() <= 1e-9 + 1e-6 * a.abs().max(b.abs())
             }
+            (Cell::List(a), Cell::List(b)) => a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.approx_eq(y)),
             (a, b) => a == b,
         }
     }
@@ -401,8 +448,10 @@ fn check_schema(case: &Case, fx: &Fx, meta: &Json) -> Outcome {
         Some(rest) if rest.len() == 2 && rest.ends_with(')') => "timestamp".to_string(),
         _ => t,
     };
+    // nor nullability: Ibis writes a type that cannot be NULL as `!int64`
+    let nullable = |t: String| t.replace('!', "");
     let want: Vec<(String, String)> =
-        strs("columns").into_iter().zip(strs("dtypes").into_iter().map(unscaled)).collect();
+        strs("columns").into_iter().zip(strs("dtypes").into_iter().map(unscaled).map(nullable)).collect();
     let passed = match case.build(fx) {
         Ok(t) => {
             let got: Vec<(String, String)> =

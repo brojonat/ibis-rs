@@ -1,6 +1,8 @@
 //! Ibis datatypes and schemas, and their mapping to Arrow.
 
 use std::fmt;
+use std::str::FromStr;
+use std::sync::Arc;
 
 use arrow_schema::{DataType as ArrowType, Field as ArrowField, Schema as ArrowSchema, TimeUnit};
 
@@ -33,9 +35,65 @@ pub enum DataType {
     Timestamp {
         tz: Option<String>,
     },
+    /// A variable-length list of values of one type (Ibis `array<T>`).
+    Array(Box<DataType>),
+    /// Named fields, in order (Ibis `struct<a: T, b: U>`).
+    Struct(Vec<(String, DataType)>),
+    /// Keys of one type to values of another (Ibis `map<K, V>`).
+    Map(Box<DataType>, Box<DataType>),
 }
 
 impl DataType {
+    /// `array<item>`
+    pub fn array(item: DataType) -> DataType {
+        DataType::Array(Box::new(item))
+    }
+    /// `map<key, value>`
+    pub fn map(key: DataType, value: DataType) -> DataType {
+        DataType::Map(Box::new(key), Box::new(value))
+    }
+    /// `struct<name: type, ...>`
+    pub fn structure(fields: &[(&str, DataType)]) -> DataType {
+        DataType::Struct(fields.iter().map(|(n, t)| (n.to_string(), t.clone())).collect())
+    }
+    pub fn is_nested(&self) -> bool {
+        matches!(self, DataType::Array(_) | DataType::Struct(_) | DataType::Map(..))
+    }
+    /// The element type of an array.
+    pub fn item(&self) -> Option<&DataType> {
+        match self {
+            DataType::Array(t) => Some(t),
+            _ => None,
+        }
+    }
+    /// The type of a struct's field.
+    pub fn field(&self, name: &str) -> Option<&DataType> {
+        match self {
+            DataType::Struct(fields) => fields.iter().find(|(n, _)| n == name).map(|(_, t)| t),
+            _ => None,
+        }
+    }
+
+    /// The type both values are implicitly cast to where they meet (the
+    /// branches of a CASE, the elements of an array, ...). NULL unifies with
+    /// anything, numbers promote, nested types unify part by part.
+    pub fn unify(a: &DataType, b: &DataType) -> Result<DataType> {
+        use DataType::*;
+        if a == b {
+            return Ok(a.clone());
+        }
+        Ok(match (a, b) {
+            (Null, x) | (x, Null) => x.clone(),
+            (x, y) if x.is_numeric() && y.is_numeric() => DataType::promote(x, y)?,
+            (Array(x), Array(y)) => DataType::array(DataType::unify(x, y)?),
+            (Map(k1, v1), Map(k2, v2)) => DataType::map(DataType::unify(k1, k2)?, DataType::unify(v1, v2)?),
+            (Struct(x), Struct(y)) if x.len() == y.len() && x.iter().zip(y).all(|(f, g)| f.0 == g.0) => Struct(
+                x.iter().zip(y).map(|(f, g)| Ok((f.0.clone(), DataType::unify(&f.1, &g.1)?))).collect::<Result<_>>()?,
+            ),
+            _ => return invalid(format!("incompatible types {a} and {b}")),
+        })
+    }
+
     pub fn is_integer(&self) -> bool {
         use DataType::*;
         matches!(self, Int8 | Int16 | Int32 | Int64 | UInt8 | UInt16 | UInt32 | UInt64)
@@ -133,6 +191,24 @@ impl DataType {
             Binary => ArrowType::Binary,
             Date => ArrowType::Date32,
             Timestamp { tz } => ArrowType::Timestamp(TimeUnit::Microsecond, tz.as_deref().map(Into::into)),
+            Array(item) => ArrowType::List(Arc::new(ArrowField::new("item", item.to_arrow(), true))),
+            Struct(fields) => {
+                ArrowType::Struct(fields.iter().map(|(n, t)| ArrowField::new(n, t.to_arrow(), true)).collect())
+            }
+            Map(key, value) => ArrowType::Map(
+                Arc::new(ArrowField::new(
+                    "entries",
+                    ArrowType::Struct(
+                        vec![
+                            ArrowField::new("key", key.to_arrow(), false),
+                            ArrowField::new("value", value.to_arrow(), true),
+                        ]
+                        .into(),
+                    ),
+                    false,
+                )),
+                false,
+            ),
         }
     }
 
@@ -156,6 +232,21 @@ impl DataType {
             ArrowType::Binary | ArrowType::LargeBinary | ArrowType::BinaryView => Binary,
             ArrowType::Date32 | ArrowType::Date64 => Date,
             ArrowType::Timestamp(_, tz) => Timestamp { tz: tz.as_ref().map(|s| s.to_string()) },
+            ArrowType::List(f) | ArrowType::LargeList(f) | ArrowType::FixedSizeList(f, _) => {
+                DataType::array(DataType::from_arrow(f.data_type())?)
+            }
+            ArrowType::Struct(fields) => Struct(
+                fields
+                    .iter()
+                    .map(|f| Ok((f.name().clone(), DataType::from_arrow(f.data_type())?)))
+                    .collect::<Result<_>>()?,
+            ),
+            ArrowType::Map(entries, _) => match entries.data_type() {
+                ArrowType::Struct(kv) if kv.len() == 2 => {
+                    DataType::map(DataType::from_arrow(kv[0].data_type())?, DataType::from_arrow(kv[1].data_type())?)
+                }
+                other => return invalid(format!("unsupported arrow map entries {other}")),
+            },
             other => return invalid(format!("unsupported arrow type {other}")),
         })
     }
@@ -187,8 +278,148 @@ impl fmt::Display for DataType {
             Date => "date",
             Timestamp { tz: None } => "timestamp",
             Timestamp { tz: Some(tz) } => return write!(f, "timestamp('{tz}')"),
+            Array(item) => return write!(f, "array<{item}>"),
+            Map(key, value) => return write!(f, "map<{key}, {value}>"),
+            Struct(fields) => {
+                f.write_str("struct<")?;
+                for (i, (name, t)) in fields.iter().enumerate() {
+                    write!(f, "{}{name}: {t}", if i > 0 { ", " } else { "" })?;
+                }
+                return f.write_str(">");
+            }
         };
         f.write_str(s)
+    }
+}
+
+/// Ibis's spelling of a type: `int64`, `array<string>`, `map<string, int64>`,
+/// `struct<a: float64, b: string>`, `decimal(10, 2)`, `timestamp('UTC')`.
+/// A leading `!` (Ibis's "not nullable") is accepted and ignored.
+impl FromStr for DataType {
+    type Err = crate::error::Error;
+
+    fn from_str(s: &str) -> Result<DataType> {
+        let mut p = TypeParser { rest: s };
+        let t = p.dtype()?;
+        if !p.rest.trim().is_empty() {
+            return invalid(format!("type {s:?}: unexpected {:?}", p.rest.trim()));
+        }
+        Ok(t)
+    }
+}
+
+struct TypeParser<'a> {
+    rest: &'a str,
+}
+
+impl TypeParser<'_> {
+    fn eat(&mut self, token: &str) -> bool {
+        let t = self.rest.trim_start();
+        match t.strip_prefix(token) {
+            Some(after) => {
+                self.rest = after;
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn expect(&mut self, token: &str) -> Result<()> {
+        if self.eat(token) { Ok(()) } else { invalid(format!("type: expected {token:?} before {:?}", self.rest)) }
+    }
+
+    fn word(&mut self) -> &str {
+        let t = self.rest.trim_start();
+        let end = t.find(|c: char| !(c.is_alphanumeric() || c == '_')).unwrap_or(t.len());
+        self.rest = &t[end..];
+        &t[..end]
+    }
+
+    fn number<T: FromStr>(&mut self) -> Result<T> {
+        let t = self.rest.trim_start();
+        let end = t.find(|c: char| !(c.is_ascii_digit() || c == '-')).unwrap_or(t.len());
+        self.rest = &t[end..];
+        t[..end].parse().or_else(|_| invalid(format!("type: expected a number, got {:?}", &t[..end])))
+    }
+
+    fn dtype(&mut self) -> Result<DataType> {
+        use DataType::*;
+        self.eat("!");
+        Ok(match self.word().to_ascii_lowercase().as_str() {
+            "null" => Null,
+            "boolean" | "bool" => Boolean,
+            "int8" => Int8,
+            "int16" => Int16,
+            "int32" => Int32,
+            "int64" => Int64,
+            "uint8" => UInt8,
+            "uint16" => UInt16,
+            "uint32" => UInt32,
+            "uint64" => UInt64,
+            "float32" => Float32,
+            "float64" | "float" | "double" => Float64,
+            "string" | "str" => String,
+            "binary" | "bytes" => Binary,
+            "date" => Date,
+            "decimal" => {
+                self.expect("(")?;
+                let precision = self.number()?;
+                self.expect(",")?;
+                let scale = self.number()?;
+                self.expect(")")?;
+                Decimal { precision, scale }
+            }
+            "timestamp" => {
+                let mut tz = None;
+                if self.eat("(") {
+                    let t = self.rest.trim_start();
+                    match t.strip_prefix('\'').and_then(|q| q.split_once('\'')) {
+                        Some((zone, after)) => {
+                            tz = Some(zone.to_string());
+                            self.rest = after;
+                            // an optional scale after the zone
+                            if self.eat(",") {
+                                self.number::<u8>()?;
+                            }
+                        }
+                        // a scale alone, e.g. timestamp(6)
+                        None => {
+                            self.number::<u8>()?;
+                        }
+                    }
+                    self.expect(")")?;
+                }
+                Timestamp { tz }
+            }
+            "array" => {
+                self.expect("<")?;
+                let item = self.dtype()?;
+                self.expect(">")?;
+                DataType::array(item)
+            }
+            "map" => {
+                self.expect("<")?;
+                let key = self.dtype()?;
+                self.expect(",")?;
+                let value = self.dtype()?;
+                self.expect(">")?;
+                DataType::map(key, value)
+            }
+            "struct" => {
+                self.expect("<")?;
+                let mut fields = vec![];
+                while !self.eat(">") {
+                    if !fields.is_empty() {
+                        self.expect(",")?;
+                    }
+                    let name = self.word().to_string();
+                    self.expect(":")?;
+                    fields.push((name, self.dtype()?));
+                }
+                Struct(fields)
+            }
+            other => return invalid(format!("unknown type {other:?}")),
+        })
     }
 }
 

@@ -11,8 +11,9 @@ use arrow_array::builder::{
 };
 use arrow_array::cast::AsArray;
 use arrow_array::types::*;
-use arrow_array::{Array, ArrayRef, RecordBatch, RecordBatchOptions};
-use arrow_schema::{DataType as ArrowType, TimeUnit};
+use arrow_array::{Array, ArrayRef, ListArray, MapArray, RecordBatch, RecordBatchOptions, StructArray};
+use arrow_buffer::{NullBuffer, OffsetBuffer};
+use arrow_schema::{DataType as ArrowType, Field as ArrowField, TimeUnit};
 use chrono::{Datelike, NaiveDate, NaiveDateTime};
 
 use crate::datatypes::{DataType, Schema};
@@ -160,7 +161,100 @@ pub fn build_array(dtype: &DataType, vals: &[Value]) -> Result<ArrayRef> {
             let a = build!(TimestampMicrosecondBuilder, as_ts);
             Arc::new(a.as_primitive::<TimestampMicrosecondType>().clone().with_timezone_opt(tz.clone()))
         }
+        DataType::Array(item) => {
+            let lists = vals.iter().map(|v| as_items(v, dtype)).collect::<Result<Vec<_>>>()?;
+            let flat: Vec<Value> = lists.iter().flatten().flat_map(|items| items.iter().cloned()).collect();
+            let field = Arc::new(ArrowField::new("item", item.to_arrow(), true));
+            Arc::new(ListArray::try_new(field, offsets(&lists), build_array(item, &flat)?, validity(&lists))?)
+        }
+        DataType::Map(key, value) => {
+            let maps = vals.iter().map(|v| as_entries(v, dtype)).collect::<Result<Vec<_>>>()?;
+            let flat = || maps.iter().flatten().flat_map(|entries| entries.iter());
+            let keys: Vec<Value> = flat().map(|(k, _)| k.clone()).collect();
+            let values: Vec<Value> = flat().map(|(_, v)| v.clone()).collect();
+            let ArrowType::Map(entries_field, sorted) = dtype.to_arrow() else { unreachable!("a map is an arrow map") };
+            let ArrowType::Struct(kv) = entries_field.data_type().clone() else { unreachable!("entries are a struct") };
+            let entries = StructArray::try_new(kv, vec![build_array(key, &keys)?, build_array(value, &values)?], None)?;
+            Arc::new(MapArray::try_new(entries_field, offsets(&maps), entries, validity(&maps), sorted)?)
+        }
+        DataType::Struct(fields) => {
+            let rows = vals.iter().map(|v| as_fields(v, fields, dtype)).collect::<Result<Vec<_>>>()?;
+            let columns = fields
+                .iter()
+                .enumerate()
+                .map(|(i, (_, t))| {
+                    let column: Vec<Value> =
+                        rows.iter().map(|r| r.as_ref().map_or(Value::Null, |r| r[i].clone())).collect();
+                    build_array(t, &column)
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let ArrowType::Struct(arrow_fields) = dtype.to_arrow() else { unreachable!("a struct is an arrow struct") };
+            let nulls = NullBuffer::from_iter(rows.iter().map(Option::is_some));
+            if fields.is_empty() {
+                Arc::new(StructArray::new_empty_fields(vals.len(), Some(nulls)))
+            } else {
+                Arc::new(StructArray::try_new(arrow_fields, columns, Some(nulls))?)
+            }
+        }
     })
+}
+
+fn mismatch<T>(v: &Value, dtype: &DataType) -> Result<T> {
+    Err(Error::Other(format!("can't convert {v:?} to {dtype}")))
+}
+
+/// The elements of an array value; `None` for NULL.
+fn as_items(v: &Value, dtype: &DataType) -> Result<Option<Vec<Value>>> {
+    match v {
+        Value::Null => Ok(None),
+        Value::Array(items) => Ok(Some(items.clone())),
+        other => mismatch(other, dtype),
+    }
+}
+
+/// The entries of a map value; `None` for NULL. Engines without a map type
+/// hand maps back as arrays of (key, value) structs.
+fn as_entries(v: &Value, dtype: &DataType) -> Result<Option<Vec<(Value, Value)>>> {
+    match v {
+        Value::Null => Ok(None),
+        Value::Map(entries) => Ok(Some(entries.clone())),
+        Value::Array(items) => items
+            .iter()
+            .map(|item| match item {
+                Value::Struct(kv) if kv.len() == 2 => Ok((kv[0].1.clone(), kv[1].1.clone())),
+                Value::Array(kv) if kv.len() == 2 => Ok((kv[0].clone(), kv[1].clone())),
+                _ => mismatch(v, dtype),
+            })
+            .collect::<Result<Vec<_>>>()
+            .map(Some),
+        other => mismatch(other, dtype),
+    }
+}
+
+/// The field values of a struct value in the order of `fields`; `None` for
+/// NULL. Fields are matched by name, or by position when the engine returned
+/// them unnamed (an array) or under names of its own.
+fn as_fields(v: &Value, fields: &[(String, DataType)], dtype: &DataType) -> Result<Option<Vec<Value>>> {
+    match v {
+        Value::Null => Ok(None),
+        Value::Struct(got) if got.len() == fields.len() => Ok(Some(
+            fields
+                .iter()
+                .enumerate()
+                .map(|(i, (name, _))| got.iter().find(|(n, _)| n == name).unwrap_or(&got[i]).1.clone())
+                .collect(),
+        )),
+        Value::Array(got) if got.len() == fields.len() => Ok(Some(got.clone())),
+        other => mismatch(other, dtype),
+    }
+}
+
+fn offsets<T>(lists: &[Option<Vec<T>>]) -> OffsetBuffer<i32> {
+    OffsetBuffer::from_lengths(lists.iter().map(|l| l.as_ref().map_or(0, Vec::len)))
+}
+
+fn validity<T>(lists: &[Option<Vec<T>>]) -> Option<NullBuffer> {
+    Some(NullBuffer::from_iter(lists.iter().map(Option::is_some)))
 }
 
 /// Rows of values -> a batch with exactly `schema`.
@@ -212,8 +306,30 @@ pub fn array_value(a: &dyn Array, i: usize) -> Result<Value> {
             TimeUnit::Microsecond => a.as_primitive::<TimestampMicrosecondType>().value(i),
             TimeUnit::Nanosecond => a.as_primitive::<TimestampNanosecondType>().value(i) / 1_000,
         }),
+        ArrowType::List(_) => Value::Array(array_values(&a.as_list::<i32>().value(i))?),
+        ArrowType::LargeList(_) => Value::Array(array_values(&a.as_list::<i64>().value(i))?),
+        ArrowType::FixedSizeList(..) => Value::Array(array_values(&a.as_fixed_size_list().value(i))?),
+        ArrowType::Struct(fields) => {
+            let s = a.as_struct();
+            Value::Struct(
+                fields
+                    .iter()
+                    .zip(s.columns())
+                    .map(|(f, c)| Ok((f.name().clone(), array_value(c.as_ref(), i)?)))
+                    .collect::<Result<_>>()?,
+            )
+        }
+        ArrowType::Map(..) => {
+            let entries = a.as_map().value(i);
+            let (keys, values) = (array_values(entries.column(0))?, array_values(entries.column(1))?);
+            Value::Map(keys.into_iter().zip(values).collect())
+        }
         other => return Err(Error::Other(format!("unsupported arrow type {other}"))),
     })
+}
+
+fn array_values(a: &dyn Array) -> Result<Vec<Value>> {
+    (0..a.len()).map(|i| array_value(a, i)).collect()
 }
 
 /// A batch -> rows of values.

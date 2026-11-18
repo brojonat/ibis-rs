@@ -342,6 +342,8 @@ fn csv_field(v: &Value) -> String {
         Value::Binary(b) => q(&format!("\\x{}", b.iter().map(|x| format!("{x:02x}")).collect::<String>())),
         Value::Date(d) => format_date(*d),
         Value::Timestamp(t) => format_timestamp(*t),
+        // TODO(nested)
+        Value::Array(_) | Value::Struct(_) | Value::Map(_) => String::new(),
     }
 }
 

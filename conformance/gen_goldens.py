@@ -40,7 +40,6 @@ GOLDEN = ROOT / "conformance" / "golden"
 DATA = Path(os.environ.get("IBIS_TESTING_DATA", ROOT / "ci" / "ibis-testing-data"))
 TABLES = ["functional_alltypes", "batting", "awards_players"]
 MEMTABLES = json.loads((ROOT / "conformance" / "memtables.json").read_text())
-ARROW = {"int64": pa.int64(), "string": pa.string(), "float64": pa.float64(), "boolean": pa.bool_()}
 
 
 class Fixtures:
@@ -56,10 +55,30 @@ class Fixtures:
         return self.con.table(name)
 
 
+def cell(v, t: pa.DataType):
+    """A memtables.json cell as PyArrow takes it: a map is a list of [key, value] pairs there."""
+    if v is None:
+        return None
+    if pa.types.is_map(t):
+        return [(cell(k, t.key_type), cell(x, t.item_type)) for k, x in v]
+    if pa.types.is_list(t):
+        return [cell(x, t.value_type) for x in v]
+    if pa.types.is_struct(t):
+        return {f.name: cell(v.get(f.name), f.type) for f in t}
+    return v
+
+
 def memtable(name: str) -> pa.Table:
+    """A table of memtables.json. Column types are spelled as Ibis spells them."""
     spec = MEMTABLES[name]
     cols = list(zip(*spec["rows"])) if spec["rows"] else [[] for _ in spec["columns"]]
-    return pa.table({n: pa.array(list(c), type=ARROW[t]) for (n, t), c in zip(spec["columns"], cols)})
+    types = [ibis.dtype(t).to_pyarrow() for _, t in spec["columns"]]
+    arrays = [pa.array([cell(v, t) for v in c], type=t) for t, c in zip(types, cols)]
+    return pa.table(arrays, names=[n for n, _ in spec["columns"]])
+
+
+def nested(data: pa.Table) -> bool:
+    return any(pa.types.is_nested(f.type) for f in data.schema)
 
 
 def sql_type(t: pa.DataType, backend: str) -> str:
@@ -116,7 +135,10 @@ def load(con) -> Fixtures:
     for name in TABLES:
         create(con, name, pq.read_table(DATA / "parquet" / f"{name}.parquet"))
     for name in MEMTABLES:
-        create(con, name, memtable(name))
+        data = memtable(name)
+        # arrays, structs and maps are only loaded where the goldens come from
+        if con.name == "duckdb" or not nested(data):
+            create(con, name, data)
     return Fixtures(con)
 
 

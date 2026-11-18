@@ -138,6 +138,8 @@ fn tsv_field(v: &Value, out: &mut String) {
         Value::Binary(b) => escape(&String::from_utf8_lossy(b), out),
         Value::Date(d) => out.push_str(&format_date(*d)),
         Value::Timestamp(t) => out.push_str(&format_timestamp(*t)),
+        // TODO(nested): arrays, tuples and maps in TabSeparated
+        Value::Array(_) | Value::Struct(_) | Value::Map(_) => out.push_str("\\N"),
     }
 }
 

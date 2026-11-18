@@ -73,6 +73,15 @@ pub(crate) fn to_pl(t: &DataType) -> pl::DataType {
             pl::TimeUnit::Microseconds,
             tz.as_deref().and_then(|z| pl::TimeZone::opt_try_new(Some(z)).ok().flatten()),
         ),
+        DataType::Array(item) => P::List(Box::new(to_pl(item))),
+        DataType::Struct(fields) => {
+            P::Struct(fields.iter().map(|(name, t)| pl::Field::new(name.as_str().into(), to_pl(t))).collect())
+        }
+        // no map type: a list of key/value structs
+        DataType::Map(key, value) => P::List(Box::new(P::Struct(vec![
+            pl::Field::new("key".into(), to_pl(key)),
+            pl::Field::new("value".into(), to_pl(value)),
+        ]))),
     }
 }
 
@@ -96,6 +105,10 @@ fn from_pl(t: &pl::DataType) -> Result<DataType> {
         P::Binary => DataType::Binary,
         P::Date => DataType::Date,
         P::Datetime(_, tz) => DataType::Timestamp { tz: tz.as_ref().map(|z| z.to_string()) },
+        P::List(item) => DataType::array(from_pl(item)?),
+        P::Struct(fields) => DataType::Struct(
+            fields.iter().map(|f| Ok((f.name().to_string(), from_pl(f.dtype())?))).collect::<Result<_>>()?,
+        ),
         other => return Err(Error::Other(format!("polars: unsupported column type {other}"))),
     })
 }

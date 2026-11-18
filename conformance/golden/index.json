@@ -173,6 +173,1606 @@
    "postgres": "same"
   }
  },
+ "test_all_fields": {
+  "file": "test_struct/test_all_fields.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "abc"
+  ],
+  "dtypes": [
+   "struct<a: float64, b: string, c: int64>"
+  ],
+  "rows": 7,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_bool[no-nulls-alls]": {
+  "file": "test_array/test_array_agg_bool[no-nulls-alls].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<boolean>",
+   "int64",
+   "boolean"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_bool[no-nulls-anys]": {
+  "file": "test_array/test_array_agg_bool[no-nulls-anys].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<boolean>",
+   "int64",
+   "boolean"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_bool[nulls-alls]": {
+  "file": "test_array/test_array_agg_bool[nulls-alls].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<boolean>",
+   "int64",
+   "boolean"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_bool[nulls-anys]": {
+  "file": "test_array/test_array_agg_bool[nulls-anys].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<boolean>",
+   "int64",
+   "boolean"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[no-nulls-maxs]": {
+  "file": "test_array/test_array_agg_numeric[no-nulls-maxs].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[no-nulls-means]": {
+  "file": "test_array/test_array_agg_numeric[no-nulls-means].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "float64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[no-nulls-mins]": {
+  "file": "test_array/test_array_agg_numeric[no-nulls-mins].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[no-nulls-modes]": {
+  "file": "test_array/test_array_agg_numeric[no-nulls-modes].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[no-nulls-sums]": {
+  "file": "test_array/test_array_agg_numeric[no-nulls-sums].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[nulls-maxs]": {
+  "file": "test_array/test_array_agg_numeric[nulls-maxs].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[nulls-means]": {
+  "file": "test_array/test_array_agg_numeric[nulls-means].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "float64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[nulls-mins]": {
+  "file": "test_array/test_array_agg_numeric[nulls-mins].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[nulls-modes]": {
+  "file": "test_array/test_array_agg_numeric[nulls-modes].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_agg_numeric[nulls-sums]": {
+  "file": "test_array/test_array_agg_numeric[nulls-sums].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x",
+   "id",
+   "y"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_column": {
+  "file": "test_array/test_array_column.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "array<float64>"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_array_concat": {
+  "file": "test_array/test_array_concat.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_concat_scalar[<lambda>0]": {
+  "file": "test_array/test_array_concat_scalar[<lambda>0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_concat_scalar[<lambda>1]": {
+  "file": "test_array/test_array_concat_scalar[<lambda>1].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_concat_some_empty": {
+  "file": "test_array/test_array_concat_some_empty.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_concat_variadic": {
+  "file": "test_array/test_array_concat_variadic.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_concat_with_null[left]": {
+  "file": "test_array/test_array_concat_with_null[left].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int32>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_concat_with_null[right]": {
+  "file": "test_array/test_array_concat_with_null[right].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int32>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_concat_with_null_non_constant": {
+  "file": "test_array/test_array_concat_with_null_non_constant.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int32>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_contains[x-1]": {
+  "file": "test_array/test_array_contains[x-1].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_contains[y-a]": {
+  "file": "test_array/test_array_contains[y-a].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_discovery": {
+  "file": "test_array/test_array_discovery.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y",
+   "z",
+   "grouper",
+   "scalar_column",
+   "multi_dim"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "array<string>",
+   "array<float64>",
+   "string",
+   "float64",
+   "array<array<int64>>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter[deferred-no_nulls]": {
+  "file": "test_array/test_array_filter[deferred-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter[deferred-nulls]": {
+  "file": "test_array/test_array_filter[deferred-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter[lambda-no_nulls]": {
+  "file": "test_array/test_array_filter[lambda-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter[lambda-nulls]": {
+  "file": "test_array/test_array_filter[lambda-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter[partial-no_nulls]": {
+  "file": "test_array/test_array_filter[partial-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter[partial-nulls]": {
+  "file": "test_array/test_array_filter[partial-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter_with_index[lambda-no_nulls]": {
+  "file": "test_array/test_array_filter_with_index[lambda-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter_with_index[lambda-nulls]": {
+  "file": "test_array/test_array_filter_with_index[lambda-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter_with_index[partial-no_nulls]": {
+  "file": "test_array/test_array_filter_with_index[partial-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter_with_index[partial-nulls]": {
+  "file": "test_array/test_array_filter_with_index[partial-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter_with_index_lambda[lambda-no_nulls]": {
+  "file": "test_array/test_array_filter_with_index_lambda[lambda-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter_with_index_lambda[lambda-nulls]": {
+  "file": "test_array/test_array_filter_with_index_lambda[lambda-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter_with_index_lambda[partial-no_nulls]": {
+  "file": "test_array/test_array_filter_with_index_lambda[partial-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_filter_with_index_lambda[partial-nulls]": {
+  "file": "test_array/test_array_filter_with_index_lambda[partial-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_flatten[empty]": {
+  "file": "test_array/test_array_flatten[empty].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "id",
+   "flat"
+  ],
+  "dtypes": [
+   "int64",
+   "array<int64>"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_flatten[happy]": {
+  "file": "test_array/test_array_flatten[happy].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "id",
+   "flat"
+  ],
+  "dtypes": [
+   "int64",
+   "array<string>"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_flatten[mixed_nulls]": {
+  "file": "test_array/test_array_flatten[mixed_nulls].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "id",
+   "flat"
+  ],
+  "dtypes": [
+   "int64",
+   "array<string>"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_flatten[nulls_only]": {
+  "file": "test_array/test_array_flatten[nulls_only].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "id",
+   "flat"
+  ],
+  "dtypes": [
+   "int64",
+   "array<string>"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_index[0]": {
+  "file": "test_array/test_array_index[0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_index[1]": {
+  "file": "test_array/test_array_index[1].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_index[2]": {
+  "file": "test_array/test_array_index[2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_intersect[no_nulls]": {
+  "file": "test_array/test_array_intersect[no_nulls].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "d"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_intersect[nulls]": {
+  "file": "test_array/test_array_intersect[nulls].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "d"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_length": {
+  "file": "test_array/test_array_length.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_literal_with_exprs[array]": {
+  "file": "test_array/test_array_literal_with_exprs[array].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<array<int8>>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_literal_with_exprs[float-float]": {
+  "file": "test_array/test_array_literal_with_exprs[float-float].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_array_literal_with_exprs[float-int]": {
+  "file": "test_array/test_array_literal_with_exprs[float-int].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_array_literal_with_exprs[int-float-exprs]": {
+  "file": "test_array/test_array_literal_with_exprs[int-float-exprs].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_array_literal_with_exprs[int-float]": {
+  "file": "test_array/test_array_literal_with_exprs[int-float].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_array_literal_with_exprs[int-int]": {
+  "file": "test_array/test_array_literal_with_exprs[int-int].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_array_map[deferred-no_nulls]": {
+  "file": "test_array/test_array_map[deferred-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int16>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map[deferred-nulls]": {
+  "file": "test_array/test_array_map[deferred-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int16>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map[lambda-no_nulls]": {
+  "file": "test_array/test_array_map[lambda-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int16>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map[lambda-nulls]": {
+  "file": "test_array/test_array_map[lambda-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int16>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map[partial-no_nulls]": {
+  "file": "test_array/test_array_map[partial-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int16>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map[partial-nulls]": {
+  "file": "test_array/test_array_map[partial-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int16>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map_with_conflicting_names": {
+  "file": "test_array/test_array_map_with_conflicting_names.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "b"
+  ],
+  "dtypes": [
+   "array<int16>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map_with_index[lambda-no_nulls]": {
+  "file": "test_array/test_array_map_with_index[lambda-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map_with_index[lambda-nulls]": {
+  "file": "test_array/test_array_map_with_index[lambda-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map_with_index[partial-no_nulls]": {
+  "file": "test_array/test_array_map_with_index[partial-no_nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_map_with_index[partial-nulls]": {
+  "file": "test_array/test_array_map_with_index[partial-nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_of_struct_unnest": {
+  "file": "test_array/test_array_of_struct_unnest.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "status"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_position[none-empty]": {
+  "file": "test_array/test_array_position[none-empty].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_position[some-empty]": {
+  "file": "test_array/test_array_position[some-empty].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_radd_concat": {
+  "file": "test_array/test_array_radd_concat.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_array_remove[all-non-empty-arrays]": {
+  "file": "test_array/test_array_remove[all-non-empty-arrays].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_remove[including-empty-array]": {
+  "file": "test_array/test_array_remove[including-empty-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_remove[nested-null]": {
+  "file": "test_array/test_array_remove[nested-null].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_remove[non-nested-null]": {
+  "file": "test_array/test_array_remove[non-nested-null].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_repeat": {
+  "file": "test_array/test_array_repeat.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_array_repeat_column": {
+  "file": "test_array/test_array_repeat_column.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_scalar": {
+  "file": "test_array/test_array_scalar.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_array_slice[-3--1]": {
+  "file": "test_array/test_array_slice[-3--1].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[-3-None]": {
+  "file": "test_array/test_array_slice[-3-None].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[1-1]": {
+  "file": "test_array/test_array_slice[1-1].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[1-3]": {
+  "file": "test_array/test_array_slice[1-3].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[2-3]": {
+  "file": "test_array/test_array_slice[2-3].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[2-5]": {
+  "file": "test_array/test_array_slice[2-5].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[3-None]": {
+  "file": "test_array/test_array_slice[3-None].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[None-3]": {
+  "file": "test_array/test_array_slice[None-3].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[None-None]": {
+  "file": "test_array/test_array_slice[None-None].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_slice[nulls]": {
+  "file": "test_array/test_array_slice[nulls].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "sliced"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_sort[empty]": {
+  "file": "test_array/test_array_sort[empty].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "a",
+   "id"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_sort[nonempty]": {
+  "file": "test_array/test_array_sort[nonempty].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "a",
+   "id"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "int64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_union[all-non-empty-arrays]": {
+  "file": "test_array/test_array_union[all-non-empty-arrays].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_union[including-empty-array]": {
+  "file": "test_array/test_array_union[including-empty-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_unique[not_null]": {
+  "file": "test_array/test_array_unique[not_null].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_array_unique[null]": {
+  "file": "test_array/test_array_unique[null].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
  "test_backend_specific_numerics[greatest-all-columns]": {
   "file": "test_numeric/test_backend_specific_numerics[greatest-all-columns].parquet",
   "kind": "column",
@@ -705,6 +2305,24 @@
    "postgres": "same"
   }
  },
+ "test_collect_into_struct": {
+  "file": "test_struct/test_collect_into_struct.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "group",
+   "val"
+  ],
+  "dtypes": [
+   "string",
+   "struct<key: !array<int64>>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
  "test_column_fill_null[None]": {
   "file": "test_generic/test_column_fill_null[None].parquet",
   "kind": "table",
@@ -744,6 +2362,74 @@
   "rows": 7300,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_column_map_merge": {
+  "file": "test_map/test_column_map_merge.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "idx",
+   "merged"
+  ],
+  "dtypes": [
+   "int64",
+   "map<string, int64>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_column_map_values": {
+  "file": "test_map/test_column_map_values.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "idx",
+   "vals"
+  ],
+  "dtypes": [
+   "int64",
+   "array<int64>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_complex_array_map#1": {
+  "file": "test_array/test_complex_array_map#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_complex_array_map#2": {
+  "file": "test_array/test_complex_array_map#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
    "postgres": "same"
   }
  },
@@ -2079,6 +3765,102 @@
    "postgres": "same"
   }
  },
+ "test_field_access_after_case": {
+  "file": "test_struct/test_field_access_after_case.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_field_overwrite_always_prefers_unpacked#1": {
+  "file": "test_struct/test_field_overwrite_always_prefers_unpacked#1.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a",
+   "b",
+   "c"
+  ],
+  "dtypes": [
+   "float64",
+   "string",
+   "int64"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_field_overwrite_always_prefers_unpacked#2": {
+  "file": "test_struct/test_field_overwrite_always_prefers_unpacked#2.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a",
+   "b",
+   "c"
+  ],
+  "dtypes": [
+   "float64",
+   "string",
+   "int64"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_field_overwrite_always_prefers_unpacked#3": {
+  "file": "test_struct/test_field_overwrite_always_prefers_unpacked#3.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a",
+   "b",
+   "c"
+  ],
+  "dtypes": [
+   "float64",
+   "string",
+   "int64"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_field_overwrite_always_prefers_unpacked#4": {
+  "file": "test_struct/test_field_overwrite_always_prefers_unpacked#4.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "a",
+   "b",
+   "c"
+  ],
+  "dtypes": [
+   "float64",
+   "string",
+   "int64"
+  ],
+  "rows": 5,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
  "test_filter[and]": {
   "file": "test_generic/test_filter[and].parquet",
   "kind": "table",
@@ -2421,6 +4203,22 @@
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
+  }
+ },
+ "test_flatten": {
+  "file": "test_array/test_flatten.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "result"
+  ],
+  "dtypes": [
+   "array<int64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
   }
  },
  "test_floating_mod": {
@@ -3641,6 +5439,22 @@
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
+  }
+ },
+ "test_isin_struct": {
+  "file": "test_struct/test_isin_struct.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
   }
  },
  "test_isin_uncorrelated": {
@@ -5025,6 +6839,122 @@
    "postgres": "same"
   }
  },
+ "test_list_literal": {
+  "file": "test_array/test_list_literal.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_literal": {
+  "file": "test_struct/test_literal.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "struct<a: int64, b: string, c: float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_literal_map_get_broadcast": {
+  "file": "test_map/test_literal_map_get_broadcast.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_literal_map_getitem_broadcast": {
+  "file": "test_map/test_literal_map_getitem_broadcast.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_literal_map_keys": {
+  "file": "test_map/test_literal_map_keys.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_literal_map_merge": {
+  "file": "test_map/test_literal_map_merge.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: ArrowTypeError"
+  }
+ },
+ "test_literal_map_values": {
+  "file": "test_map/test_literal_map_values.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
  "test_literal_na[bool]": {
   "file": "test_generic/test_literal_na[bool].parquet",
   "kind": "scalar",
@@ -5330,6 +7260,1984 @@
   "rows": 1,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_map_column_contains_key_column": {
+  "file": "test_map/test_map_column_contains_key_column.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_column_contains_key_scalar": {
+  "file": "test_map/test_map_column_contains_key_scalar.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "differs"
+  }
+ },
+ "test_map_construct_array_column": {
+  "file": "test_map/test_map_construct_array_column.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "map<string, int32>"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowTypeError"
+  }
+ },
+ "test_map_construct_dict[int]": {
+  "file": "test_map/test_map_construct_dict[int].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: ArrowTypeError"
+  }
+ },
+ "test_map_construct_dict[string]": {
+  "file": "test_map/test_map_construct_dict[string].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: ArrowTypeError"
+  }
+ },
+ "test_map_contains_all_types[array]": {
+  "file": "test_map/test_map_contains_all_types[array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_contains_all_types[bool]": {
+  "file": "test_map/test_map_contains_all_types[bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_contains_all_types[date]": {
+  "file": "test_map/test_map_contains_all_types[date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_contains_all_types[float]": {
+  "file": "test_map/test_map_contains_all_types[float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_contains_all_types[int]": {
+  "file": "test_map/test_map_contains_all_types[int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_contains_all_types[string]": {
+  "file": "test_map/test_map_contains_all_types[string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_contains_all_types[struct]": {
+  "file": "test_map/test_map_contains_all_types[struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_contains_all_types[timestamp]": {
+  "file": "test_map/test_map_contains_all_types[timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_contains_null#1": {
+  "file": "test_map/test_map_contains_null#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_contains_null#2": {
+  "file": "test_map/test_map_contains_null#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_all_types[array-array]": {
+  "file": "test_map/test_map_get_all_types[array-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "array<int8>",
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[array-bool]": {
+  "file": "test_map/test_map_get_all_types[array-bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[array-date]": {
+  "file": "test_map/test_map_get_all_types[array-date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "date",
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[array-float]": {
+  "file": "test_map/test_map_get_all_types[array-float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "float64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[array-int]": {
+  "file": "test_map/test_map_get_all_types[array-int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "int8",
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[array-string]": {
+  "file": "test_map/test_map_get_all_types[array-string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "string",
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[array-struct]": {
+  "file": "test_map/test_map_get_all_types[array-struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "struct<a: int8>",
+   "struct<a: int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[array-timestamp]": {
+  "file": "test_map/test_map_get_all_types[array-timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "timestamp",
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[bool-array]": {
+  "file": "test_map/test_map_get_all_types[bool-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "array<int8>",
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[bool-bool]": {
+  "file": "test_map/test_map_get_all_types[bool-bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[bool-date]": {
+  "file": "test_map/test_map_get_all_types[bool-date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "date",
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[bool-float]": {
+  "file": "test_map/test_map_get_all_types[bool-float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "float64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[bool-int]": {
+  "file": "test_map/test_map_get_all_types[bool-int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "int8",
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[bool-string]": {
+  "file": "test_map/test_map_get_all_types[bool-string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "string",
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[bool-struct]": {
+  "file": "test_map/test_map_get_all_types[bool-struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "struct<a: int8>",
+   "struct<a: int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[bool-timestamp]": {
+  "file": "test_map/test_map_get_all_types[bool-timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "timestamp",
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[date-array]": {
+  "file": "test_map/test_map_get_all_types[date-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "array<int8>",
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[date-bool]": {
+  "file": "test_map/test_map_get_all_types[date-bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[date-date]": {
+  "file": "test_map/test_map_get_all_types[date-date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "date",
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[date-float]": {
+  "file": "test_map/test_map_get_all_types[date-float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "float64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[date-int]": {
+  "file": "test_map/test_map_get_all_types[date-int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "int8",
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[date-string]": {
+  "file": "test_map/test_map_get_all_types[date-string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "string",
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[date-struct]": {
+  "file": "test_map/test_map_get_all_types[date-struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "struct<a: int8>",
+   "struct<a: int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[date-timestamp]": {
+  "file": "test_map/test_map_get_all_types[date-timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "timestamp",
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[float-array]": {
+  "file": "test_map/test_map_get_all_types[float-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "array<int8>",
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[float-bool]": {
+  "file": "test_map/test_map_get_all_types[float-bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[float-date]": {
+  "file": "test_map/test_map_get_all_types[float-date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "date",
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[float-float]": {
+  "file": "test_map/test_map_get_all_types[float-float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "float64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[float-int]": {
+  "file": "test_map/test_map_get_all_types[float-int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "int8",
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[float-string]": {
+  "file": "test_map/test_map_get_all_types[float-string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "string",
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[float-struct]": {
+  "file": "test_map/test_map_get_all_types[float-struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "struct<a: int8>",
+   "struct<a: int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[float-timestamp]": {
+  "file": "test_map/test_map_get_all_types[float-timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "timestamp",
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[int-array]": {
+  "file": "test_map/test_map_get_all_types[int-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "array<int8>",
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[int-bool]": {
+  "file": "test_map/test_map_get_all_types[int-bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[int-date]": {
+  "file": "test_map/test_map_get_all_types[int-date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "date",
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[int-float]": {
+  "file": "test_map/test_map_get_all_types[int-float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "float64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[int-int]": {
+  "file": "test_map/test_map_get_all_types[int-int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "int8",
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[int-string]": {
+  "file": "test_map/test_map_get_all_types[int-string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "string",
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[int-struct]": {
+  "file": "test_map/test_map_get_all_types[int-struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "struct<a: int8>",
+   "struct<a: int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[int-timestamp]": {
+  "file": "test_map/test_map_get_all_types[int-timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "timestamp",
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[string-array]": {
+  "file": "test_map/test_map_get_all_types[string-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "array<int8>",
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_all_types[string-bool]": {
+  "file": "test_map/test_map_get_all_types[string-bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_all_types[string-date]": {
+  "file": "test_map/test_map_get_all_types[string-date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "date",
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_all_types[string-float]": {
+  "file": "test_map/test_map_get_all_types[string-float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "float64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_all_types[string-int]": {
+  "file": "test_map/test_map_get_all_types[string-int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "int8",
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_all_types[string-string]": {
+  "file": "test_map/test_map_get_all_types[string-string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "string",
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_all_types[string-struct]": {
+  "file": "test_map/test_map_get_all_types[string-struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "struct<a: int8>",
+   "struct<a: int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[string-timestamp]": {
+  "file": "test_map/test_map_get_all_types[string-timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "timestamp",
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_all_types[struct-array]": {
+  "file": "test_map/test_map_get_all_types[struct-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "array<int8>",
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[struct-bool]": {
+  "file": "test_map/test_map_get_all_types[struct-bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[struct-date]": {
+  "file": "test_map/test_map_get_all_types[struct-date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "date",
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[struct-float]": {
+  "file": "test_map/test_map_get_all_types[struct-float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "float64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[struct-int]": {
+  "file": "test_map/test_map_get_all_types[struct-int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "int8",
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[struct-string]": {
+  "file": "test_map/test_map_get_all_types[struct-string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "string",
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[struct-struct]": {
+  "file": "test_map/test_map_get_all_types[struct-struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "struct<a: int8>",
+   "struct<a: int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[struct-timestamp]": {
+  "file": "test_map/test_map_get_all_types[struct-timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "timestamp",
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[timestamp-array]": {
+  "file": "test_map/test_map_get_all_types[timestamp-array].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "array<int8>",
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[timestamp-bool]": {
+  "file": "test_map/test_map_get_all_types[timestamp-bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "boolean",
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[timestamp-date]": {
+  "file": "test_map/test_map_get_all_types[timestamp-date].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "date",
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[timestamp-float]": {
+  "file": "test_map/test_map_get_all_types[timestamp-float].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "float64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[timestamp-int]": {
+  "file": "test_map/test_map_get_all_types[timestamp-int].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "int8",
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[timestamp-string]": {
+  "file": "test_map/test_map_get_all_types[timestamp-string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "string",
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_all_types[timestamp-struct]": {
+  "file": "test_map/test_map_get_all_types[timestamp-struct].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "struct<a: int8>",
+   "struct<a: int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_map_get_all_types[timestamp-timestamp]": {
+  "file": "test_map/test_map_get_all_types[timestamp-timestamp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "first",
+   "second"
+  ],
+  "dtypes": [
+   "timestamp",
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_contains_nulls[contains-non_null_map_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[contains-non_null_map_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_contains_nulls[contains-null_both_non_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[contains-null_both_non_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_contains_nulls[contains-null_both_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[contains-null_both_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_contains_nulls[contains-null_map_non_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[contains-null_map_non_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_contains_nulls[contains-null_map_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[contains-null_map_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_contains_nulls[get-non_null_map_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[get-non_null_map_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_contains_nulls[get-null_both_non_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[get-null_both_non_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_contains_nulls[get-null_both_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[get-null_both_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_contains_nulls[get-null_map_non_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[get-null_map_non_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_contains_nulls[get-null_map_null_key]": {
+  "file": "test_map/test_map_get_contains_nulls[get-null_map_null_key].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_get_with_compatible_value_bigger": {
+  "file": "test_map/test_map_get_with_compatible_value_bigger.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_with_compatible_value_smaller": {
+  "file": "test_map/test_map_get_with_compatible_value_smaller.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_with_incompatible_value_different_kind": {
+  "file": "test_map/test_map_get_with_incompatible_value_different_kind.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_with_null_on_not_nullable[None]": {
+  "file": "test_map/test_map_get_with_null_on_not_nullable[None].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_with_null_on_not_nullable[null_value1]": {
+  "file": "test_map/test_map_get_with_null_on_not_nullable[null_value1].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int16"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_with_null_on_null_type_with_non_null": {
+  "file": "test_map/test_map_get_with_null_on_null_type_with_non_null.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_get_with_null_on_null_type_with_null[none]": {
+  "file": "test_map/test_map_get_with_null_on_null_type_with_null[none].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "null"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_get_with_null_on_null_type_with_null[null]": {
+  "file": "test_map/test_map_get_with_null_on_null_type_with_null[null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "null"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_keys_nulls[null_both]": {
+  "file": "test_map/test_map_keys_nulls[null_both].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_keys_nulls[null_keys]": {
+  "file": "test_map/test_map_keys_nulls[null_keys].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_keys_unnest": {
+  "file": "test_map/test_map_keys_unnest.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_map_length": {
+  "file": "test_map/test_map_length.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_merge_nulls[non_null_and_null]": {
+  "file": "test_map/test_map_merge_nulls[non_null_and_null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_merge_nulls[null_and_non_null]": {
+  "file": "test_map/test_map_merge_nulls[null_and_non_null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_merge_nulls[null_and_null]": {
+  "file": "test_map/test_map_merge_nulls[null_and_null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_nulls[null_both]": {
+  "file": "test_map/test_map_nulls[null_both].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_nulls[null_keys]": {
+  "file": "test_map/test_map_nulls[null_keys].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_nulls[null_values]": {
+  "file": "test_map/test_map_nulls[null_values].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "map<string, string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_scalar_contains_key_column": {
+  "file": "test_map/test_map_scalar_contains_key_column.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_map_scalar_contains_key_scalar#1": {
+  "file": "test_map/test_map_scalar_contains_key_scalar#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_scalar_contains_key_scalar#2": {
+  "file": "test_map/test_map_scalar_contains_key_scalar#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_map_table": {
+  "file": "test_map/test_map_table.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "idx",
+   "kv"
+  ],
+  "dtypes": [
+   "int64",
+   "map<string, int64>"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_map_values_nulls[null_both]": {
+  "file": "test_map/test_map_values_nulls[null_both].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_values_nulls[null_map]": {
+  "file": "test_map/test_map_values_nulls[null_map].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_map_values_nulls[null_values]": {
+  "file": "test_map/test_map_values_nulls[null_values].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<string>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
    "postgres": "same"
   }
  },
@@ -6219,6 +10127,22 @@
    "postgres": "same"
   }
  },
+ "test_np_array_literal": {
+  "file": "test_array/test_np_array_literal.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
  "test_null_isin_null_is_null": {
   "file": "test_generic/test_null_isin_null_is_null.parquet",
   "kind": "tables",
@@ -6233,6 +10157,54 @@
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
+  }
+ },
+ "test_null_literal[a]": {
+  "file": "test_struct/test_null_literal[a].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_null_literal[b]": {
+  "file": "test_struct/test_null_literal[b].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_null_literal[c]": {
+  "file": "test_struct/test_null_literal[c].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
   }
  },
  "test_order_by[<lambda>-df_kwargs2]": {
@@ -6792,6 +10764,822 @@
   "rows": 7300,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_range_single_argument[-2]": {
+  "file": "test_array/test_range_single_argument[-2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_single_argument[0]": {
+  "file": "test_array/test_range_single_argument[0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_single_argument[2]": {
+  "file": "test_array/test_range_single_argument[2].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_single_argument_unnest[-2]": {
+  "file": "test_array/test_range_single_argument_unnest[-2].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_single_argument_unnest[0]": {
+  "file": "test_array/test_range_single_argument_unnest[0].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_single_argument_unnest[2]": {
+  "file": "test_array/test_range_single_argument_unnest[2].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int8"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1--7--7]": {
+  "file": "test_array/test_range_start_stop_step[-1--7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1--7-0]": {
+  "file": "test_array/test_range_start_stop_step[-1--7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1--7-7]": {
+  "file": "test_array/test_range_start_stop_step[-1--7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1-0--7]": {
+  "file": "test_array/test_range_start_stop_step[-1-0--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1-0-0]": {
+  "file": "test_array/test_range_start_stop_step[-1-0-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1-0-7]": {
+  "file": "test_array/test_range_start_stop_step[-1-0-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1-7--7]": {
+  "file": "test_array/test_range_start_stop_step[-1-7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1-7-0]": {
+  "file": "test_array/test_range_start_stop_step[-1-7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-1-7-7]": {
+  "file": "test_array/test_range_start_stop_step[-1-7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2--7--7]": {
+  "file": "test_array/test_range_start_stop_step[-2--7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2--7-0]": {
+  "file": "test_array/test_range_start_stop_step[-2--7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2--7-7]": {
+  "file": "test_array/test_range_start_stop_step[-2--7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2-0--7]": {
+  "file": "test_array/test_range_start_stop_step[-2-0--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2-0-0]": {
+  "file": "test_array/test_range_start_stop_step[-2-0-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2-0-7]": {
+  "file": "test_array/test_range_start_stop_step[-2-0-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2-7--7]": {
+  "file": "test_array/test_range_start_stop_step[-2-7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2-7-0]": {
+  "file": "test_array/test_range_start_stop_step[-2-7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[-2-7-7]": {
+  "file": "test_array/test_range_start_stop_step[-2-7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1--7--7]": {
+  "file": "test_array/test_range_start_stop_step[1--7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1--7-0]": {
+  "file": "test_array/test_range_start_stop_step[1--7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1--7-7]": {
+  "file": "test_array/test_range_start_stop_step[1--7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1-0--7]": {
+  "file": "test_array/test_range_start_stop_step[1-0--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1-0-0]": {
+  "file": "test_array/test_range_start_stop_step[1-0-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1-0-7]": {
+  "file": "test_array/test_range_start_stop_step[1-0-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1-7--7]": {
+  "file": "test_array/test_range_start_stop_step[1-7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1-7-0]": {
+  "file": "test_array/test_range_start_stop_step[1-7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[1-7-7]": {
+  "file": "test_array/test_range_start_stop_step[1-7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2--7--7]": {
+  "file": "test_array/test_range_start_stop_step[2--7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2--7-0]": {
+  "file": "test_array/test_range_start_stop_step[2--7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2--7-7]": {
+  "file": "test_array/test_range_start_stop_step[2--7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2-0--7]": {
+  "file": "test_array/test_range_start_stop_step[2-0--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2-0-0]": {
+  "file": "test_array/test_range_start_stop_step[2-0-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2-0-7]": {
+  "file": "test_array/test_range_start_stop_step[2-0-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2-7--7]": {
+  "file": "test_array/test_range_start_stop_step[2-7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2-7-0]": {
+  "file": "test_array/test_range_start_stop_step[2-7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step[2-7-7]": {
+  "file": "test_array/test_range_start_stop_step[2-7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[-7--7]": {
+  "file": "test_array/test_range_start_stop_step_zero[-7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[-7-0]": {
+  "file": "test_array/test_range_start_stop_step_zero[-7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[-7-7]": {
+  "file": "test_array/test_range_start_stop_step_zero[-7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[0--7]": {
+  "file": "test_array/test_range_start_stop_step_zero[0--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[0-0]": {
+  "file": "test_array/test_range_start_stop_step_zero[0-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[0-7]": {
+  "file": "test_array/test_range_start_stop_step_zero[0-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[7--7]": {
+  "file": "test_array/test_range_start_stop_step_zero[7--7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[7-0]": {
+  "file": "test_array/test_range_start_stop_step_zero[7-0].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_range_start_stop_step_zero[7-7]": {
+  "file": "test_array/test_range_start_stop_step_zero[7-7].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<int8>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
    "postgres": "same"
   }
  },
@@ -7371,6 +12159,38 @@
    "postgres": "same"
   }
  },
+ "test_scalar_isin_literal_map_keys#1": {
+  "file": "test_map/test_scalar_isin_literal_map_keys#1.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_isin_literal_map_keys#2": {
+  "file": "test_map/test_scalar_isin_literal_map_keys#2.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "boolean"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
  "test_select_distinct_filter_order_by_commute[filter-order_by-select-distinct]": {
   "file": "test_generic/test_select_distinct_filter_order_by_commute[filter-order_by-select-distinct].parquet",
   "kind": "table",
@@ -7851,6 +12671,54 @@
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
+  }
+ },
+ "test_single_field[a]": {
+  "file": "test_struct/test_single_field[a].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "field"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 7,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_single_field[b]": {
+  "file": "test_struct/test_single_field[b].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "field"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 7,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_single_field[c]": {
+  "file": "test_struct/test_single_field[c].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "field"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 7,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
   }
  },
  "test_static_table_slice[[0:0]]": {
@@ -8805,6 +13673,22 @@
    "postgres": "same"
   }
  },
+ "test_struct_column": {
+  "file": "test_struct/test_struct_column.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "s"
+  ],
+  "dtypes": [
+   "struct<a: string, b: int8, c: int64>"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationalError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
  "test_subsequent_overlapping_order_by#1": {
   "file": "test_generic/test_subsequent_overlapping_order_by#1.parquet",
   "kind": "table",
@@ -9047,6 +13931,150 @@
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
+  }
+ },
+ "test_table_unnest[deferred]": {
+  "file": "test_array/test_table_unnest[deferred].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y",
+   "z",
+   "grouper",
+   "scalar_column",
+   "multi_dim"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "string",
+   "array<float64>",
+   "string",
+   "float64",
+   "array<array<int64>>"
+  ],
+  "rows": 17,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_table_unnest[lambda]": {
+  "file": "test_array/test_table_unnest[lambda].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y",
+   "z",
+   "grouper",
+   "scalar_column",
+   "multi_dim"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "string",
+   "array<float64>",
+   "string",
+   "float64",
+   "array<array<int64>>"
+  ],
+  "rows": 17,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_table_unnest[string]": {
+  "file": "test_array/test_table_unnest[string].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y",
+   "z",
+   "grouper",
+   "scalar_column",
+   "multi_dim"
+  ],
+  "dtypes": [
+   "array<int64>",
+   "string",
+   "array<float64>",
+   "string",
+   "float64",
+   "array<array<int64>>"
+  ],
+  "rows": 17,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_table_unnest_array_of_struct_of_array": {
+  "file": "test_array/test_table_unnest_array_of_struct_of_array.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "x"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 9,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_table_unnest_column_expr": {
+  "file": "test_array/test_table_unnest_column_expr.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "plural"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 17,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_table_unnest_with_keep_empty": {
+  "file": "test_array/test_table_unnest_with_keep_empty.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "y"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_table_unnest_with_offset": {
+  "file": "test_array/test_table_unnest_with_offset.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "idx",
+   "y"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 17,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
   }
  },
  "test_timestamp_column_from_ymdhms": {
@@ -10281,6 +15309,158 @@
    "postgres": "same"
   }
  },
+ "test_unnest_complex": {
+  "file": "test_array/test_unnest_complex.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "grouper",
+   "count_flat"
+  ],
+  "dtypes": [
+   "string",
+   "int64"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_unnest_default_name": {
+  "file": "test_array/test_unnest_default_name.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 23,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_unnest_empty_array": {
+  "file": "test_array/test_unnest_empty_array.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_unnest_idempotent": {
+  "file": "test_array/test_unnest_idempotent.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "scalar_column",
+   "x"
+  ],
+  "dtypes": [
+   "float64",
+   "array<int64>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_unnest_no_nulls": {
+  "file": "test_array/test_unnest_no_nulls.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "scalar_column",
+   "x"
+  ],
+  "dtypes": [
+   "float64",
+   "array<int64>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_unnest_range": {
+  "file": "test_array/test_unnest_range.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "x",
+   "y"
+  ],
+  "dtypes": [
+   "int8",
+   "float64"
+  ],
+  "rows": 2,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "error: ArrowInvalid"
+  }
+ },
+ "test_unnest_simple": {
+  "file": "test_array/test_unnest_simple.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 17,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_unnest_struct": {
+  "file": "test_array/test_unnest_struct.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "struct<a: int64>"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_unnest_struct_with_multiple_fields": {
+  "file": "test_array/test_unnest_struct_with_multiple_fields.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "struct<a: int64, b: string>"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
  "test_value_cases_column": {
   "file": "test_conditionals/test_value_cases_column.parquet",
   "kind": "tables",
@@ -10463,6 +15643,108 @@
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
+  }
+ },
+ "test_zip[1]": {
+  "file": "test_array/test_zip[1].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "id",
+   "zipped"
+  ],
+  "dtypes": [
+   "float64",
+   "array<struct<f1: int64, f2: int64>>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_zip[5]": {
+  "file": "test_array/test_zip[5].parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "id",
+   "zipped"
+  ],
+  "dtypes": [
+   "float64",
+   "array<struct<f1: int64, f2: int64, f3: int64, f4: int64, f5: int64, f6: int64>>"
+  ],
+  "rows": 6,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
+  }
+ },
+ "test_zip_null[non-null-zip-null]": {
+  "file": "test_array/test_zip_null[non-null-zip-null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<struct<f1: int64, f2: int64>>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: OperationNotDefinedError"
+  }
+ },
+ "test_zip_null[null-zip-non-null]": {
+  "file": "test_array/test_zip_null[null-zip-non-null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<struct<f1: int64, f2: int64>>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: OperationNotDefinedError"
+  }
+ },
+ "test_zip_null[null-zip-null]": {
+  "file": "test_array/test_zip_null[null-zip-null].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<struct<f1: int64, f2: int64>>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: OperationNotDefinedError"
+  }
+ },
+ "test_zip_unnest_lift": {
+  "file": "test_array/test_zip_unnest_lift.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "f1",
+   "f2"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "error: TableNotFound",
+   "postgres": "error: TableNotFound"
   }
  }
 }

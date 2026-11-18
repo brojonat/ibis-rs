@@ -55,7 +55,7 @@ fn is_null_lit(e: &Expr) -> bool {
     matches!(e, Expr::Literal(Value::Null, _))
 }
 
-pub(crate) fn literal(v: &Value, t: &DataType) -> pl::Expr {
+pub(crate) fn literal(v: &Value, t: &DataType) -> Result<pl::Expr> {
     let e = match v {
         Value::Null => null(),
         Value::Bool(b) => pl::lit(*b),
@@ -65,8 +65,9 @@ pub(crate) fn literal(v: &Value, t: &DataType) -> pl::Expr {
         Value::Binary(b) => pl::lit(b.as_slice()),
         Value::Date(d) => pl::lit(*d).cast(pl::DataType::Date),
         Value::Timestamp(us) => pl::lit(*us).cast(pl::DataType::Datetime(pl::TimeUnit::Microseconds, None)),
+        Value::Array(_) | Value::Struct(_) | Value::Map(_) => return unsupported("array, struct and map literals"),
     };
-    if *t == DataType::Null { e } else { e.cast(to_pl(t)) }
+    Ok(if *t == DataType::Null { e } else { e.cast(to_pl(t)) })
 }
 
 /// A SQL LIKE pattern as an anchored regex.
@@ -148,7 +149,7 @@ impl Tx<'_> {
             Expr::ScalarSubquery(rel) => {
                 let rows = self.subquery(rel)?;
                 let v = rows.first().and_then(|r| r.first()).cloned().unwrap_or(Value::Null);
-                literal(&v, &rel.schema.fields[0].dtype)
+                literal(&v, &rel.schema.fields[0].dtype)?
             }
             Expr::Exists(_) => return unsupported("EXISTS (correlated subquery)"),
             Expr::InSubquery { arg, rel } => {
@@ -166,7 +167,7 @@ impl Tx<'_> {
                     "isin_col outside a table operation (select, filter, ...)".into(),
                 ));
             }
-            Expr::Literal(v, t) => literal(v, t),
+            Expr::Literal(v, t) => literal(v, t)?,
             Expr::Alias(inner, _) => self.expr(inner)?,
             Expr::Cast(inner, t) => self.expr(inner)?.cast(to_pl(t)),
             Expr::Unary(op, inner) => {
@@ -179,7 +180,10 @@ impl Tx<'_> {
                 }
             }
             Expr::Binary(op, l, r) => self.binary(e, *op, l, r)?,
-            Expr::Func(f, args) => self.func(e, *f, args)?,
+            Expr::Func(f, args) => {
+                let first = args.first().map(|a| self.dtype(a)).transpose()?;
+                self.func(e, f.resolve(first.as_ref()), args)?
+            }
             Expr::Agg { func, arg, filter } => self.agg(e, *func, arg.as_deref(), filter.as_deref())?,
             Expr::Analytic(..) => return unsupported(format!("{e} without a window (use .over(...))")),
             Expr::Window(f, spec) => self.window(f, spec)?,
@@ -202,6 +206,8 @@ impl Tx<'_> {
                 }
                 if *negated { found.not() } else { found }
             }
+            // TODO(nested)
+            Expr::Param(..) | Expr::ArrayLambda { .. } => return unsupported("array map and filter"),
         })
     }
 
@@ -446,6 +452,8 @@ impl Tx<'_> {
                 ))
                 .cast(t)
             }
+            // TODO(nested)
+            nested => return unsupported(format!("{nested:?}")),
         })
     }
 
@@ -489,6 +497,8 @@ impl Tx<'_> {
             // max/min of booleans: NULL for no rows, where any()/all() would say false/true
             Any => x.max(),
             All => x.min(),
+            // TODO(nested)
+            Collect => return unsupported("collect"),
         }
         .cast(t))
     }

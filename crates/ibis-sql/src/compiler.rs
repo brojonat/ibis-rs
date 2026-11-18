@@ -456,6 +456,34 @@ impl RelCompiler<'_> {
                 let a = self.alias();
                 Ok(Select::aliased(format!("({body}) AS {a}"), a))
             }
+
+            RelOp::Unnest { input, column, offset, keep_empty } => {
+                let inner = self.rel(input)?;
+                let mut s = self.wrap(inner, &input.schema)?;
+                let t = s.alias.clone().expect("a wrapped select has an alias");
+                let u = self.alias();
+                let lateral = self.d.unnest(&format!("{t}.{}", q(column)), &u, offset.is_some(), *keep_empty);
+                let mut items: Vec<String> =
+                    input
+                        .schema
+                        .names()
+                        .map(|n| {
+                            if n == column { format!("{} AS {}", lateral.value, q(n)) } else { format!("{t}.{}", q(n)) }
+                        })
+                        .collect();
+                if let Some(name) = offset {
+                    let bigint = self.d.cast_type_name(&DataType::Int64)?;
+                    items.push(format!("CAST({} AS {bigint}) AS {}", lateral.offset, q(name)));
+                }
+                s.from = format!("{} {}", s.from, lateral.join);
+                s.items = Some(items);
+                // the ordering of the input is over columns that are still here
+                // under the same names, apart from the array itself
+                for n in input.schema.names().filter(|n| n != column) {
+                    s.passthrough.insert(n.to_string(), n.to_string());
+                }
+                Ok(s)
+            }
         }
     }
 }
@@ -514,14 +542,24 @@ impl ExprCompiler<'_> {
                     UnaryOp::NotNull => format!("({a} IS NOT NULL)"),
                 }
             }
-            Expr::Binary(op, l, r) => match d.binary(self, *op, l, r)? {
-                Some(s) => s,
-                None => self.default_binary(*op, l, r)?,
-            },
-            Expr::Func(f, args) => match d.func(self, *f, args)? {
-                Some(s) => s,
-                None => self.default_func(*f, args)?,
-            },
+            Expr::Binary(op, l, r) => {
+                // `+` and `*` on arrays and maps are functions
+                if let Some(call) = ibis_core::expr::nested_binary(*op, l, r, &self.dtype(l)?, &self.dtype(r)?) {
+                    return self.sql(&call);
+                }
+                match d.binary(self, *op, l, r)? {
+                    Some(s) => s,
+                    None => self.default_binary(*op, l, r)?,
+                }
+            }
+            Expr::Func(f, args) => {
+                let first = args.first().map(|a| self.dtype(a)).transpose()?;
+                let f = f.resolve(first.as_ref());
+                match d.func(self, f, args)? {
+                    Some(s) => s,
+                    None => self.default_func(f, args)?,
+                }
+            }
             Expr::Agg { func, arg, filter } => {
                 // in a projection a bare reduction is broadcast over all rows
                 let over = if self.in_project { Some("OVER ()") } else { None };
@@ -545,12 +583,39 @@ impl ExprCompiler<'_> {
                 let not = if *negated { "NOT " } else { "" };
                 format!("({} {not}IN ({}))", self.sql(arg)?, items.join(", "))
             }
+            Expr::Param(name, _) => name.clone(),
+            Expr::ArrayLambda { kind, arg, param, index, .. } => {
+                let body = e.lambda_body(self.schema)?;
+                match d.array_lambda(self, *kind, arg, param, index.as_deref(), &body)? {
+                    Some(s) => s,
+                    None => self.default_array_lambda(*kind, arg, param, index.as_deref(), body)?,
+                }
+            }
         })
     }
 
     /// An aggregate call with its FILTER and OVER clauses. Both must follow
     /// the call itself, inside anything a dialect wraps around it.
     fn agg(&self, func: AggFunc, arg: Option<&Expr>, filter: Option<&Expr>, over: Option<&str>) -> Result<String> {
+        // `collect` leaves NULLs out: one more condition on the rows it sees
+        if let (AggFunc::Collect, Some(a)) = (func, arg) {
+            let present = a.clone().notnull();
+            let filter = match filter {
+                Some(f) => present.and(f.clone()),
+                None => present,
+            };
+            return self.filtered_agg(func, arg, Some(&filter), over);
+        }
+        self.filtered_agg(func, arg, filter, over)
+    }
+
+    fn filtered_agg(
+        &self,
+        func: AggFunc,
+        arg: Option<&Expr>,
+        filter: Option<&Expr>,
+        over: Option<&str>,
+    ) -> Result<String> {
         if let Some(f) = filter
             && !self.d.supports_agg_filter(over.is_some())
         {
@@ -560,7 +625,7 @@ impl ExprCompiler<'_> {
                 Some(a) if func != AggFunc::CountStar => (func, when(a.clone())),
                 _ => (AggFunc::Count, when(Expr::Literal(Value::Int(1), DataType::Int8))),
             };
-            return self.agg(func, Some(&arg), None, over);
+            return self.filtered_agg(func, Some(&arg), None, over);
         }
         let mut tail = match filter {
             Some(f) => format!(" FILTER (WHERE {})", self.sql(f)?),
@@ -605,6 +670,7 @@ impl ExprCompiler<'_> {
             Value::Binary(_) => return unsupported(self.d, "binary literal"),
             Value::Date(days) => format!("DATE '{}'", ibis_core::convert::format_date(*days)),
             Value::Timestamp(us) => format!("TIMESTAMP '{}'", ibis_core::convert::format_timestamp(*us)),
+            Value::Array(_) | Value::Struct(_) | Value::Map(_) => self.nested_literal(v, t)?,
         })
     }
 
@@ -670,7 +736,7 @@ impl ExprCompiler<'_> {
             |s: String| -> Result<String> { Ok(format!("CAST({s} AS {})", self.d.cast_type_name(&DataType::Int32)?)) };
         let bigint =
             |s: String| -> Result<String> { Ok(format!("CAST({s} AS {})", self.d.cast_type_name(&DataType::Int64)?)) };
-        let to_int64 = self.dtype(&args[0]).map(|t| !t.is_integer()).unwrap_or(false);
+        let to_int64 = args.first().is_some_and(|x| self.dtype(x).map(|t| !t.is_integer()).unwrap_or(false));
         use Func::*;
         Ok(match f {
             Abs => format!("ABS({x})"),
@@ -796,6 +862,7 @@ impl ExprCompiler<'_> {
             }
             DateFromYmd => format!("MAKE_DATE({})", a.join(", ")),
             TimestampFromYmdhms => format!("MAKE_TIMESTAMP({})", a.join(", ")),
+            nested => self.nested_func(nested, args, &a)?,
         })
     }
 
@@ -822,6 +889,7 @@ impl ExprCompiler<'_> {
             VarPop => format!("VAR_POP({x})"),
             Any => format!("BOOL_OR({x})"),
             All => format!("BOOL_AND({x})"),
+            Collect => format!("ARRAY_AGG({x})"),
         };
         Ok(format!("{call}{filter}"))
     }

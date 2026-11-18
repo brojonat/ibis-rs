@@ -2,7 +2,7 @@
 //! spells differently; everything else falls through to the defaults in
 //! `compiler.rs` (DuckDB/Postgres-flavored ANSI SQL).
 
-use ibis_core::{AggFunc, Analytic, BinaryOp, DataType, Expr, Func, Result, Value};
+use ibis_core::{AggFunc, Analytic, BinaryOp, DataType, Expr, Func, Lambda, Result, Value};
 
 use crate::compiler::ExprCompiler;
 
@@ -14,8 +14,21 @@ pub trait Dialect: Send + Sync {
         format!("\"{}\"", s.replace('"', "\"\""))
     }
 
+    /// The name of a type in DDL. The default spells nested types as DuckDB
+    /// does: `T[]`, `STRUCT(a T, b U)`, `MAP(K, V)`.
     fn type_name(&self, t: &DataType) -> Result<String> {
-        default_type_name(self.name(), t)
+        Ok(match t {
+            DataType::Array(item) => format!("{}[]", self.type_name(item)?),
+            DataType::Map(key, value) => format!("MAP({}, {})", self.type_name(key)?, self.type_name(value)?),
+            DataType::Struct(fields) => {
+                let fields = fields
+                    .iter()
+                    .map(|(name, t)| Ok(format!("{} {}", self.quote_ident(name), self.type_name(t)?)))
+                    .collect::<Result<Vec<_>>>()?;
+                format!("STRUCT({})", fields.join(", "))
+            }
+            t => default_type_name(self.name(), t)?,
+        })
     }
 
     /// A type as the target of a `CAST`. Differs from `type_name` only where
@@ -50,6 +63,35 @@ pub trait Dialect: Send + Sync {
     }
     fn cast(&self, _c: &ExprCompiler, _e: &Expr, _to: &DataType) -> Result<Option<String>> {
         Ok(None)
+    }
+    /// `arr.map(f)` or `arr.filter(f)`. `body` is typed; inside it the
+    /// element is `Expr::Param(param)` and its 0-based position
+    /// `Expr::Param(index)`, each compiled to its bare name. Return `None`
+    /// for DuckDB's `LIST_APPLY(arr, LAMBDA x, i: body)`.
+    fn array_lambda(
+        &self,
+        _c: &ExprCompiler,
+        _kind: Lambda,
+        _arg: &Expr,
+        _param: &str,
+        _index: Option<&str>,
+        _body: &Expr,
+    ) -> Result<Option<String>> {
+        Ok(None)
+    }
+    /// The join that unnests the array `array` (compiled SQL over the left
+    /// side) into one row per element, under the alias `alias`.
+    /// `with_offset` asks for the element's position as well; `keep_empty`
+    /// keeps a row for an empty or NULL array.
+    fn unnest(&self, array: &str, alias: &str, with_offset: bool, keep_empty: bool) -> Unnest {
+        let ordinality = if with_offset { " WITH ORDINALITY" } else { "" };
+        let columns = if with_offset { "(v, i)" } else { "(v)" };
+        let table = format!("UNNEST({array}){ordinality} AS {alias}{columns}");
+        Unnest {
+            join: if keep_empty { format!("LEFT JOIN {table} ON TRUE") } else { format!("CROSS JOIN {table}") },
+            value: format!("{alias}.v"),
+            offset: format!("{alias}.i - 1"),
+        }
     }
 
     /// One `ORDER BY` key over the compiled expression `expr`.
@@ -99,6 +141,16 @@ pub trait Dialect: Send + Sync {
     }
 }
 
+/// A lateral join over the elements of an array, from [`Dialect::unnest`].
+pub struct Unnest {
+    /// The join clause, to follow the left side in `FROM`.
+    pub join: String,
+    /// The element, as SQL.
+    pub value: String,
+    /// The element's 0-based position, as SQL (used only when asked for).
+    pub offset: String,
+}
+
 pub fn default_type_name(backend: &str, t: &DataType) -> Result<String> {
     use DataType::*;
     Ok(match t {
@@ -121,6 +173,10 @@ pub fn default_type_name(backend: &str, t: &DataType) -> Result<String> {
         Timestamp { tz: None } => "TIMESTAMP".into(),
         Timestamp { tz: Some(_) } => {
             return Err(ibis_core::Error::Unsupported { backend: backend.into(), op: "timestamp with tz".into() });
+        }
+        // each engine that has them names them its own way, in `Dialect::type_name`
+        Array(_) | Struct(_) | Map(..) => {
+            return Err(ibis_core::Error::Unsupported { backend: backend.into(), op: format!("the type {t}") });
         }
     })
 }

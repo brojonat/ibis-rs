@@ -6,12 +6,15 @@
 //! known not to pass yet. A marked case that passes is reported as `xpass`.
 
 mod aggregation;
+mod array;
 mod conditionals;
 mod generic;
 mod join;
+mod map;
 mod numeric;
 mod set_ops;
 mod string;
+mod structs;
 mod temporal;
 mod window;
 
@@ -116,5 +119,8 @@ pub fn all() -> Vec<Case> {
     set_ops::register(&mut v);
     window::register(&mut v);
     temporal::register(&mut v);
+    array::register(&mut v);
+    structs::register(&mut v);
+    map::register(&mut v);
     v
 }

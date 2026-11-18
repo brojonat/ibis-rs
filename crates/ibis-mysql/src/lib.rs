@@ -123,6 +123,9 @@ fn insert_literal(v: &Value, out: &mut String) -> Result<()> {
         }
         Value::Date(d) => out.push_str(&format!("'{}'", format_date(*d))),
         Value::Timestamp(t) => out.push_str(&format!("'{}'", format_timestamp(*t))),
+        Value::Array(_) | Value::Struct(_) | Value::Map(_) => {
+            return Err(Error::Unsupported { backend: "mysql".into(), op: "storing arrays, structs or maps".into() });
+        }
     }
     Ok(())
 }

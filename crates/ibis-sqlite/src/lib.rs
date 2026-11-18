@@ -277,6 +277,8 @@ fn to_sql_value(v: Value) -> SqlValue {
         Value::Binary(b) => SqlValue::Blob(b),
         Value::Date(d) => SqlValue::Text(format_date(d)),
         Value::Timestamp(t) => SqlValue::Text(format_timestamp(t)),
+        // no nested types; `create_table` refuses them before a value gets here
+        other @ (Value::Array(_) | Value::Struct(_) | Value::Map(_)) => SqlValue::Text(format!("{other:?}")),
     }
 }
 

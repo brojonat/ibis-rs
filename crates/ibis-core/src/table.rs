@@ -101,6 +101,16 @@ pub enum RelOp {
         left: Arc<Rel>,
         right: Arc<Rel>,
     },
+    /// One row per element of the array column `column`, which becomes the
+    /// element; the other columns repeat. `offset` names a new last column
+    /// holding the element's 0-based position. An empty or NULL array gives
+    /// no rows, or with `keep_empty` one row with a NULL element.
+    Unnest {
+        input: Arc<Rel>,
+        column: String,
+        offset: Option<String>,
+        keep_empty: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -152,6 +162,7 @@ impl Rel {
             | RelOp::Aggregate { input, .. }
             | RelOp::Sort { input, .. }
             | RelOp::Limit { input, .. }
+            | RelOp::Unnest { input, .. }
             | RelOp::Distinct { input } => vec![input],
             RelOp::Join { left, right, .. } | RelOp::SetOp { left, right, .. } => vec![left, right],
         }
@@ -178,6 +189,9 @@ impl Rel {
             | RelOp::Sort { input, .. }
             | RelOp::Limit { input, .. }
             | RelOp::Distinct { input } => inherit(input, &mut input.schema.names().map(|n| (n, n))),
+            RelOp::Unnest { input, column, .. } => {
+                inherit(input, &mut input.schema.names().filter(|n| n != column).map(|n| (n, n)))
+            }
             RelOp::Project { input, exprs: cols } | RelOp::Aggregate { input, groups: cols, .. } => inherit(
                 input,
                 &mut cols.iter().filter_map(|(n, e)| match e {
@@ -427,6 +441,78 @@ impl Table {
             }
         }
         self.select(order)
+    }
+
+    /// One row per element of an array column (Ibis `t.unnest(column,
+    /// offset=..., keep_empty=...)`). The column keeps its name and holds
+    /// the element; `offset` adds a last column with the element's 0-based
+    /// position; with `keep_empty` a row whose array is empty or NULL
+    /// stays, with a NULL element. `column` may be an expression, which is
+    /// added as a column under its name first.
+    pub fn unnest(&self, column: impl Into<Expr>, offset: Option<&str>, keep_empty: bool) -> Result<Table> {
+        let column: Expr = column.into();
+        let name = match &column {
+            Expr::Column(name) => name.clone(),
+            other => {
+                let name = other.output_name();
+                return self.mutate([column.name(&name)])?.unnest(crate::expr::col(&name), offset, keep_empty);
+            }
+        };
+        let mut fields = self.schema().fields.clone();
+        let Some(field) = fields.iter_mut().find(|f| f.name == name) else {
+            return invalid(format!("no column {name:?} in {}", self.schema()));
+        };
+        field.dtype = match &field.dtype {
+            crate::DataType::Array(item) => (**item).clone(),
+            other => return invalid(format!("unnest needs an array column, {name:?} is {other}")),
+        };
+        if let Some(offset) = offset {
+            fields.push(Field::new(offset, crate::DataType::Int64));
+        }
+        check_unique(&fields)?;
+        let op = RelOp::Unnest { input: self.rel.clone(), column: name, offset: offset.map(String::from), keep_empty };
+        Ok(self.wrap(op, Schema::new(fields)))
+    }
+
+    /// Replace each of the struct columns `columns` by its fields, in place
+    /// (Ibis `t.unpack(...)`). A field takes the place of an existing column
+    /// of the same name, wherever that column is.
+    pub fn unpack(&self, columns: &[&str]) -> Result<Table> {
+        let mut out: Vec<(String, Expr, bool)> = vec![];
+        for f in &self.schema().fields {
+            let fields = match (&f.dtype, columns.contains(&f.name.as_str())) {
+                (crate::DataType::Struct(fields), true) => fields,
+                (other, true) => return invalid(format!("unpack needs a struct column, {:?} is {other}", f.name)),
+                (_, false) => {
+                    if !out.iter().any(|(n, ..)| *n == f.name) {
+                        out.push((f.name.clone(), crate::expr::col(&f.name), false));
+                    }
+                    continue;
+                }
+            };
+            for (name, _) in fields {
+                let field = (name.clone(), crate::expr::col(&f.name).field(name), true);
+                match out.iter_mut().find(|(n, ..)| n == name) {
+                    Some(existing) => *existing = field,
+                    None => out.push(field),
+                }
+            }
+        }
+        if let Some(missing) = columns.iter().find(|c| self.schema().field(c).is_none()) {
+            return invalid(format!("no column {missing:?} in {}", self.schema()));
+        }
+        self.select(out.into_iter().map(|(name, e, _)| e.name(&name)).collect::<Vec<_>>())
+    }
+
+    /// The fields of a struct column as the columns of a table (Ibis `t.col.lift()`).
+    pub fn lift(&self, column: &str) -> Result<Table> {
+        match self.schema().field(column).map(|f| &f.dtype) {
+            Some(crate::DataType::Struct(fields)) => self.select(
+                fields.iter().map(|(name, _)| crate::expr::col(column).field(name).name(name)).collect::<Vec<_>>(),
+            ),
+            Some(other) => invalid(format!("lift needs a struct column, {column:?} is {other}")),
+            None => invalid(format!("no column {column:?} in {}", self.schema())),
+        }
     }
 
     pub fn filter(&self, predicates: impl IntoIterator<Item = Expr>) -> Result<Table> {

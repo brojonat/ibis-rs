@@ -135,6 +135,8 @@ impl Planner<'_> {
                 self.join(left, right, *how, predicates, outputs)?
             }
             RelOp::SetOp { kind, distinct, left, right } => self.set_op(rel, *kind, *distinct, left, right)?,
+            // TODO(nested)
+            RelOp::Unnest { .. } => return unsupported("unnest"),
         })
     }
 

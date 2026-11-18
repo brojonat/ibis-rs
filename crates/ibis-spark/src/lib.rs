@@ -120,6 +120,8 @@ fn insert_text(v: &Value, dtype: &DataType) -> Option<String> {
         Value::Binary(b) => b.iter().map(|byte| format!("{byte:02x}")).collect(),
         Value::Date(d) => format_date(*d),
         Value::Timestamp(t) => format_timestamp(*t),
+        // TODO(nested)
+        Value::Array(_) | Value::Struct(_) | Value::Map(_) => return None,
     })
 }
 

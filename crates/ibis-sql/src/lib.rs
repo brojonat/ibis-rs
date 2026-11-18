@@ -5,9 +5,12 @@
 
 pub mod compiler;
 pub mod dialect;
+mod nested;
 
 pub use compiler::{ExprCompiler, compile, create_table_sql, quote_str};
-pub use dialect::{Dialect, GenericDialect, default_type_name, strftime_to_date_format, strftime_to_java_format};
+pub use dialect::{
+    Dialect, GenericDialect, Unnest, default_type_name, strftime_to_date_format, strftime_to_java_format,
+};
 
 #[cfg(test)]
 mod tests {

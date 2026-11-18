@@ -81,6 +81,9 @@ impl Dialect for ClickHouseDialect {
             DataType::Date => "Date32".into(),
             DataType::Timestamp { tz: None } => "DateTime64(6)".into(),
             DataType::Timestamp { tz: Some(tz) } => format!("DateTime64(6, {})", quote_str(tz)),
+            DataType::Array(_) | DataType::Struct(_) | DataType::Map(..) => {
+                return unsupported(format!("the type {t}"));
+            }
         };
         Ok(format!("Nullable({name})"))
     }

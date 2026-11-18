@@ -71,6 +71,25 @@ pub enum Expr {
         list: Vec<Expr>,
         negated: bool,
     },
+    /// `body` evaluated for each element of the array `arg`: the results
+    /// (`Map`), or the elements it is true for (`Filter`). Inside `body`,
+    /// `Param(param)` is the element and `Param(index)` its 0-based position.
+    ArrayLambda {
+        kind: Lambda,
+        arg: Box<Expr>,
+        param: String,
+        index: Option<String>,
+        body: Box<Expr>,
+    },
+    /// A parameter of an enclosing `ArrayLambda`, by name. The type is
+    /// filled in when the lambda is typed (`Expr::lambda_body`).
+    Param(String, DataType),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Lambda {
+    Map,
+    Filter,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -228,6 +247,88 @@ pub enum Func {
     /// `clip(x, lower, upper)`: limit `x` to the bounds; a NULL bound is no
     /// bound, a NULL `x` stays NULL. Keeps `x`'s type.
     Clip,
+    // arrays. Positions are **0-based** everywhere, as in Ibis.
+    /// `array(a, b, ...)`: an array of the arguments.
+    Array,
+    /// Number of elements, int64 (NULL elements count).
+    ArrayLength,
+    /// `arr[i]`: a negative `i` counts from the end; out of range is NULL.
+    ArrayIndex,
+    /// The arrays one after another. A NULL array makes the result NULL.
+    ArrayConcat,
+    /// `repeat(arr, n)`: the array `n` times over.
+    ArrayRepeat,
+    /// `slice(arr, start, stop)`: Python's `arr[start:stop]`. A NULL bound
+    /// is an open end; negative bounds count from the end.
+    ArraySlice,
+    /// Whether an element equals the value.
+    ArrayContains,
+    /// Position of the first element equal to the value, or -1.
+    ArrayPosition,
+    /// The array without the elements equal to the value.
+    ArrayRemove,
+    /// The distinct elements, in no particular order.
+    ArrayDistinct,
+    /// Ascending, NULLs last.
+    ArraySort,
+    /// The distinct elements of both arrays, in no particular order.
+    ArrayUnion,
+    /// The distinct elements the arrays share, in no particular order.
+    ArrayIntersect,
+    /// One level of nesting removed: `array<array<T>>` to `array<T>`.
+    ArrayFlatten,
+    /// One row per element; an empty or NULL array gives no rows. Only at
+    /// the top of a projection, where it multiplies the rows of the other
+    /// columns too.
+    Unnest,
+    /// The most frequent element.
+    ArrayMode,
+    /// Reductions over the elements, skipping NULLs.
+    ArrayMin,
+    ArrayMax,
+    ArraySum,
+    ArrayMean,
+    ArrayAny,
+    ArrayAll,
+    /// `zip(a, b, ...)`: an array of structs `{f1, f2, ...}`, one per position.
+    ArrayZip,
+    /// `range(start, stop, step)`: the integers from `start` up to but not
+    /// including `stop`; empty when `step` is 0 or points away from `stop`.
+    Range,
+    // structs
+    /// `struct(name1, value1, name2, value2, ...)`; the names are literals.
+    StructPack,
+    /// `field(struct, name)`; the name is a literal.
+    StructField,
+    // maps
+    /// `map(keys, values)` from two arrays of the same length.
+    Map,
+    /// `get(map, key, default)`: the value at `key`, else `default`.
+    MapGet,
+    MapContains,
+    /// Number of entries, int64.
+    MapLength,
+    MapKeys,
+    MapValues,
+    /// Entries of both maps; on a shared key the right map's value wins.
+    MapMerge,
+}
+
+impl Func {
+    /// The function a name shared between types means for a first argument
+    /// of type `first`: `length`, `contains` and `repeat` are one method on
+    /// strings, arrays and maps, as in Ibis. Compilers call this before
+    /// looking at the function.
+    pub fn resolve(self, first: Option<&DataType>) -> Func {
+        match (self, first) {
+            (Func::Length, Some(DataType::Array(_))) => Func::ArrayLength,
+            (Func::Length, Some(DataType::Map(..))) => Func::MapLength,
+            (Func::Contains, Some(DataType::Array(_))) => Func::ArrayContains,
+            (Func::Contains, Some(DataType::Map(..))) => Func::MapContains,
+            (Func::Repeat, Some(DataType::Array(_))) => Func::ArrayRepeat,
+            (f, _) => f,
+        }
+    }
 }
 
 /// Units `Expr::truncate` accepts.
@@ -250,6 +351,8 @@ pub enum AggFunc {
     VarPop,
     Any,
     All,
+    /// The values as an array, NULLs left out, in no particular order.
+    Collect,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -359,6 +462,48 @@ pub fn date_from_ymd(year: impl Into<Expr>, month: impl Into<Expr>, day: impl In
 pub fn timestamp_from_ymdhms(parts: [Expr; 6]) -> Expr {
     func(Func::TimestampFromYmdhms, parts.into())
 }
+
+/// An array of the given expressions (Ibis `ibis.array([...])`). A Rust
+/// `Vec` or array of plain values is a literal too: `lit(vec![1, 2, 3])`.
+pub fn array(items: impl IntoIterator<Item = impl Into<Expr>>) -> Expr {
+    func(Func::Array, items.into_iter().map(Into::into).collect())
+}
+
+/// A struct of named expressions (Ibis `ibis.struct({...})`).
+pub fn struct_<'a>(fields: impl IntoIterator<Item = (&'a str, Expr)>) -> Expr {
+    func(Func::StructPack, fields.into_iter().flat_map(|(name, value)| [lit(name), value]).collect())
+}
+
+/// A map from an array of keys and an array of values (Ibis `ibis.map(keys, values)`).
+pub fn map(keys: impl Into<Expr>, values: impl Into<Expr>) -> Expr {
+    func(Func::Map, vec![keys.into(), values.into()])
+}
+
+/// The integers from `start` up to, not including, `stop`, `step` apart
+/// (Ibis `ibis.range(start, stop, step)`).
+pub fn range(start: impl Into<Expr>, stop: impl Into<Expr>, step: impl Into<Expr>) -> Expr {
+    func(Func::Range, vec![start.into(), stop.into(), step.into()])
+}
+
+/// An argument that is a value to compare with or look up: an expression,
+/// or a Rust value taken as a literal. Here a `&str` is a string, not a
+/// column name.
+pub trait IntoOperand {
+    fn into_operand(self) -> Expr;
+}
+impl IntoOperand for Expr {
+    fn into_operand(self) -> Expr {
+        self
+    }
+}
+macro_rules! operand_lit {
+    ($($t:ty),*) => {$(
+        impl IntoOperand for $t {
+            fn into_operand(self) -> Expr { lit(self) }
+        }
+    )*};
+}
+operand_lit!(&str, String, i32, i64, f64, bool);
 
 /// A literal of an explicit type (Ibis `ibis.literal(v, type=...)`).
 pub fn lit_as(v: impl Into<Value>, dtype: DataType) -> Expr {
@@ -480,6 +625,30 @@ fn func(f: Func, args: Vec<Expr>) -> Expr {
 }
 fn agg(f: AggFunc, arg: Expr) -> Expr {
     Expr::Agg { func: f, arg: Some(Box::new(arg)), filter: None }
+}
+
+/// How deep lambdas nest inside `e`.
+fn lambda_depth(e: &Expr) -> usize {
+    let inner = e.children().into_iter().map(lambda_depth).max().unwrap_or(0);
+    inner + usize::from(matches!(e, Expr::ArrayLambda { .. }))
+}
+
+/// Build a lambda from a Rust closure over its parameters. Parameters are
+/// named after how deep the lambda nests (`ibis_x1` is innermost), so a
+/// lambda never captures a parameter of one inside or around it, and the
+/// same expression always compiles to the same text.
+fn lambda(kind: Lambda, arg: Expr, f: impl FnOnce(Expr, Expr) -> Expr) -> Expr {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let (x, i) = (format!("\u{0}x{id}"), format!("\u{0}i{id}"));
+    let body = f(Expr::Param(x.clone(), DataType::Null), Expr::Param(i.clone(), DataType::Null));
+    let depth = lambda_depth(&body) + 1;
+    let (param, index) = (format!("ibis_x{depth}"), format!("ibis_i{depth}"));
+    let uses_index = body.has(&|e| matches!(e, Expr::Param(n, _) if *n == i));
+    let body = body
+        .replace_param(&x, &Expr::Param(param.clone(), DataType::Null))
+        .replace_param(&i, &Expr::Param(index.clone(), DataType::Null));
+    Expr::ArrayLambda { kind, arg: Box::new(arg), param, index: uses_index.then_some(index), body: Box::new(body) }
 }
 
 impl Expr {
@@ -705,8 +874,9 @@ impl Expr {
     pub fn endswith(self, s: &str) -> Expr {
         func(Func::EndsWith, vec![self, lit(s)])
     }
-    pub fn contains(self, s: &str) -> Expr {
-        func(Func::Contains, vec![self, lit(s)])
+    /// Whether a string has the substring, an array the element, or a map the key.
+    pub fn contains(self, x: impl IntoOperand) -> Expr {
+        func(Func::Contains, vec![self, x.into_operand()])
     }
     pub fn find(self, s: &str, start: Option<i64>) -> Expr {
         let mut a = vec![self, lit(s)];
@@ -799,6 +969,125 @@ impl Expr {
         func(Func::Strftime, vec![self, lit(format)])
     }
 
+    // arrays
+    /// Element `i` of an array, **0-based**; negative counts from the end
+    /// and out of range is NULL (Ibis `arr[i]`).
+    pub fn at(self, i: impl Into<Expr>) -> Expr {
+        func(Func::ArrayIndex, vec![self, i.into()])
+    }
+    /// Python's `arr[start:stop]` on an array; `None` is an open end.
+    pub fn slice(self, start: Option<i64>, stop: Option<i64>) -> Expr {
+        let bound = |b: Option<i64>| b.map_or_else(|| null(DataType::Int64), lit);
+        func(Func::ArraySlice, vec![self, bound(start), bound(stop)])
+    }
+    /// This array followed by the others.
+    pub fn concat(self, others: impl IntoIterator<Item = impl Into<Expr>>) -> Expr {
+        func(Func::ArrayConcat, std::iter::once(self).chain(others.into_iter().map(Into::into)).collect())
+    }
+    /// 0-based position of the first element equal to `x`, or -1 (Ibis `arr.index(x)`).
+    pub fn index(self, x: impl IntoOperand) -> Expr {
+        func(Func::ArrayPosition, vec![self, x.into_operand()])
+    }
+    /// The array without the elements equal to `x`.
+    pub fn remove(self, x: impl IntoOperand) -> Expr {
+        func(Func::ArrayRemove, vec![self, x.into_operand()])
+    }
+    /// The distinct elements of an array, in no particular order.
+    pub fn unique(self) -> Expr {
+        func(Func::ArrayDistinct, vec![self])
+    }
+    /// The elements in ascending order, NULLs last.
+    pub fn sort(self) -> Expr {
+        func(Func::ArraySort, vec![self])
+    }
+    /// The distinct elements of both arrays.
+    pub fn union(self, other: impl Into<Expr>) -> Expr {
+        func(Func::ArrayUnion, vec![self, other.into()])
+    }
+    /// The distinct elements both arrays have.
+    pub fn intersect(self, other: impl Into<Expr>) -> Expr {
+        func(Func::ArrayIntersect, vec![self, other.into()])
+    }
+    /// The array of `f(element)` (Ibis `arr.map(f)`).
+    pub fn map(self, f: impl FnOnce(Expr) -> Expr) -> Expr {
+        lambda(Lambda::Map, self, |x, _| f(x))
+    }
+    /// `map` with the element's 0-based position as a second argument.
+    pub fn map_with_index(self, f: impl FnOnce(Expr, Expr) -> Expr) -> Expr {
+        lambda(Lambda::Map, self, f)
+    }
+    /// The elements `f(element)` is true for (Ibis `arr.filter(f)`).
+    pub fn filter(self, f: impl FnOnce(Expr) -> Expr) -> Expr {
+        lambda(Lambda::Filter, self, |x, _| f(x))
+    }
+    /// `filter` with the element's 0-based position as a second argument.
+    pub fn filter_with_index(self, f: impl FnOnce(Expr, Expr) -> Expr) -> Expr {
+        lambda(Lambda::Filter, self, f)
+    }
+    /// One row per element of an array (Ibis `arr.unnest()`): use it as a
+    /// column of `select` or `mutate`. Empty and NULL arrays give no rows.
+    pub fn unnest(self) -> Expr {
+        func(Func::Unnest, vec![self])
+    }
+    /// Most frequent element of each array (Ibis `modes`).
+    pub fn modes(self) -> Expr {
+        func(Func::ArrayMode, vec![self])
+    }
+    /// The values of a column as one array, NULLs left out (Ibis `collect`).
+    pub fn collect(self) -> Expr {
+        agg(AggFunc::Collect, self)
+    }
+    /// Remove one level of nesting from an array of arrays.
+    pub fn flatten(self) -> Expr {
+        func(Func::ArrayFlatten, vec![self])
+    }
+    /// Smallest element of each array, skipping NULLs (Ibis `mins`).
+    pub fn mins(self) -> Expr {
+        func(Func::ArrayMin, vec![self])
+    }
+    pub fn maxs(self) -> Expr {
+        func(Func::ArrayMax, vec![self])
+    }
+    pub fn sums(self) -> Expr {
+        func(Func::ArraySum, vec![self])
+    }
+    pub fn means(self) -> Expr {
+        func(Func::ArrayMean, vec![self])
+    }
+    /// Whether any element of a boolean array is true.
+    pub fn anys(self) -> Expr {
+        func(Func::ArrayAny, vec![self])
+    }
+    pub fn alls(self) -> Expr {
+        func(Func::ArrayAll, vec![self])
+    }
+    /// An array of structs `{f1, f2, ...}` pairing up the elements of this
+    /// array and the others by position.
+    pub fn zip(self, others: impl IntoIterator<Item = impl Into<Expr>>) -> Expr {
+        func(Func::ArrayZip, std::iter::once(self).chain(others.into_iter().map(Into::into)).collect())
+    }
+    // structs
+    /// A field of a struct (Ibis `s["name"]`, `s.name`).
+    pub fn field(self, name: &str) -> Expr {
+        func(Func::StructField, vec![self, lit(name)])
+    }
+    // maps
+    /// The value at `key`, or NULL (Ibis `m[key]`, `m.get(key)`).
+    pub fn get(self, key: impl IntoOperand) -> Expr {
+        func(Func::MapGet, vec![self, key.into_operand(), null(DataType::Null)])
+    }
+    /// The value at `key`, or `default` (Ibis `m.get(key, default)`).
+    pub fn get_or(self, key: impl IntoOperand, default: impl IntoOperand) -> Expr {
+        func(Func::MapGet, vec![self, key.into_operand(), default.into_operand()])
+    }
+    /// The keys of a map, as an array.
+    pub fn keys(self) -> Expr {
+        func(Func::MapKeys, vec![self])
+    }
+    /// The values of a map, as an array in the order of `keys`.
+    pub fn values(self) -> Expr {
+        func(Func::MapValues, vec![self])
+    }
     // reductions
     pub fn count(self) -> Expr {
         agg(AggFunc::Count, self)
@@ -1017,6 +1306,45 @@ impl Expr {
         }
     }
 
+    /// Whether `pred` holds for this expression or any part of it.
+    pub fn has(&self, pred: &impl Fn(&Expr) -> bool) -> bool {
+        pred(self) || self.children().into_iter().any(|c| c.has(pred))
+    }
+
+    /// Whether the expression multiplies rows (contains an `unnest`).
+    pub fn is_unnest(&self) -> bool {
+        self.has(&|e| matches!(e, Expr::Func(Func::Unnest, _)))
+    }
+
+    /// This expression with every use of the lambda parameter `name`
+    /// replaced by `with`.
+    pub fn replace_param(self, name: &str, with: &Expr) -> Expr {
+        match self {
+            Expr::Param(n, _) if n == name => with.clone(),
+            e => e.map_children(&mut |c| Ok(c.replace_param(name, with))).expect("infallible"),
+        }
+    }
+
+    /// The body of an `ArrayLambda` with its parameters typed against
+    /// `schema`: the element parameter as the array's element type, the
+    /// index as int64. Compilers call this before compiling the body, so
+    /// every part of it can be typed on its own.
+    pub fn lambda_body(&self, schema: &Schema) -> Result<Expr> {
+        let Expr::ArrayLambda { arg, param, index, body, .. } = self else {
+            return invalid(format!("not a lambda: {self}"));
+        };
+        let item = match arg.dtype(schema)? {
+            DataType::Array(item) => *item,
+            DataType::Null => DataType::Null,
+            other => return invalid(format!("map and filter need an array, got {other}")),
+        };
+        let mut body = (**body).clone().replace_param(param, &Expr::Param(param.clone(), item));
+        if let Some(i) = index {
+            body = body.replace_param(i, &Expr::Param(i.clone(), DataType::Int64));
+        }
+        Ok(body)
+    }
+
     /// True if this expression contains a reduction that isn't windowed.
     pub fn is_reduction(&self) -> bool {
         match self {
@@ -1028,9 +1356,15 @@ impl Expr {
 
     pub fn children(&self) -> Vec<&Expr> {
         match self {
-            Expr::Column(_) | Expr::Literal(..) | Expr::Field { .. } | Expr::ScalarSubquery(_) | Expr::Exists(_) => {
+            Expr::Column(_)
+            | Expr::Literal(..)
+            | Expr::Field { .. }
+            | Expr::ScalarSubquery(_)
+            | Expr::Exists(_)
+            | Expr::Param(..) => {
                 vec![]
             }
+            Expr::ArrayLambda { arg, body, .. } => vec![arg, body],
             Expr::InSubquery { arg, .. } | Expr::InColumn { arg, .. } => vec![arg],
             Expr::Alias(e, _) | Expr::Cast(e, _) | Expr::Unary(_, e) => vec![e],
             Expr::Binary(_, l, r) => vec![l, r],
@@ -1059,7 +1393,11 @@ impl Expr {
             | Expr::Literal(..)
             | Expr::Field { .. }
             | Expr::ScalarSubquery(_)
-            | Expr::Exists(_)) => e,
+            | Expr::Exists(_)
+            | Expr::Param(..)) => e,
+            Expr::ArrayLambda { kind, arg, param, index, body } => {
+                Expr::ArrayLambda { kind, arg: Box::new(f(*arg)?), param, index, body: Box::new(f(*body)?) }
+            }
             Expr::InSubquery { arg, rel } => Expr::InSubquery { arg: Box::new(f(*arg)?), rel },
             Expr::InColumn { arg, column } => Expr::InColumn { arg: Box::new(f(*arg)?), column },
             Expr::Alias(e, n) => Expr::Alias(Box::new(f(*e)?), n),
@@ -1163,6 +1501,15 @@ impl Expr {
                 use BinaryOp::*;
                 match op {
                     _ if op.is_comparison() || op.is_logical() => T::Boolean,
+                    // arrays concatenate and repeat like strings; maps merge
+                    Add if matches!(lt, T::Array(_)) || matches!(rt, T::Array(_)) => {
+                        func_dtype(Func::ArrayConcat, &[lt, rt])?
+                    }
+                    Add if matches!(lt, T::Map(..)) || matches!(rt, T::Map(..)) => {
+                        func_dtype(Func::MapMerge, &[lt, rt])?
+                    }
+                    Mul if matches!(lt, T::Array(_)) && rt.is_integer() => lt,
+                    Mul if lt.is_integer() && matches!(rt, T::Array(_)) => rt,
                     Add if lt == T::String && rt == T::String => T::String,
                     Mul if (lt == T::String && rt.is_integer()) || (lt.is_integer() && rt == T::String) => T::String,
                     Div | Pow => T::Float64,
@@ -1183,7 +1530,32 @@ impl Expr {
                     return invalid(format!("truncate: unknown unit {u:?}; expected one of {TRUNCATE_UNITS:?}"));
                 }
                 let ts = args.iter().map(|a| a.dtype(schema)).collect::<Result<Vec<_>>>()?;
-                func_dtype(*f, &ts)?
+                let literal_name = |e: &Expr| match e.unaliased() {
+                    Expr::Literal(Value::String(s), _) => Ok(s.clone()),
+                    other => invalid(format!("{f:?}: a field name must be a string literal, got {other}")),
+                };
+                match f.resolve(ts.first()) {
+                    Func::StructField => match (&ts[0], literal_name(&args[1])?) {
+                        (T::Struct(fields), name) => match fields.iter().find(|(n, _)| *n == name) {
+                            Some((_, t)) => t.clone(),
+                            None => {
+                                let have: Vec<_> = fields.iter().map(|(n, _)| n).collect();
+                                return invalid(format!("no field {name:?} in struct; have {have:?}"));
+                            }
+                        },
+                        (other, name) => return invalid(format!("field {name:?} of a non-struct: {other}")),
+                    },
+                    Func::StructPack => T::Struct(
+                        args.chunks(2)
+                            .zip(ts.chunks(2))
+                            .map(|(pair, t)| match (pair, t) {
+                                ([name, _], [_, t]) => Ok((literal_name(name)?, t.clone())),
+                                _ => invalid("struct: a field name without a value"),
+                            })
+                            .collect::<Result<_>>()?,
+                    ),
+                    f => func_dtype(f, &ts)?,
+                }
             }
             Expr::Agg { func, arg, filter } => {
                 if let Some(f) = filter {
@@ -1201,6 +1573,7 @@ impl Expr {
                     (Mean, Some(t @ T::Decimal { .. })) => t,
                     (Mean | StdSamp | StdPop | VarSamp | VarPop, _) => T::Float64,
                     (Min | Max, Some(t)) => t,
+                    (Collect, Some(t)) => T::array(t),
                     (Any | All, _) => T::Boolean,
                     (f, None) => return invalid(format!("{f:?} needs an argument")),
                 }
@@ -1249,8 +1622,31 @@ impl Expr {
                 }
                 T::Boolean
             }
+            Expr::Param(_, t) => t.clone(),
+            Expr::ArrayLambda { kind, arg, .. } => {
+                let body = self.lambda_body(schema)?.dtype(schema)?;
+                match kind {
+                    Lambda::Map => T::array(body),
+                    Lambda::Filter if matches!(body, T::Boolean | T::Null) => arg.dtype(schema)?,
+                    Lambda::Filter => return invalid(format!("filter needs a boolean condition, got {body}")),
+                }
+            }
         })
     }
+}
+
+/// What `+` and `*` mean on arrays and maps, as a function call: arrays
+/// concatenate and repeat, maps merge. `None` for every other operand type.
+pub fn nested_binary(op: BinaryOp, l: &Expr, r: &Expr, lt: &DataType, rt: &DataType) -> Option<Expr> {
+    use DataType as T;
+    let (l, r) = (|| l.clone(), || r.clone());
+    Some(match (op, lt, rt) {
+        (BinaryOp::Add, T::Array(_), _) | (BinaryOp::Add, _, T::Array(_)) => func(Func::ArrayConcat, vec![l(), r()]),
+        (BinaryOp::Add, T::Map(..), _) | (BinaryOp::Add, _, T::Map(..)) => func(Func::MapMerge, vec![l(), r()]),
+        (BinaryOp::Mul, T::Array(_), n) if n.is_integer() => func(Func::ArrayRepeat, vec![l(), r()]),
+        (BinaryOp::Mul, n, T::Array(_)) if n.is_integer() => func(Func::ArrayRepeat, vec![r(), l()]),
+        _ => return None,
+    })
 }
 
 /// Ibis's result type for integer arithmetic: wide enough for every value
@@ -1287,14 +1683,7 @@ fn integral_binop(op: BinaryOp, l: &Expr, lt: &DataType, r: &Expr, rt: &DataType
 }
 
 fn unify(a: &DataType, b: &DataType) -> Result<DataType> {
-    if a == b {
-        return Ok(a.clone());
-    }
-    match (a, b) {
-        (DataType::Null, x) | (x, DataType::Null) => Ok(x.clone()),
-        (x, y) if x.is_numeric() && y.is_numeric() => DataType::promote(x, y),
-        _ => invalid(format!("incompatible types {a} and {b}")),
-    }
+    DataType::unify(a, b)
 }
 
 fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
@@ -1337,6 +1726,70 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
         }
         IsInf => T::Boolean,
         Clip => first,
+        Array => T::array(ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?),
+        ArrayLength | ArrayPosition | MapLength => T::Int64,
+        ArrayContains | MapContains => T::Boolean,
+        ArrayConcat | ArrayUnion | ArrayIntersect | MapMerge => {
+            let fits = |t: &T| match f {
+                MapMerge => matches!(t, T::Map(..) | T::Null),
+                _ => matches!(t, T::Array(_) | T::Null),
+            };
+            if let Some(t) = ts.iter().find(|t| !fits(t)) {
+                return invalid(format!("{f:?} needs {}, got {t}", if f == MapMerge { "maps" } else { "arrays" }));
+            }
+            ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?
+        }
+        ArrayIndex | ArrayRepeat | ArraySlice | ArrayRemove | ArrayDistinct | ArraySort | ArrayFlatten | ArrayMin
+        | ArrayMax | ArraySum | ArrayMean | ArrayAny | ArrayAll | ArrayMode | Unnest => {
+            let item = match &first {
+                T::Array(item) => (**item).clone(),
+                T::Null => T::Null,
+                other => return invalid(format!("{f:?} needs an array, got {other}")),
+            };
+            match f {
+                ArrayIndex | ArrayMin | ArrayMax | ArraySum | ArrayAny | ArrayAll | ArrayMode | Unnest => item,
+                ArrayMean if item.is_integer() || item.is_floating() => T::Float64,
+                ArrayMean => item,
+                ArrayFlatten => match item {
+                    T::Array(_) | T::Null => item,
+                    other => return invalid(format!("flatten needs an array of arrays, got array<{other}>")),
+                },
+                _ => first,
+            }
+        }
+        ArrayZip => T::array(T::Struct(
+            ts.iter()
+                .enumerate()
+                .map(|(i, t)| match t {
+                    T::Array(item) => Ok((format!("f{}", i + 1), (**item).clone())),
+                    other => invalid(format!("zip needs arrays, got {other}")),
+                })
+                .collect::<Result<_>>()?,
+        )),
+        Range => {
+            if let Some(t) = ts.iter().find(|t| !t.is_integer()) {
+                return invalid(format!("range needs integers, got {t}"));
+            }
+            T::array(unify(&ts[0], &ts[1])?)
+        }
+        // typed where the field names are at hand, in `Expr::dtype`
+        StructPack | StructField => return invalid(format!("{f:?} outside an expression")),
+        Map => match (&ts[0], &ts[1]) {
+            (T::Array(k), T::Array(v)) => T::map((**k).clone(), (**v).clone()),
+            (k, v) => return invalid(format!("map needs an array of keys and one of values, got {k} and {v}")),
+        },
+        MapGet | MapKeys | MapValues => {
+            let (key, value) = match &first {
+                T::Map(k, v) => ((**k).clone(), (**v).clone()),
+                T::Null => (T::Null, T::Null),
+                other => return invalid(format!("{f:?} needs a map, got {other}")),
+            };
+            match f {
+                MapKeys => T::array(key),
+                MapValues => T::array(value),
+                _ => unify(&value, ts.get(2).unwrap_or(&T::Null))?,
+            }
+        }
         DateFromYmd | TimestampFromYmdhms => {
             if let Some(t) = ts.iter().find(|t| !t.is_numeric()) {
                 return invalid(format!("{f:?} needs numeric fields, got {t}"));
@@ -1384,6 +1837,8 @@ impl fmt::Display for Expr {
             Expr::Window(e, _) => write!(f, "{e}"),
             Expr::Case { .. } => f.write_str("SearchedCase"),
             Expr::InList { arg, .. } => write!(f, "InValues({arg})"),
+            Expr::Param(n, _) => f.write_str(n),
+            Expr::ArrayLambda { kind, arg, body, .. } => write!(f, "Array{kind:?}({arg}, {body})"),
         }
     }
 }

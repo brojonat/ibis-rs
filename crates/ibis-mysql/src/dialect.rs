@@ -54,6 +54,9 @@ impl Dialect for MySqlDialect {
             DataType::Binary => "BINARY".into(),
             DataType::Date => "DATE".into(),
             DataType::Timestamp { .. } => "DATETIME(6)".into(),
+            DataType::Array(_) | DataType::Struct(_) | DataType::Map(..) => {
+                return unsupported(format!("the type {t}"));
+            }
         })
     }
 

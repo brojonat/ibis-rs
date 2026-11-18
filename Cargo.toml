@@ -16,6 +16,7 @@ categories = ["database"]
 # One arrow version for the whole workspace. Backends whose driver links a
 # different arrow must convert via the Arrow C Data Interface (see LEARNINGS.md).
 arrow-array = "60.1"
+arrow-buffer = "60.1"
 arrow-schema = "60.1"
 parquet = { version = "60.1", default-features = false, features = ["arrow", "snap", "zstd"] }
 # `bundled` (compile DuckDB from source) is ibis-duckdb's default feature, not set here

@@ -37,6 +37,9 @@ MODULES = [
     "test_set_ops",
     "test_window",
     "test_temporal",
+    "test_array",
+    "test_struct",
+    "test_map",
 ]
 
 

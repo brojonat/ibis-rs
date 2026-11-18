@@ -15,6 +15,11 @@ pub enum Value {
     Date(i32),
     /// Microseconds since the Unix epoch.
     Timestamp(i64),
+    Array(Vec<Value>),
+    /// Fields in order, by name.
+    Struct(Vec<(String, Value)>),
+    /// Entries in order.
+    Map(Vec<(Value, Value)>),
 }
 
 impl Value {
@@ -30,12 +35,23 @@ impl Value {
             Value::Binary(_) => DataType::Binary,
             Value::Date(_) => DataType::Date,
             Value::Timestamp(_) => DataType::Timestamp { tz: None },
+            // Ibis: the type every element fits in; no elements, no type
+            Value::Array(items) => DataType::array(common(items.iter())),
+            Value::Struct(fields) => DataType::Struct(fields.iter().map(|(n, v)| (n.clone(), v.dtype())).collect()),
+            Value::Map(entries) => {
+                DataType::map(common(entries.iter().map(|(k, _)| k)), common(entries.iter().map(|(_, v)| v)))
+            }
         }
     }
 
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
+}
+
+/// The type all of the values fit in; string if they have nothing in common.
+fn common<'a>(values: impl Iterator<Item = &'a Value>) -> DataType {
+    values.map(Value::dtype).try_fold(DataType::Null, |acc, t| DataType::unify(&acc, &t)).unwrap_or(DataType::String)
 }
 
 macro_rules! from_int {
@@ -70,6 +86,16 @@ impl From<&str> for Value {
 impl From<String> for Value {
     fn from(v: String) -> Self {
         Value::String(v)
+    }
+}
+impl<T: Into<Value>> From<Vec<T>> for Value {
+    fn from(v: Vec<T>) -> Self {
+        Value::Array(v.into_iter().map(Into::into).collect())
+    }
+}
+impl<T: Into<Value>, const N: usize> From<[T; N]> for Value {
+    fn from(v: [T; N]) -> Self {
+        Value::Array(v.into_iter().map(Into::into).collect())
     }
 }
 impl<T: Into<Value>> From<Option<T>> for Value {
