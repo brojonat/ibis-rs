@@ -160,6 +160,20 @@ impl RelCompiler<'_> {
         format!("t{n}")
     }
 
+    /// `e` with each `unnest(arr)` replaced by the column of a lateral join
+    /// over `arr`; the joins are added to `joins`.
+    fn lift_unnests(&self, e: Expr, c: &ExprCompiler, joins: &mut Vec<String>) -> Result<Expr> {
+        match e {
+            Expr::Func(Func::Unnest, args) => {
+                let item = c.dtype(&args[0])?.item().cloned().unwrap_or(DataType::Null);
+                let lateral = self.d.unnest(&c.sql(&args[0])?, &item, &self.alias(), false, false);
+                joins.push(lateral.join);
+                Ok(Expr::Param(lateral.value, item))
+            }
+            e => e.map_children(&mut |child| self.lift_unnests(child, c, joins)),
+        }
+    }
+
     /// `s` as a derived table. `schema` is its output schema. Its ordering
     /// moves to the outer query when possible: a table stays sorted through
     /// later filters, projections and distincts, as in Ibis.
@@ -290,10 +304,30 @@ impl RelCompiler<'_> {
                 if !s.is_plain() {
                     s = self.wrap(s, &input.schema)?;
                 }
+                // where SELECT takes no set-returning function, an unnest is a
+                // join whose column stands in for it
+                let lateral = !self.d.unnest_in_select() && exprs.iter().any(|(_, e)| e.is_unnest());
+                if lateral && s.alias.is_none() {
+                    s = self.wrap(s, &input.schema)?;
+                }
                 let c = self.exprs(&input.schema, true, &s.alias);
+                let mut joins = vec![];
                 let items = self.in_scope(input, &s.alias, || {
-                    exprs.iter().map(|(n, e)| Ok(format!("{} AS {}", c.sql(e)?, q(n)))).collect::<Result<Vec<_>>>()
+                    exprs
+                        .iter()
+                        .map(|(n, e)| {
+                            let sql = if lateral {
+                                c.sql(&self.lift_unnests(e.clone(), &c, &mut joins)?)?
+                            } else {
+                                c.sql(e)?
+                            };
+                            Ok(format!("{sql} AS {}", q(n)))
+                        })
+                        .collect::<Result<Vec<_>>>()
                 })?;
+                for join in joins {
+                    s.from = format!("{} {join}", s.from);
+                }
                 s.items = Some(items);
                 for (n, e) in exprs {
                     if let Expr::Column(c) = e {
@@ -462,7 +496,8 @@ impl RelCompiler<'_> {
                 let mut s = self.wrap(inner, &input.schema)?;
                 let t = s.alias.clone().expect("a wrapped select has an alias");
                 let u = self.alias();
-                let lateral = self.d.unnest(&format!("{t}.{}", q(column)), &u, offset.is_some(), *keep_empty);
+                let item = input.schema.field(column).and_then(|f| f.dtype.item()).cloned().unwrap_or(DataType::Null);
+                let lateral = self.d.unnest(&format!("{t}.{}", q(column)), &item, &u, offset.is_some(), *keep_empty);
                 let mut items: Vec<String> =
                     input
                         .schema
@@ -526,7 +561,21 @@ impl ExprCompiler<'_> {
             Expr::InColumn { .. } => {
                 return Err(Error::Invalid("isin_col outside a table operation (select, filter, ...)".into()));
             }
-            Expr::InSubquery { arg, rel } => format!("({} IN ({}))", self.sql(arg)?, self.rc.rel(rel)?.render(d)),
+            Expr::InSubquery { arg, rel } => {
+                // engines widen a number to compare it, but not the fields of a struct
+                let column = rel.schema.fields.first().map(|f| &f.dtype);
+                let needle = match column {
+                    Some(t) if t.is_nested() && self.dtype(arg)? != *t => {
+                        self.sql(&arg.as_ref().clone().cast(t.clone()))?
+                    }
+                    _ => self.sql(arg)?,
+                };
+                let needle = match column {
+                    Some(t) => d.in_subquery_needle(needle, t),
+                    None => needle,
+                };
+                format!("({needle} IN ({}))", self.rc.rel(rel)?.render(d))
+            }
             Expr::Literal(v, t) => self.literal(v, t)?,
             Expr::Alias(e, _) => self.sql(e)?,
             Expr::Cast(e, t) => match d.cast(self, e, t)? {

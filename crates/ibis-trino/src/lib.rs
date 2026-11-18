@@ -15,6 +15,7 @@
 //!   and small tables, not a way to load a warehouse.
 
 mod dialect;
+mod nested;
 #[cfg(test)]
 mod tests;
 
@@ -24,6 +25,7 @@ use std::time::Duration;
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
+use ibis_sql::json::{value_from_json, value_to_json};
 use ibis_sql::{Dialect, compile, create_table_sql, quote_str};
 use serde_json::Value as Json;
 
@@ -99,6 +101,9 @@ fn base64(bytes: &[u8]) -> String {
 /// A Trino type name (`bigint`, `decimal(15, 2)`, `timestamp(6) with time zone`)
 /// as an Ibis type.
 fn parse_type(name: &str) -> DataType {
+    if let Some(nested) = nested::parse_type(name, &parse_type) {
+        return nested;
+    }
     let name = name.to_ascii_lowercase();
     match name.as_str() {
         "boolean" => DataType::Boolean,
@@ -148,7 +153,8 @@ fn cell(j: &Json, dtype: &DataType) -> Value {
         }
         // decimals stay text and are parsed to the output type
         (Json::String(s), _) => Value::String(s.clone()),
-        // arrays, maps and rows: their JSON text
+        // an array, a map (an object) or a row (an array of its fields)
+        (other, t) if t.is_nested() => value_from_json(other, t),
         (other, _) => Value::String(other.to_string()),
     }
 }
@@ -170,8 +176,7 @@ fn insert_text(v: &Value, dtype: &DataType) -> Option<String> {
         Value::Binary(b) => b.iter().map(|byte| format!("{byte:02x}")).collect(),
         Value::Date(d) => format_date(*d),
         Value::Timestamp(t) => format_timestamp(*t),
-        // TODO(nested)
-        Value::Array(_) | Value::Struct(_) | Value::Map(_) => return None,
+        Value::Array(_) | Value::Struct(_) | Value::Map(_) => value_to_json(v).to_string(),
     })
 }
 
@@ -302,6 +307,8 @@ fn insert_statements(d: &TrinoDialect, q: &str, schema: &Schema, data: &[RecordB
         .map(|(i, f)| {
             Ok(match f.dtype {
                 DataType::Binary => format!("FROM_HEX(c{i})"),
+                // sent as JSON text
+                ref t if t.is_nested() => format!("CAST(JSON_PARSE(c{i}) AS {})", d.type_name(t)?),
                 _ => format!("CAST(c{i} AS {})", d.type_name(&f.dtype)?),
             })
         })

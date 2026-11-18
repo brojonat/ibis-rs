@@ -117,7 +117,7 @@ impl Dialect for ClickHouseDialect {
         nested::array_lambda(c, kind, arg, param, index, body).map(Some)
     }
 
-    fn unnest(&self, array: &str, alias: &str, with_offset: bool, keep_empty: bool) -> Unnest {
+    fn unnest(&self, array: &str, _item: &DataType, alias: &str, with_offset: bool, keep_empty: bool) -> Unnest {
         nested::unnest(array, alias, with_offset, keep_empty)
     }
 

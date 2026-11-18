@@ -1,11 +1,13 @@
 //! What Trino spells or means differently from the defaults in `ibis-sql`.
 
-use ibis_core::{BinaryOp, DataType, Error, Expr, Func, Result, Value};
-use ibis_sql::{Dialect, ExprCompiler, quote_str, strftime_to_date_format};
+use ibis_core::{BinaryOp, DataType, Error, Expr, Func, Lambda, Result, Value};
+use ibis_sql::{Dialect, ExprCompiler, Unnest, quote_str, strftime_to_date_format};
+
+use crate::nested;
 
 pub struct TrinoDialect;
 
-fn unsupported<T>(op: impl Into<String>) -> Result<T> {
+pub(crate) fn unsupported<T>(op: impl Into<String>) -> Result<T> {
     Err(Error::Unsupported { backend: "trino".into(), op: op.into() })
 }
 
@@ -27,6 +29,9 @@ impl Dialect for TrinoDialect {
 
     /// No unsigned integers: each takes the next wider signed type.
     fn type_name(&self, t: &DataType) -> Result<String> {
+        if let Some(name) = nested::type_name(self, t)? {
+            return Ok(name);
+        }
         Ok(match t {
             DataType::Null => "UNKNOWN".into(),
             DataType::Int8 => "TINYINT".into(),
@@ -48,6 +53,36 @@ impl Dialect for TrinoDialect {
         })
     }
 
+    fn nested_literal(&self, c: &ExprCompiler, v: &Value, t: &DataType) -> Result<Option<String>> {
+        nested::literal(self, c, v, t)
+    }
+
+    fn array_lambda(
+        &self,
+        c: &ExprCompiler,
+        kind: Lambda,
+        arg: &Expr,
+        param: &str,
+        index: Option<&str>,
+        body: &Expr,
+    ) -> Result<Option<String>> {
+        nested::array_lambda(self, c, kind, arg, param, index, body).map(Some)
+    }
+
+    fn unnest_in_select(&self) -> bool {
+        false
+    }
+
+    /// A subquery is a row of its columns: a struct is compared with the
+    /// row holding the one struct column, not with the column.
+    fn in_subquery_needle(&self, needle: String, column: &DataType) -> String {
+        if matches!(column, DataType::Struct(_)) { format!("ROW({needle})") } else { needle }
+    }
+
+    fn unnest(&self, array: &str, item: &DataType, alias: &str, with_offset: bool, keep_empty: bool) -> Unnest {
+        nested::unnest(array, item, alias, with_offset, keep_empty)
+    }
+
     fn binary(&self, c: &ExprCompiler, op: BinaryOp, l: &Expr, r: &Expr) -> Result<Option<String>> {
         // REPEAT builds an array
         if op == BinaryOp::Mul {
@@ -63,6 +98,9 @@ impl Dialect for TrinoDialect {
     }
 
     fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {
+        if let Some(sql) = nested::func(self, c, f, args)? {
+            return Ok(Some(sql));
+        }
         let a = |i: usize| c.sql(&args[i]);
         let int = |s: String| format!("CAST({s} AS INTEGER)");
         Ok(match f {

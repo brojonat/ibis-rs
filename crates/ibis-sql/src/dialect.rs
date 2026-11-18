@@ -84,11 +84,23 @@ pub trait Dialect: Send + Sync {
     ) -> Result<Option<String>> {
         Ok(None)
     }
+    /// The left side of `needle IN (subquery)`, where the subquery's one
+    /// column has type `column`. Trino reads a struct there as a row of
+    /// columns and wants it wrapped.
+    fn in_subquery_needle(&self, needle: String, _column: &DataType) -> String {
+        needle
+    }
+    /// Whether `UNNEST(arr)` can stand in a `SELECT` list, multiplying the
+    /// rows. If not, a projection with one is compiled as a join against
+    /// [`Dialect::unnest`].
+    fn unnest_in_select(&self) -> bool {
+        true
+    }
     /// The join that unnests the array `array` (compiled SQL over the left
-    /// side) into one row per element, under the alias `alias`.
-    /// `with_offset` asks for the element's position as well; `keep_empty`
-    /// keeps a row for an empty or NULL array.
-    fn unnest(&self, array: &str, alias: &str, with_offset: bool, keep_empty: bool) -> Unnest {
+    /// side, its elements of type `item`) into one row per element, under
+    /// the alias `alias`. `with_offset` asks for the element's position as
+    /// well; `keep_empty` keeps a row for an empty or NULL array.
+    fn unnest(&self, array: &str, _item: &DataType, alias: &str, with_offset: bool, keep_empty: bool) -> Unnest {
         let ordinality = if with_offset { " WITH ORDINALITY" } else { "" };
         let columns = if with_offset { "(v, i)" } else { "(v)" };
         let table = format!("UNNEST({array}){ordinality} AS {alias}{columns}");
