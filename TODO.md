@@ -3,7 +3,7 @@
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
 Current: 887 Ibis tests (862 expression cases, 25 client tests) + 22 TPC-H queries. DuckDB 887, Trino 885, Spark 885, Postgres 861, ClickHouse 845, Polars 572 (nested types and views not supported yet), Impala 570, MySQL 553, SQLite 552; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 890 of 1,899 applicable test ids (47%); per module at https://brojonat.github.io/ibis-rs/
+Coverage of the Ibis suite: 890 of 1,778 applicable test ids (50%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -43,7 +43,8 @@ Coverage of the Ibis suite: 890 of 1,899 applicable test ids (47%); per module a
   - [ ] Slice 2: `create_table` options (`overwrite=False` errors on an existing table, `temp`), column nullability in DDL (test_nullable_input_output), `upsert`, `con.sql(query)` as a table expression
   - [ ] Slice 3: catalogs and databases (`list_catalogs`, `list_databases`, `create_database`, tables addressed by database)
   - [ ] Slice 4: `ibis.memtable` (a relation holding its data; backends register it on execute), test_in_memory_table and friends
-  - [ ] Mark not applicable in conformance/not_applicable.json: default/set/get backend options, `__array__`, interactive repr and mimebundle, `has_operation`, `from_connection`, memtable bookkeeping through mocks, `test_stateful_data_is_loaded_once`, `test_json_to_pyarrow`, `test_schema_with_caching`, `test_close_connection`
+  - [x] Marked not applicable in conformance/not_applicable.json (now keyed by `module::test` as well as by module): the default/set/get backend options, `__array__`, interactive repr and mimebundle, `has_operation`, memtable bookkeeping through a mock, the suite's own fixture test
+  - [ ] Still to decide: `test_from_connection` (wrapping a driver connection: `Postgres::new(client)` exists), `test_json_to_pyarrow` (needs a JSON type), `test_schema_with_caching`, `test_close_connection`, `test_connect_url`
 - [ ] TPC-DS (100 ids): Ibis's queries, like TPC-H
 - [ ] `distinct(on=..., keep=...)`, `GroupedTable.order_by().mutate()`, negative slices
 - [ ] Timestamp scale in `DataType` (the schema check normalizes `timestamp(6)` away today)

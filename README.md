@@ -14,7 +14,7 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. The shape to grow into is
 Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
 The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
-test, whether it is ported, and how each backend does on it: 890 of 1,899
+test, whether it is ported, and how each backend does on it: 890 of 1,778
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
 Status: pre-alpha. Nine backends, 887 ported Ibis tests (862 expression
