@@ -1455,6 +1455,7 @@ dependencies = [
  "arrow-array",
  "ibis-core",
  "ibis-sql",
+ "serde_json",
  "ureq",
 ]
 

@@ -78,6 +78,24 @@ pub fn register(v: &mut Vec<Case>) {
             .any(|test| id.starts_with(test))
             || id == "test_array_literal_with_exprs[array]"
     });
+    // ClickHouse has no NULL array: one is stored, and comes back, as an
+    // empty array. It has no mode of an array either.
+    mark(&mut v[start..], "clickhouse", |id| {
+        ["test_array_concat_with_null", "test_array_discovery", "test_zip_null[", "test_table_unnest["]
+            .iter()
+            .any(|test| id.starts_with(test))
+            || [
+                "test_array_remove[non-nested-null]",
+                "test_array_unique[null]",
+                "test_array_unique[not_null]",
+                "test_array_flatten[nulls_only]",
+                "test_array_flatten[mixed_nulls]",
+                "test_array_agg_numeric[nulls-modes]",
+            ]
+            .contains(&id)
+            || id.starts_with("test_array_agg_numeric[no-nulls-")
+            || id.starts_with("test_array_agg_bool[no-nulls-")
+    });
 }
 
 fn int_array() -> DataType {

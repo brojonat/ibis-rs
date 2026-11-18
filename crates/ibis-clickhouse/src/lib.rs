@@ -13,12 +13,14 @@
 //! - String literals take backslash escapes.
 
 mod dialect;
+mod nested;
 #[cfg(test)]
 mod tests;
 
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
+use ibis_sql::json::{value_from_json, value_to_json};
 use ibis_sql::{Dialect, compile, create_table_sql};
 
 pub use dialect::ClickHouseDialect;
@@ -26,7 +28,7 @@ use dialect::quote_str;
 
 /// Settings sent with every request, so queries mean what they mean in
 /// standard SQL (and in Ibis).
-const SETTINGS: [(&str, &str); 9] = [
+const SETTINGS: [(&str, &str); 11] = [
     // outer joins fill unmatched columns with NULL, not the type's default
     ("join_use_nulls", "1"),
     // SUM/MIN/MAX/AVG of no rows is NULL
@@ -40,6 +42,10 @@ const SETTINGS: [(&str, &str); 9] = [
     ("session_timezone", "UTC"),
     // `SELECT x + 1 AS x ... WHERE x > 0` filters on the column, as in standard SQL
     ("prefer_column_name_to_alias", "1"),
+    // in JSON: NaN and the infinities by name rather than as null, and a
+    // named tuple as an object
+    ("output_format_json_quote_denormals", "1"),
+    ("output_format_json_named_tuples_as_objects", "1"),
 ];
 
 pub struct ClickHouse {
@@ -138,7 +144,7 @@ fn tsv_field(v: &Value, out: &mut String) {
         Value::Binary(b) => escape(&String::from_utf8_lossy(b), out),
         Value::Date(d) => out.push_str(&format_date(*d)),
         Value::Timestamp(t) => out.push_str(&format_timestamp(*t)),
-        // TODO(nested): arrays, tuples and maps in TabSeparated
+        // a table with such a column is inserted as JSON instead
         Value::Array(_) | Value::Struct(_) | Value::Map(_) => out.push_str("\\N"),
     }
 }
@@ -152,6 +158,37 @@ fn bare_type(name: &str) -> &str {
         }
     }
     name
+}
+
+/// The comma-separated parts of a type's argument list, not splitting inside
+/// parentheses or quotes.
+fn top_level(args: &str) -> Vec<&str> {
+    let (mut parts, mut depth, mut quoted, mut start) = (vec![], 0, false, 0);
+    for (i, ch) in args.char_indices() {
+        match ch {
+            '`' | '\'' | '"' => quoted = !quoted,
+            '(' if !quoted => depth += 1,
+            ')' if !quoted => depth -= 1,
+            ',' if !quoted && depth == 0 => {
+                parts.push(args[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(args[start..].trim());
+    parts
+}
+
+/// A named tuple field, `name Type` or `` `name` Type ``, as its two halves.
+fn split_field(field: &str) -> Option<(String, &str)> {
+    if let Some(rest) = field.strip_prefix('`') {
+        let (name, t) = rest.split_once('`')?;
+        return Some((name.replace("\\`", "`"), t.trim()));
+    }
+    let (name, t) = field.split_once(' ')?;
+    // `Array(Nullable(Int64))` has no name; a name has no parenthesis
+    (!name.contains('(')).then(|| (name.to_string(), t.trim()))
 }
 
 /// A ClickHouse column type as an Ibis type.
@@ -185,6 +222,28 @@ fn parse_type(name: &str) -> DataType {
             if let Some(a) = args("DateTime64(").or_else(|| args("DateTime(")) {
                 let tz = a.iter().find(|x| x.starts_with('\'')).map(|x| x.trim_matches('\'').to_string());
                 return DataType::Timestamp { tz };
+            }
+            let inner = |prefix: &str| name.strip_prefix(prefix).and_then(|s| s.strip_suffix(')'));
+            if let Some(item) = inner("Array(") {
+                return DataType::array(parse_type(item));
+            }
+            if let Some(kv) = inner("Map(")
+                && let [key, value] = top_level(kv)[..]
+            {
+                return DataType::map(parse_type(key), parse_type(value));
+            }
+            if let Some(fields) = inner("Tuple(") {
+                // `name Type`, or just `Type` in an unnamed tuple, whose fields Ibis calls f1, f2, ...
+                return DataType::Struct(
+                    top_level(fields)
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, field)| match split_field(field) {
+                            Some((name, t)) => (name, parse_type(t)),
+                            None => (format!("f{}", i + 1), parse_type(field)),
+                        })
+                        .collect(),
+                );
             }
             DataType::String
         }
@@ -258,6 +317,20 @@ impl ClickHouse {
         self.send(sql, None).map(|_| ())
     }
 
+    /// Run a query whose result has arrays, tuples or maps: read as JSON, each
+    /// cell as a value of its column's type in `schema`.
+    fn json_rows(&self, sql: &str, schema: &Schema) -> Result<Vec<Vec<Value>>> {
+        let body = self.send(&format!("{sql}\nFORMAT JSONCompactEachRow"), None)?;
+        body.lines()
+            .filter(|line| !line.is_empty())
+            .map(|line| {
+                let cells: Vec<serde_json::Value> = serde_json::from_str(line)
+                    .map_err(|e| exec_err(sql, format!("unreadable result row {line:?}: {e}")))?;
+                Ok(cells.iter().zip(&schema.fields).map(|(cell, f)| value_from_json(cell, &f.dtype)).collect())
+            })
+            .collect()
+    }
+
     /// Run a query, returning rows typed by what ClickHouse says each column is.
     pub fn raw_sql(&self, sql: &str) -> Result<Vec<Vec<Value>>> {
         let body = self.send(&format!("{sql}\nFORMAT TabSeparatedWithNamesAndTypes"), None)?;
@@ -281,8 +354,14 @@ impl Backend for ClickHouse {
     }
 
     fn execute(&self, table: &Table) -> Result<Vec<RecordBatch>> {
-        let rows = self.raw_sql(&self.compile(table)?)?;
-        Ok(vec![rows_to_batch(table.schema(), &rows)?])
+        let sql = self.compile(table)?;
+        let schema = table.schema();
+        let rows = if schema.fields.iter().any(|f| f.dtype.is_nested()) {
+            self.json_rows(&sql, schema)?
+        } else {
+            self.raw_sql(&sql)?
+        };
+        Ok(vec![rows_to_batch(schema, &rows)?])
     }
 
     fn table(&self, name: &str) -> Result<Table> {
@@ -316,6 +395,20 @@ impl Backend for ClickHouse {
             create_table_sql(&self.dialect, name, &schema)?
         ))?;
         let mut body = String::new();
+        if schema.fields.iter().any(|f| f.dtype.is_nested()) {
+            // arrays, tuples and maps travel as JSON; a NULL one becomes the type's default
+            for b in data {
+                for row in batch_to_rows(b)? {
+                    let cells: Vec<serde_json::Value> = row.iter().map(value_to_json).collect();
+                    body.push_str(&serde_json::Value::Array(cells).to_string());
+                    body.push('\n');
+                }
+            }
+            if body.is_empty() {
+                return Ok(());
+            }
+            return self.send(&format!("INSERT INTO {q} FORMAT JSONCompactEachRow"), Some(body)).map(|_| ());
+        }
         for b in data {
             for row in batch_to_rows(b)? {
                 for (i, v) in row.iter().enumerate() {

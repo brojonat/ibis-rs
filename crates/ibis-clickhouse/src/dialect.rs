@@ -5,8 +5,10 @@
 //! answer to the upper-case spelling the defaults use.
 
 use ibis_core::convert::{format_date, format_timestamp};
-use ibis_core::{AggFunc, Analytic, DataType, Error, Expr, Func, Result, Value};
-use ibis_sql::{Dialect, ExprCompiler};
+use ibis_core::{AggFunc, Analytic, DataType, Error, Expr, Func, Lambda, Result, Value};
+use ibis_sql::{Dialect, ExprCompiler, Unnest};
+
+use crate::nested;
 
 pub struct ClickHouseDialect;
 
@@ -15,7 +17,7 @@ pub(crate) fn quote_str(s: &str) -> String {
     format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
 }
 
-fn unsupported<T>(op: impl Into<String>) -> Result<T> {
+pub(crate) fn unsupported<T>(op: impl Into<String>) -> Result<T> {
     Err(Error::Unsupported { backend: "clickhouse".into(), op: op.into() })
 }
 
@@ -62,6 +64,10 @@ impl Dialect for ClickHouseDialect {
     /// Always `Nullable`: a bare ClickHouse type cannot hold NULL, and a cast
     /// to one turns NULL into an error.
     fn type_name(&self, t: &DataType) -> Result<String> {
+        // arrays, tuples and maps cannot be Nullable
+        if let Some(name) = nested::type_name(self, t)? {
+            return Ok(name);
+        }
         let name = match t {
             DataType::Null => "Nothing".to_string(),
             DataType::Boolean => "Bool".into(),
@@ -81,9 +87,7 @@ impl Dialect for ClickHouseDialect {
             DataType::Date => "Date32".into(),
             DataType::Timestamp { tz: None } => "DateTime64(6)".into(),
             DataType::Timestamp { tz: Some(tz) } => format!("DateTime64(6, {})", quote_str(tz)),
-            DataType::Array(_) | DataType::Struct(_) | DataType::Map(..) => {
-                return unsupported(format!("the type {t}"));
-            }
+            DataType::Array(_) | DataType::Struct(_) | DataType::Map(..) => unreachable!("named above"),
         };
         Ok(format!("Nullable({name})"))
     }
@@ -97,7 +101,30 @@ impl Dialect for ClickHouseDialect {
         })
     }
 
+    fn nested_literal(&self, c: &ExprCompiler, v: &Value, t: &DataType) -> Result<Option<String>> {
+        nested::literal(self, c, v, t)
+    }
+
+    fn array_lambda(
+        &self,
+        c: &ExprCompiler,
+        kind: Lambda,
+        arg: &Expr,
+        param: &str,
+        index: Option<&str>,
+        body: &Expr,
+    ) -> Result<Option<String>> {
+        nested::array_lambda(c, kind, arg, param, index, body).map(Some)
+    }
+
+    fn unnest(&self, array: &str, alias: &str, with_offset: bool, keep_empty: bool) -> Unnest {
+        nested::unnest(array, alias, with_offset, keep_empty)
+    }
+
     fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {
+        if let Some(sql) = nested::func(self, c, f, args)? {
+            return Ok(Some(sql));
+        }
         let a = |i: usize| c.sql(&args[i]);
         let cast = |s: String, t: DataType| -> Result<Option<String>> {
             Ok(Some(format!("CAST({s} AS {})", self.type_name(&t)?)))
@@ -176,6 +203,7 @@ impl Dialect for ClickHouseDialect {
             // no BOOL_OR / BOOL_AND; a boolean is 0 or 1
             AggFunc::Any => Some(format!("max({}){tail}", c.sql(x)?)),
             AggFunc::All => Some(format!("min({}){tail}", c.sql(x)?)),
+            AggFunc::Collect => Some(format!("groupArray({}){tail}", c.sql(x)?)),
             _ => None,
         })
     }

@@ -172,6 +172,14 @@ pub fn register(v: &mut Vec<Case>) {
     for case in &mut v[start..] {
         case.notimpl.extend(NO_ARRAYS);
     }
+    // ClickHouse has no NULL map, nor a NULL array to build one from
+    mark(&mut v[start..], "clickhouse", |id| {
+        ["test_map_nulls[", "test_map_keys_nulls[", "test_map_values_nulls[", "test_map_merge_nulls["]
+            .iter()
+            .any(|test| id.starts_with(test))
+            || id.starts_with("test_map_get_contains_nulls[get-null_")
+            || id.starts_with("test_map_get_contains_nulls[contains-null_") && id.ends_with("_non_null_key]")
+    });
     // arrays as keys or values are arrays of arrays where the map is built
     mark(&mut v[start..], "postgres", |id| {
         id.starts_with("test_map_get_all_types[") && (id.contains("[array-") || id.ends_with("-array]"))

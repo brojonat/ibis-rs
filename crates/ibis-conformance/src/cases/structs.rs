@@ -8,7 +8,7 @@ use ibis_core::Value;
 use ibis_core::prelude::*;
 
 use super::array::NO_ARRAYS;
-use super::{Case, c, scalar, table, tables};
+use super::{Case, c, mark, scalar, table, tables};
 
 pub fn register(v: &mut Vec<Case>) {
     let start = v.len();
@@ -66,4 +66,6 @@ pub fn register(v: &mut Vec<Case>) {
     for case in &mut v[start..] {
         case.notimpl.extend(NO_ARRAYS);
     }
+    // a NULL struct is a ClickHouse tuple of NULLs
+    mark(&mut v[start..], "clickhouse", |id| id == "test_all_fields");
 }
