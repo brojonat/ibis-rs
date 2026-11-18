@@ -11,6 +11,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Support in ibis-duckdb, ibis-postgres (arrays; structs and maps as JSONB), ibis-clickhouse (`Array`, named `Tuple`, `Map`), ibis-trino (`ARRAY`, `ROW`, `MAP`) and ibis-spark (`ARRAY`, `STRUCT`, `MAP`): expressions, results, `create_table` and `table`. SQLite, MySQL and Impala refuse the types; Polars does not support them yet.
 - `ibis_sql::json`: nested values to and from JSON, the form several engines exchange them in.
 - `Dialect` hooks: `nested_literal`, `array_lambda`, `unnest`, `unnest_in_select`, `in_subquery_needle`. The default `type_name` spells nested types as DuckDB does.
+- `Backend` methods for tables and views, as on an Ibis connection: `create_empty_table`, `drop_table`, `insert` (append or overwrite, from Arrow data), `insert_from` (from a query), `rename_table`, `create_view`, `drop_view`. They have default bodies (`Unsupported`, or built on the others), so a backend outside this repository still compiles. All nine backends implement them; Polars has no views yet.
+- `ibis_sql::ddl`: the statements behind those methods, shared by the SQL backends through the `SqlClient` trait and the `sql_client_methods!` macro. `Dialect::rename_table` and `Dialect::truncate_table` for the engines that spell those differently.
+- `ibis_core::convert::conform_to`: Arrow data matched to a table's columns by name and cast to its types.
+- Conformance: 25 of Ibis's tests of the connection API (`test_client`, and the two of that kind in `test_struct` and `test_map`) run as procedures against each backend (`crates/ibis-conformance/src/client.rs`).
 - Conformance: `test_array`, `test_struct` and `test_map` ported, 311 cases. `conformance/memtables.json` takes any Ibis type for a column and gained Ibis's `array_types`, `struct` and `map` tables.
 
 ### Changed

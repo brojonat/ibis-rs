@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 862 Ibis cases + 22 TPC-H queries. DuckDB 862, Trino 860, Spark 860, Postgres 836, ClickHouse 820, Polars 551 (nested types not supported yet), Impala 548, MySQL 531, SQLite 530; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 865 of 1,899 applicable test ids (46%); per module at https://brojonat.github.io/ibis-rs/
+Current: 887 Ibis tests (862 expression cases, 25 client tests) + 22 TPC-H queries. DuckDB 887, Trino 885, Spark 885, Postgres 861, ClickHouse 845, Polars 572 (nested types and views not supported yet), Impala 570, MySQL 553, SQLite 552; everything else is an expected failure with its reason in the case file (README has the table).
+Coverage of the Ibis suite: 890 of 1,899 applicable test ids (47%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -38,8 +38,9 @@ Coverage of the Ibis suite: 865 of 1,899 applicable test ids (46%); per module a
 - [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
 - [ ] Nested types, loose ends: `collect` options (`order_by`, `distinct`, `include_null`, `where`), several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB
 - [ ] test_client (203 ids), in slices. These test the connection API, not expressions: they run as procedural tests per backend (`crates/ibis-conformance/src/client.rs`, ids `client::<module>::<pytest id>`, no goldens)
-  - [ ] Slice 1, table lifecycle: `Backend::{drop_table, insert, insert_from, rename_table, create_view, drop_view, create_empty_table}`; shared DDL text in `ibis_sql::ddl`; each backend's loader split from its `create_table` so `insert` reuses it. Tests: test_create_table, test_load_data, test_create_table_from_schema, test_rename_table, test_create_drop_view, test_insert_*_from_dataframe/_expr/_list, test_nullable_input_output, test_unsigned_integer_type, test_create_table_timestamp, test_table_not_found, test_query_schema, test_struct::test_keyword_fields, test_map::test_map_create_table
-  - [ ] Slice 2: `create_table` options (`overwrite=False` errors on an existing table, `temp`), `upsert`, `con.sql(query)` as a table expression
+  - [x] Slice 1, table lifecycle: `Backend::{drop_table, insert, insert_from, rename_table, create_view, drop_view, create_empty_table}`; shared DDL text in `ibis_sql::ddl` (`SqlClient`, `sql_client_methods!`); each backend's loader split from its `create_table` so `insert` reuses it. 25 ids ported, passing on all nine backends (Polars: views unsupported)
+  - [ ] Slice 1, the rest: test_insert_using_col_name_not_position (3), test_insert_into_table_missing_columns, test_create_table_timestamp (needs the timestamp scale), test_overwrite; views on Polars
+  - [ ] Slice 2: `create_table` options (`overwrite=False` errors on an existing table, `temp`), column nullability in DDL (test_nullable_input_output), `upsert`, `con.sql(query)` as a table expression
   - [ ] Slice 3: catalogs and databases (`list_catalogs`, `list_databases`, `create_database`, tables addressed by database)
   - [ ] Slice 4: `ibis.memtable` (a relation holding its data; backends register it on execute), test_in_memory_table and friends
   - [ ] Mark not applicable in conformance/not_applicable.json: default/set/get backend options, `__array__`, interactive repr and mimebundle, `has_operation`, `from_connection`, memtable bookkeeping through mocks, `test_stateful_data_is_loaded_once`, `test_json_to_pyarrow`, `test_schema_with_caching`, `test_close_connection`

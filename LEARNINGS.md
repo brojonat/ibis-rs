@@ -470,3 +470,21 @@ The filter is an id substring: `test_` matches everything, and a regenerated
 parquet file differs in bytes even when its rows do not (34 files of
 unordered results did). Use a filter that names the test function, or
 `git checkout` the files whose module you did not touch before committing.
+
+## Tests of the connection API are procedures, not goldens
+
+Everything ported before test_client was "build an expression, compare the
+result with Python Ibis's". Ibis's client tests create, fill, rename and drop
+tables: there is nothing for Python to pre-compute. They live in
+`crates/ibis-conformance/src/client.rs` as functions over a `&dyn Backend`
+that return an error when a check does not hold, with ids
+`client::<module>::<pytest id>` so the site can file them under the right
+Ibis module (`client_cases` in conformance/site.py) even though they have no
+Python twin. Each makes its own uniquely named tables and drops them when
+its `Temp` guard goes out of scope, so they can run on the same connection,
+on the same thread, right after the expression cases.
+
+A type's text form has to survive what a table can hold: `struct<left join:
+int64>` (a field name with a space, from Ibis's test_keyword_fields) went
+into a Postgres column comment and did not parse back until the type parser
+read field names up to the colon rather than as one word.

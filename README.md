@@ -14,29 +14,30 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. The shape to grow into is
 Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
 The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
-test, whether it is ported, and how each backend does on it: 865 of 1,899
+test, whether it is ported, and how each backend does on it: 890 of 1,899
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 862 ported Ibis test cases and Ibis's 22
-TPC-H queries:
+Status: pre-alpha. Nine backends, 887 ported Ibis tests (862 expression
+cases with a result from Python Ibis, 25 tests of the connection API) and
+Ibis's 22 TPC-H queries:
 
-| backend | Ibis cases (862) | TPC-H (22) |
+| backend | Ibis tests (887) | TPC-H (22) |
 |---|---|---|
-| DuckDB | 862 | 22 |
-| Trino | 860 (2 expected failures: no function for the most frequent element of an array) | 22 |
-| Spark SQL | 860 (2 expected failures: the same) | 22 |
-| Postgres | 836 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
-| ClickHouse | 820 (42 expected failures, as in Ibis: an array, struct or map cannot be NULL there, and `x IN (NULL)` is false) | 22 |
-| Polars (default) | 551; the 311 array, struct and map cases are not supported yet | 22 |
-| Impala | 548 (314 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`) | 22 |
-| MySQL | 531 (331 expected failures: no arrays, structs or maps, no NaN or infinity) | 22 |
-| SQLite | 530 (332 expected failures: no arrays, structs or maps, no NaN) | 22 |
+| DuckDB | 887 | 22 |
+| Trino | 885 (2 expected failures: no function for the most frequent element of an array) | 22 |
+| Spark SQL | 885 (2 expected failures: the same) | 22 |
+| Postgres | 861 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
+| ClickHouse | 845 (42 expected failures, as in Ibis: an array, struct or map cannot be NULL there, and `x IN (NULL)` is false) | 22 |
+| Polars (default) | 572; arrays, structs, maps (311 cases) and views are not supported yet | 22 |
+| Impala | 570 (317 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`) | 22 |
+| MySQL | 553 (334 expected failures: no arrays, structs or maps, no NaN or infinity) | 22 |
+| SQLite | 552 (335 expected failures: no arrays, structs or maps, no NaN) | 22 |
 
 Output column names and types match Ibis's on all 862. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal` (first tier), `test_join`, `test_window`, `test_set_ops`,
-`test_conditionals`, `test_array`, `test_struct`, `test_map`. What's next is
-in [TODO.md](TODO.md).
+`test_conditionals`, `test_array`, `test_struct`, `test_map`, and the first
+part of `test_client`. What's next is in [TODO.md](TODO.md).
 
 ## Usage
 
@@ -79,6 +80,24 @@ batches, or `ibis_rs::polars::Polars::register` for a Polars `DataFrame`).
 behind it (`ibis-core`, `ibis-sql`, `ibis-polars`, `ibis-duckdb`, `ibis-sqlite`,
 `ibis-postgres`, `ibis-mysql`, `ibis-clickhouse`, `ibis-trino`, `ibis-spark`, `ibis-impala`) can also be used directly; a compiled example of that is
 `cargo run -p ibis-duckdb --example readme` (after `mise run setup`).
+
+### Tables and views
+
+A connection also creates and fills tables, as Ibis's does:
+
+```rust
+con.create_table("employees", &batches)?;           // from Arrow data; replaces a table of that name
+con.create_empty_table("audit", &schema)?;          // from a schema
+con.insert("employees", &more_batches, false)?;     // append; `true` replaces the rows
+con.insert_from("audit", &t.filter([col("salary").gt(100)])?, false)?;  // INSERT INTO ... SELECT
+con.create_view("well_paid", &t.filter([col("salary").gt(100)])?, false)?;
+con.rename_table("audit", "audit_2026")?;
+con.drop_view("well_paid", true)?;                  // `true`: fine if it is not there
+con.drop_table("audit_2026", false)?;
+```
+
+Inserted data is matched to the table's columns by name (by position if the
+names differ) and cast to their types. On Polars a view is not supported yet.
 
 ### Arrays, structs and maps
 
