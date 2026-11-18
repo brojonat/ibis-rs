@@ -4,7 +4,18 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- Arrays, structs and maps. `DataType::{Array, Struct, Map}` with Arrow conversion and `FromStr` for Ibis's type spellings (`"map<string, array<int64>>".parse()`); `Value::{Array, Struct, Map}`, and `lit(vec![1, 2, 3])` is an array literal.
+- Expressions over them, named as in Ibis: `array`, `struct_`, `map`, `range`; on arrays `at`, `slice`, `concat` (and `+`), `repeat` (and `*`), `contains`, `index`, `remove`, `unique`, `sort`, `union`, `intersect`, `flatten`, `zip`, `mins`/`maxs`/`sums`/`means`/`anys`/`alls`/`modes`, `map`/`filter` and their `_with_index` forms taking Rust closures, `unnest`; on structs `field`; on maps `get`, `get_or`, `contains`, `keys`, `values`, `length`, `+`. `collect` aggregates a column into an array.
+- `Table::unnest(column, offset, keep_empty)`, `Table::unpack(columns)` and `Table::lift(column)`.
+- Support in ibis-duckdb, ibis-postgres (arrays; structs and maps as JSONB), ibis-clickhouse (`Array`, named `Tuple`, `Map`), ibis-trino (`ARRAY`, `ROW`, `MAP`) and ibis-spark (`ARRAY`, `STRUCT`, `MAP`): expressions, results, `create_table` and `table`. SQLite, MySQL and Impala refuse the types; Polars does not support them yet.
+- `ibis_sql::json`: nested values to and from JSON, the form several engines exchange them in.
+- `Dialect` hooks: `nested_literal`, `array_lambda`, `unnest`, `unnest_in_select`, `in_subquery_needle`. The default `type_name` spells nested types as DuckDB does.
+- Conformance: `test_array`, `test_struct` and `test_map` ported, 311 cases. `conformance/memtables.json` takes any Ibis type for a column and gained Ibis's `array_types`, `struct` and `map` tables.
+
 ### Changed
+- `Expr::contains` takes an expression or a plain value (`contains("a")`, `contains(1)`, `contains(col("k"))`) instead of a `&str`, and means substring, element or key by the type it is called on. `length` and `repeat` likewise serve strings, arrays and maps. Existing calls compile unchanged.
+- `Dialect::default_type_name` returns `Unsupported` for nested types; `Dialect::type_name` is where an engine names them.
 - Conformance: backends run side by side, one thread each, for loading fixtures, the Ibis cases and TPC-H. Outcomes are reported in the same order as before. The runner does the Ibis cases and TPC-H at the same time.
 - CI runs the suite once instead of twice: `mise run unit` (new: unit tests and doctests, no containers) and then `mise run site`, whose conformance run fails the job on any failing case. Images are pulled while the code compiles.
 

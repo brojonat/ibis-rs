@@ -397,3 +397,76 @@ Hard-won knowledge. Each entry: what happened, why it was surprising, how to avo
 - **Also:** image pulls started in the background at the top of the job (`nohup docker
   compose pull &`) overlap with checkout, cache restore and compile; `mise run up` then
   waits only for what is left. That step varies from 65 to 100 s run to run.
+
+## Arrays, structs and maps: every engine draws the line somewhere else
+
+Porting test_array, test_struct and test_map took one pass per engine, and
+each had one fact that shaped everything else:
+
+- **Postgres has no arrays of arrays and no anonymous struct or map.** A
+  multidimensional array is rectangular and cannot hold a NULL sub-array, so
+  `array<array<T>>` is refused. Structs and maps are `JSONB` (Ibis does this
+  for maps; its `ROW`-based structs cannot be stored in a table). Two JSONB
+  columns look alike, so `create_table` writes the Ibis type into a column
+  comment and `table` reads it back. Map keys are the *text of a value of the
+  key type*: looking up the literal `1.0` in a float-keyed map needs
+  `CAST(CAST(1.0 AS DOUBLE PRECISION) AS TEXT)`, or it looks for `'1.0'` where
+  the key is `'1'`.
+- **ClickHouse cannot hold a NULL array, tuple or map.** A NULL array is
+  stored and returned as `[]`. Ibis marks those tests `notyet` and so do we;
+  no query rewrite gets the NULL back. `map[key]` only takes some key types;
+  `mapValues(m)[indexOf(mapKeys(m), k)]` takes any.
+- **Trino and Spark take no set-returning function inside an expression in
+  SELECT.** A projection with `unnest` is compiled as a lateral join and the
+  unnest replaced by the join's column (`Dialect::unnest_in_select`). Trino's
+  `UNNEST` of an array of rows spreads the fields over columns: unnest
+  `TRANSFORM(arr, e -> ARRAY[e])` and take `v[1]`.
+- **Spark over Thrift returns nested values as display text** (`[1,2,null]`,
+  strings unescaped, map keys unquoted), which cannot be parsed back reliably.
+  `execute` wraps the query and asks for `TO_JSON(NAMED_STRUCT('v', col))`;
+  inserts go the other way through `FROM_JSON(text, 'v <type>').v`. Wrapping
+  in a struct is what makes both work on every Spark version.
+- **Under ANSI mode Spark raises** on an index out of range and on a missing
+  map key. `CASE WHEN p < SIZE(x) THEN x[p] END` and a `MAP_KEYS` check keep
+  Ibis's NULL. `MAP_CONCAT` raises on a shared key unless
+  `spark.sql.mapKeyDedupPolicy=LAST_WIN`, which `connect` sets.
+
+Smaller traps: DuckDB rejects `x -> ...` lambdas now (`LAMBDA x: ...`), and
+its lambda position counts from 1. Trino's `SEQUENCE(0, -1)` counts *down*
+(two elements), so "positions of an empty array" needs
+`SLICE(SEQUENCE(0, n), 1, n)`. Trino reads a struct on the left of
+`IN (subquery)` as a row of columns: wrap it in `ROW(...)`
+(`Dialect::in_subquery_needle`).
+
+How to avoid the ditch: before spelling an operation for a new engine, find
+out whether its containers can be NULL, can nest, and can be produced by a
+function in SELECT; and how the driver hands them back. JSON at the boundary
+(`ibis_sql::json`) is the dependable transport.
+
+## One method name, three types: resolve it before compiling
+
+`length`, `contains` and `repeat` (and `+`, `*`) are one method on strings,
+arrays and maps in Ibis. The builder does not know types, so the IR keeps the
+shared name and `Func::resolve(first argument type)` turns it into
+`ArrayLength`, `MapContains`, ... when the type is known. Every compiler calls
+it before looking at the function; a dialect hook that matches `Func::Length`
+for strings then never sees an array. `expr::nested_binary` does the same for
+the operators. Forgetting the call in a new compiler gives `LENGTH(array)`
+or a string repeat of an array, not an error.
+
+## Lambda parameters are typed late and named by depth
+
+`arr.map(|x| ...)` builds the body from a placeholder `Expr::Param`, which
+has no type until the array's element type is known. `Expr::lambda_body`
+fills the types in; compilers must compile *that*, not the stored body, or
+`dtype` of anything inside the lambda is `null`. Parameters are renamed
+`ibis_x<depth>` after the closure runs (innermost is 1): unique names would
+change the SQL text from run to run, and a fixed name would capture across
+nested lambdas.
+
+## `mise run goldens <filter>` with a broad filter rewrites every golden
+
+The filter is an id substring: `test_` matches everything, and a regenerated
+parquet file differs in bytes even when its rows do not (34 files of
+unordered results did). Use a filter that names the test function, or
+`git checkout` the files whose module you did not touch before committing.

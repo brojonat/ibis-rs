@@ -14,28 +14,29 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. The shape to grow into is
 Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
 The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
-test, whether it is ported, and how each backend does on it: 561 of 1,899
+test, whether it is ported, and how each backend does on it: 865 of 1,899
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 551 ported Ibis test cases and Ibis's 22
+Status: pre-alpha. Nine backends, 862 ported Ibis test cases and Ibis's 22
 TPC-H queries:
 
-| backend | Ibis cases (551) | TPC-H (22) |
+| backend | Ibis cases (862) | TPC-H (22) |
 |---|---|---|
-| Polars (default) | 551 | 22 |
-| DuckDB | 551 | 22 |
-| Postgres | 551 | 22 |
-| SQLite | 530 (21 expected failures: they need NaN, which SQLite cannot store) | 22 |
-| MySQL | 531 (20 expected failures: they need NaN or infinity, which MySQL does not have) | 22 |
-| ClickHouse | 550 (1 expected failure, as in Ibis: `x IN (NULL)` is false, not NULL) | 22 |
-| Trino | 551 | 22 |
-| Spark SQL | 551 | 22 |
-| Impala | 548 (3 expected failures, as in Ibis: no `NTH_VALUE`, and `IN (subquery)` only in `WHERE`) | 22 |
+| DuckDB | 862 | 22 |
+| Trino | 860 (2 expected failures: no function for the most frequent element of an array) | 22 |
+| Spark SQL | 860 (2 expected failures: the same) | 22 |
+| Postgres | 836 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
+| ClickHouse | 820 (42 expected failures, as in Ibis: an array, struct or map cannot be NULL there, and `x IN (NULL)` is false) | 22 |
+| Polars (default) | 551; the 311 array, struct and map cases are not supported yet | 22 |
+| Impala | 548 (314 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`) | 22 |
+| MySQL | 531 (331 expected failures: no arrays, structs or maps, no NaN or infinity) | 22 |
+| SQLite | 530 (332 expected failures: no arrays, structs or maps, no NaN) | 22 |
 
-Output column names and types match Ibis's on all 551. Ported so far:
+Output column names and types match Ibis's on all 862. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal` (first tier), `test_join`, `test_window`, `test_set_ops`,
-`test_conditionals`. What's next is in [TODO.md](TODO.md).
+`test_conditionals`, `test_array`, `test_struct`, `test_map`. What's next is
+in [TODO.md](TODO.md).
 
 ## Usage
 
@@ -78,6 +79,38 @@ batches, or `ibis_rs::polars::Polars::register` for a Polars `DataFrame`).
 behind it (`ibis-core`, `ibis-sql`, `ibis-polars`, `ibis-duckdb`, `ibis-sqlite`,
 `ibis-postgres`, `ibis-mysql`, `ibis-clickhouse`, `ibis-trino`, `ibis-spark`, `ibis-impala`) can also be used directly; a compiled example of that is
 `cargo run -p ibis-duckdb --example readme` (after `mise run setup`).
+
+### Arrays, structs and maps
+
+`DataType` has `Array`, `Struct` and `Map` (`"array<struct<a: int64>>".parse()`
+reads Ibis's spelling), `Value` has the matching values, and expressions have
+Ibis's operations on them:
+
+```rust
+let t = con.table("orders")?;                        // items: array<struct<sku: string, qty: int64>>
+let lines = t.unnest("items", Some("line"), false)?  // one row per element, its position in `line`
+    .mutate([col("items").field("sku").name("sku"), col("items").field("qty").name("qty")])?;
+
+array([col("a"), col("b")]).map(|x| x * 2).filter(|x| x.gt(10)).sort();  // lambdas are Rust closures
+col("tags").contains("urgent");  col("tags").length();  col("tags").at(-1);  col("tags") + lit(vec!["new"]);
+map(col("keys"), col("values")).get_or("k", 0);       col("attrs").keys();
+struct_([("x", col("a")), ("y", lit(1))]).field("x");  t.unpack(&["point"])?;
+col("x").collect();                                    // aggregate a column into an array
+```
+
+Positions count from 0 everywhere, a negative one counts from the end, and an
+index out of range or a missing map key is NULL, whatever the engine does by
+itself. What each engine stores them as:
+
+| backend | array | struct | map | limits |
+|---|---|---|---|---|
+| DuckDB | `T[]` | `STRUCT` | `MAP` | |
+| Trino | `ARRAY` | `ROW` | `MAP` | no `modes` |
+| Spark | `ARRAY` | `STRUCT` | `MAP` | no `modes` |
+| ClickHouse | `Array` | named `Tuple` | `Map` | none of the three can be NULL: a NULL one is stored as an empty array or map, or a struct of NULLs |
+| Postgres | `T[]` | `JSONB` | `JSONB` | no arrays of arrays; `create_table` records the Ibis type of each such column in a column comment, and `table` reads it back |
+| Polars | | | | not supported yet |
+| SQLite, MySQL, Impala | | | | no such types (as in Ibis) |
 
 Column references come in two forms, as in Ibis: `col("x")` is unbound (Ibis's
 `_.x`) and resolves against whatever table it is used on; `t.col("x")` is bound

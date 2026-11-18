@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 551 Ibis cases + 22 TPC-H queries. Polars 551, DuckDB 551, Postgres 551, Trino 551, Spark 551, ClickHouse 550 (1 marked notyet in Ibis too), Impala 548 (3 marked for Impala in Ibis too), MySQL 531 (20 need NaN or infinity), SQLite 530 (21 need NaN).
-Coverage of the Ibis suite: 561 of 1,899 applicable test ids (30%); per module at https://brojonat.github.io/ibis-rs/
+Current: 862 Ibis cases + 22 TPC-H queries. DuckDB 862, Trino 860, Spark 860, Postgres 836, ClickHouse 820, Polars 551 (nested types not supported yet), Impala 548, MySQL 531, SQLite 530; everything else is an expected failure with its reason in the case file (README has the table).
+Coverage of the Ibis suite: 865 of 1,899 applicable test ids (46%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -28,12 +28,15 @@ Coverage of the Ibis suite: 561 of 1,899 applicable test ids (30%); per module a
 - [x] Published 2026-11-15: ibis-sql 0.1.1, ibis-clickhouse 0.1.0, ibis-rs 0.1.2 (the `clickhouse` feature)
 - [x] ibis-mysql backend: 531/551 + 20 xfail, 22/22. Full outer joins are emulated (Ibis's own MySQL backend has none)
 - [x] ibis-trino backend (HTTP): 551/551, 22/22
+- [x] Arrays, structs and maps: `DataType`/`Value`, the Ibis operations, lambdas, unnest, collect; test_array, test_struct and test_map ported (311 cases) on DuckDB, Postgres, ClickHouse, Trino and Spark
 
 ## Next: parity
 - [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
 - [ ] Rest of test_aggregation: grouped reductions, mode, argmin/argmax, approx, collect
 - [ ] Rest of test_string: translate, split, join, find_in_set, capitalize, slices
-- [ ] Nested types (array, struct, map) and test_array / test_struct / test_map (303 ids, the largest unported block)
+- [ ] Polars: arrays, structs and maps (the 311 cases report `unsupported` today). Needs `to_pl`/`series`/`value` for lists and structs, the `list` and `struct` namespaces, `list.eval` for lambdas, `explode` for unnest; maps as a list of key/value structs
+- [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
+- [ ] Nested types, loose ends: `collect` options (`order_by`, `distinct`, `include_null`, `where`), several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB
 - [ ] test_client (203 ids): create/drop/insert/list through the `Backend` trait; decide which apply
 - [ ] TPC-DS (100 ids): Ibis's queries, like TPC-H
 - [ ] `distinct(on=..., keep=...)`, `GroupedTable.order_by().mutate()`, negative slices
