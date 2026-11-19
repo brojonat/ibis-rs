@@ -16,6 +16,7 @@ pub(crate) struct Scope {
     pub prefix: &'static str,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct Tx<'a> {
     pub be: &'a Polars,
     /// Schema of the relation plain `Column`s refer to, for type inference.
@@ -25,17 +26,19 @@ pub(crate) struct Tx<'a> {
     pub col_prefix: &'static str,
     /// Correlated scalar subqueries already joined in: relation id -> column holding the value.
     pub subs: &'a [(u64, String)],
+    /// Inside a lambda: the names of its element and index parameters.
+    pub lambda: Option<(&'a str, Option<&'a str>)>,
 }
 
 fn f64_of(e: pl::Expr) -> pl::Expr {
     e.cast(pl::DataType::Float64)
 }
 
-fn null() -> pl::Expr {
+pub(crate) fn null() -> pl::Expr {
     pl::lit(pl::NULL)
 }
 
-fn lit_int(e: &Expr) -> Option<i64> {
+pub(crate) fn lit_int(e: &Expr) -> Option<i64> {
     match e {
         Expr::Literal(Value::Int(i), _) => Some(*i),
         Expr::Cast(inner, _) | Expr::Alias(inner, _) => lit_int(inner),
@@ -43,7 +46,7 @@ fn lit_int(e: &Expr) -> Option<i64> {
     }
 }
 
-fn lit_str(e: &Expr) -> Option<&str> {
+pub(crate) fn lit_str(e: &Expr) -> Option<&str> {
     match e {
         Expr::Literal(Value::String(s), _) => Some(s),
         Expr::Cast(inner, _) | Expr::Alias(inner, _) => lit_str(inner),
@@ -65,7 +68,10 @@ pub(crate) fn literal(v: &Value, t: &DataType) -> Result<pl::Expr> {
         Value::Binary(b) => pl::lit(b.as_slice()),
         Value::Date(d) => pl::lit(*d).cast(pl::DataType::Date),
         Value::Timestamp(us) => pl::lit(*us).cast(pl::DataType::Datetime(pl::TimeUnit::Microseconds, None)),
-        Value::Array(_) | Value::Struct(_) | Value::Map(_) => return unsupported("array, struct and map literals"),
+        // one value of a one-row column
+        Value::Array(_) | Value::Struct(_) | Value::Map(_) => {
+            return Ok(pl::lit(crate::series("", t, std::slice::from_ref(v))?).first());
+        }
     };
     Ok(if *t == DataType::Null { e } else { e.cast(to_pl(t)) })
 }
@@ -118,7 +124,7 @@ impl Tx<'_> {
             .find_map(|(i, s)| s.deref.get(&(rel.id, name.to_string())).map(|c| (i, c.clone())))
     }
 
-    fn dtype(&self, e: &Expr) -> Result<DataType> {
+    pub(crate) fn dtype(&self, e: &Expr) -> Result<DataType> {
         e.dtype(self.schema)
     }
 
@@ -212,8 +218,8 @@ impl Tx<'_> {
                 }
                 if *negated { found.not() } else { found }
             }
-            // TODO(nested)
-            Expr::Param(..) | Expr::ArrayLambda { .. } => return unsupported("array map and filter"),
+            Expr::Param(name, _) => self.param(name)?,
+            Expr::ArrayLambda { .. } => self.lambda(e)?,
         })
     }
 
@@ -458,8 +464,7 @@ impl Tx<'_> {
                 ))
                 .cast(t)
             }
-            // TODO(nested)
-            nested => return unsupported(format!("{nested:?}")),
+            _ => self.nested(e, f, args, &a)?,
         })
     }
 
@@ -503,8 +508,8 @@ impl Tx<'_> {
             // max/min of booleans: NULL for no rows, where any()/all() would say false/true
             Any => x.max(),
             All => x.min(),
-            // TODO(nested)
-            Collect => return unsupported("collect"),
+            // SQL's ARRAY_AGG of no rows is NULL
+            Collect => some(&x, x.clone().filter(x.clone().is_not_null()).implode(false)),
         }
         .cast(t))
     }

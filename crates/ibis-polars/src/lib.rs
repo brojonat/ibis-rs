@@ -12,12 +12,17 @@
 //! Polars has no subqueries, so correlated ones (`EXISTS`, a scalar subquery
 //! that refers to the outer table) are rewritten as joins.
 //!
+//! Arrays are Polars lists, structs are structs, and maps (Polars has no map
+//! type) are lists of `{key, value}` structs. Nested ops Polars has no
+//! expression for run row by row in Rust; see `nested.rs`.
+//!
 //! Not supported yet: `RANGE` window frames, min/max over a frame wider than
-//! 256 rows, outer joins on anything but equalities, and correlated scalar
-//! subqueries outside a filter. Those return
-//! [`ibis_core::Error::Unsupported`].
+//! 256 rows, outer joins on anything but equalities, correlated scalar
+//! subqueries outside a filter, and `map`/`filter` on an array with a function
+//! that reads a column. Those return [`ibis_core::Error::Unsupported`].
 
 mod expr;
+mod nested;
 mod plan;
 #[cfg(test)]
 mod tests;
@@ -29,10 +34,12 @@ use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, conform_to, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use polars::prelude as pl;
-use polars::prelude::{IntoLazy, NamedFrom};
+use polars::prelude::{IntoLazy, IntoSeries, NamedFrom};
 
 pub struct Polars {
     tables: Mutex<BTreeMap<String, (pl::DataFrame, Schema)>>,
+    /// Views: named queries, planned again each time they are read.
+    views: Mutex<BTreeMap<String, Table>>,
 }
 
 impl Default for Polars {
@@ -129,8 +136,57 @@ pub(crate) fn series(name: &str, dtype: &DataType, vals: &[Value]) -> Result<pl:
     };
     let name: pl::PlSmallStr = name.into();
     let s = match dtype {
-        // TODO(nested)
-        t if t.is_nested() => return unsupported(format!("storing a column of type {t}")),
+        DataType::Array(item) => {
+            let lists = vals
+                .iter()
+                .map(|v| match v {
+                    Value::Array(items) => series("", item, items).map(Some),
+                    _ => Ok(None),
+                })
+                .collect::<Result<Vec<Option<pl::Series>>>>()?;
+            lists.into_iter().collect::<pl::ListChunked>().into_series().with_name(name)
+        }
+        // a map is stored as a list of its entries
+        DataType::Map(key, value) => {
+            let entry = DataType::Struct(vec![("key".into(), (**key).clone()), ("value".into(), (**value).clone())]);
+            let field = |name: &str, v: &Value| (name.to_string(), v.clone());
+            let lists: Vec<Value> = vals
+                .iter()
+                .map(|v| match v {
+                    Value::Map(entries) => Value::Array(
+                        entries.iter().map(|(k, v)| Value::Struct(vec![field("key", k), field("value", v)])).collect(),
+                    ),
+                    _ => Value::Null,
+                })
+                .collect();
+            return series(&name, &DataType::array(entry), &lists);
+        }
+        DataType::Struct(fields) => {
+            let columns = fields
+                .iter()
+                .enumerate()
+                .map(|(i, (field, t))| {
+                    // by name, or by position when the value's names are not the type's
+                    let of = |v: &Value| match v {
+                        Value::Struct(vs) => {
+                            vs.iter().find(|(n, _)| n == field).or_else(|| vs.get(i)).map(|(_, v)| v.clone())
+                        }
+                        _ => None,
+                    };
+                    let vs: Vec<Value> = vals.iter().map(|v| of(v).unwrap_or(Value::Null)).collect();
+                    series(field, t, &vs)
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let whole =
+                pl::StructChunked::from_series(name.clone(), vals.len(), columns.iter()).map_err(pl_err)?.into_series();
+            if vals.iter().all(|v| matches!(v, Value::Struct(_))) {
+                whole
+            } else {
+                let present: pl::BooleanChunked = vals.iter().map(|v| matches!(v, Value::Struct(_))).collect();
+                let missing = pl::Series::full_null(name, vals.len(), whole.dtype());
+                whole.zip_with(&present, &missing).map_err(pl_err)?
+            }
+        }
         DataType::Boolean => pl::Series::new(
             name,
             vals.iter().map(|v| if let Value::Bool(b) = v { Some(*b) } else { None }).collect::<Vec<_>>(),
@@ -171,7 +227,8 @@ fn frame(schema: &Schema, data: &[RecordBatch]) -> Result<pl::DataFrame> {
     pl::DataFrame::new(rows.len(), cols).map_err(pl_err)
 }
 
-fn value(av: pl::AnyValue) -> Result<Value> {
+/// A Polars value as the Ibis value of type `t`.
+pub(crate) fn value(av: pl::AnyValue, t: &DataType) -> Result<Value> {
     use pl::AnyValue as A;
     Ok(match av {
         A::Null => Value::Null,
@@ -186,6 +243,7 @@ fn value(av: pl::AnyValue) -> Result<Value> {
         A::UInt64(i) => Value::Int(i as i64),
         A::Float32(f) => Value::Float(f as f64),
         A::Float64(f) => Value::Float(f),
+        A::Decimal(v, _, scale) => Value::Float(v as f64 / 10f64.powi(scale as i32)),
         A::String(s) => Value::String(s.to_string()),
         A::StringOwned(s) => Value::String(s.to_string()),
         A::Binary(b) => Value::Binary(b.to_vec()),
@@ -196,13 +254,41 @@ fn value(av: pl::AnyValue) -> Result<Value> {
             pl::TimeUnit::Microseconds => t,
             pl::TimeUnit::Milliseconds => t * 1_000,
         }),
+        A::List(items) => match t {
+            DataType::Map(key, val) => {
+                let entry = |av: pl::AnyValue| match fields(av)?.as_mut_slice() {
+                    [k, v] => Ok((value(std::mem::take(k), key)?, value(std::mem::take(v), val)?)),
+                    other => Err(Error::Other(format!("polars: a map entry with {} fields", other.len()))),
+                };
+                Value::Map(items.iter().map(entry).collect::<Result<_>>()?)
+            }
+            _ => {
+                let item = t.item().unwrap_or(&DataType::Null);
+                Value::Array(items.iter().map(|av| value(av, item)).collect::<Result<_>>()?)
+            }
+        },
+        av @ (A::Struct(..) | A::StructOwned(_)) => {
+            let DataType::Struct(types) = t else {
+                return Err(Error::Other(format!("polars: a struct where {t} was expected")));
+            };
+            let vals = fields(av)?.into_iter().zip(types).map(|(av, (name, t))| Ok((name.clone(), value(av, t)?)));
+            Value::Struct(vals.collect::<Result<_>>()?)
+        }
         other => return Err(Error::Other(format!("polars: unsupported value {other:?}"))),
     })
 }
 
+/// The field values of a struct value, in order.
+fn fields(av: pl::AnyValue) -> Result<Vec<pl::AnyValue<'static>>> {
+    match av.into_static() {
+        pl::AnyValue::StructOwned(payload) => Ok(payload.0),
+        other => Err(Error::Other(format!("polars: expected a struct, got {other:?}"))),
+    }
+}
+
 impl Polars {
     pub fn new() -> Self {
-        Polars { tables: Mutex::new(BTreeMap::new()) }
+        Polars { tables: Mutex::new(BTreeMap::new()), views: Mutex::new(BTreeMap::new()) }
     }
 
     /// Make a Polars `DataFrame` queryable under `name`.
@@ -217,8 +303,13 @@ impl Polars {
     }
 
     pub(crate) fn frame(&self, name: &str) -> Result<pl::LazyFrame> {
-        match self.tables.lock().unwrap().get(name) {
-            Some((df, _)) => Ok(df.clone().lazy()),
+        if let Some((df, _)) = self.tables.lock().unwrap().get(name) {
+            return Ok(df.clone().lazy());
+        }
+        // cloned out, so the lock is free while the view's own tables are read
+        let view = self.views.lock().unwrap().get(name).cloned();
+        match view {
+            Some(view) => self.lazy(&view),
             None => Err(Error::Invalid(format!("polars: no table named {name:?}"))),
         }
     }
@@ -248,7 +339,7 @@ impl Polars {
                 t => to_pl(t),
             };
             let s = c.as_materialized_series().cast(&target).map_err(pl_err)?;
-            cols.push(s.iter().map(value).collect::<Result<_>>()?);
+            cols.push(s.iter().map(|av| value(av, &f.dtype)).collect::<Result<_>>()?);
         }
         Ok((0..df.height()).map(|i| cols.iter().map(|c| c[i].clone()).collect()).collect())
     }
@@ -270,8 +361,11 @@ impl Backend for Polars {
     }
 
     fn table(&self, name: &str) -> Result<Table> {
-        match self.tables.lock().unwrap().get(name) {
-            Some((_, schema)) => Ok(Table::named(name, schema.clone())),
+        if let Some((_, schema)) = self.tables.lock().unwrap().get(name) {
+            return Ok(Table::named(name, schema.clone()));
+        }
+        match self.views.lock().unwrap().get(name) {
+            Some(view) => Ok(Table::named(name, view.schema().clone())),
             None => Err(Error::Invalid(format!("polars: no table named {name:?}"))),
         }
     }
@@ -312,7 +406,27 @@ impl Backend for Polars {
         Ok(())
     }
 
+    fn create_view(&self, name: &str, source: &Table, overwrite: bool) -> Result<()> {
+        let taken = self.tables.lock().unwrap().contains_key(name);
+        let mut views = self.views.lock().unwrap();
+        if taken || (!overwrite && views.contains_key(name)) {
+            return Err(Error::Invalid(format!("polars: {name:?} already exists")));
+        }
+        views.insert(name.to_string(), source.clone());
+        Ok(())
+    }
+
+    fn drop_view(&self, name: &str, force: bool) -> Result<()> {
+        match self.views.lock().unwrap().remove(name) {
+            None if !force => Err(Error::Invalid(format!("polars: no view named {name:?}"))),
+            _ => Ok(()),
+        }
+    }
+
     fn list_tables(&self) -> Result<Vec<String>> {
-        Ok(self.tables.lock().unwrap().keys().cloned().collect())
+        let mut names: Vec<String> = self.tables.lock().unwrap().keys().cloned().collect();
+        names.extend(self.views.lock().unwrap().keys().cloned());
+        names.sort();
+        Ok(names)
     }
 }

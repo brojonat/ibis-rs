@@ -29,6 +29,7 @@ polars = { version = "0.55.2", default-features = false, features = [
   "lazy", "fmt", "timezones", "dtype-date", "dtype-datetime", "dtype-i8", "dtype-i16", "dtype-u8", "dtype-u16", "dtype-decimal",
   "strings", "regex", "temporal", "round_series", "rank", "cum_agg", "is_in", "abs", "sign", "log", "trigonometry",
   "semi_anti_join", "cross_join", "concat_str", "string_pad", "string_reverse", "coalesce", "range", "dtype-array", "dtype-struct", "string_encoding", "string_to_integer", "dtype-u128", "dtype-i128",
+  "list_eval", "list_gather", "list_sets", "list_drop_nulls",
 ] }
 thiserror = "2"
 serde_json = "1"

@@ -1,7 +1,8 @@
 //! Relations -> Polars `LazyFrame`s.
 
 use ibis_core::{
-    AggFunc, BinaryOp, DataType, Expr, JoinKind, Rel, RelOp, Result, Schema, SetKind, Side, SortKey, UnaryOp, Value,
+    AggFunc, BinaryOp, DataType, Expr, Field, Func, JoinKind, Rel, RelOp, Result, Schema, SetKind, Side, SortKey,
+    UnaryOp, Value,
 };
 use polars::prelude as pl;
 
@@ -48,6 +49,21 @@ fn conjuncts<'e>(preds: impl IntoIterator<Item = &'e Expr>) -> Vec<&'e Expr> {
         go(p, &mut out);
     }
     out
+}
+
+/// `e` with each `unnest(arr)` replaced by a column that will hold the
+/// elements of `arr`; the columns are added to `lifted` with their arrays.
+fn lift_unnests(e: Expr, schema: &Schema, lifted: &mut Vec<(String, Expr, DataType)>) -> Result<Expr> {
+    match e {
+        Expr::Func(Func::Unnest, mut args) if !args.is_empty() => {
+            let array = args.remove(0);
+            let name = format!("__u{}", lifted.len());
+            let t = array.dtype(schema)?;
+            lifted.push((name.clone(), array, t));
+            Ok(Expr::Column(name))
+        }
+        e => e.map_children(&mut |child| lift_unnests(child, schema, lifted)),
+    }
 }
 
 fn has_field(e: &Expr) -> bool {
@@ -97,7 +113,7 @@ struct Correlation {
 
 impl Planner<'_> {
     fn tx<'s>(&'s self, schema: &'s Schema, scopes: &'s [Scope]) -> Tx<'s> {
-        Tx { be: self.be, schema, scopes, col_prefix: "", subs: &[] }
+        Tx { be: self.be, schema, scopes, col_prefix: "", subs: &[], lambda: None }
     }
 
     pub(crate) fn rel(&self, rel: &Rel) -> Result<pl::LazyFrame> {
@@ -135,8 +151,20 @@ impl Planner<'_> {
                 self.join(left, right, *how, predicates, outputs)?
             }
             RelOp::SetOp { kind, distinct, left, right } => self.set_op(rel, *kind, *distinct, left, right)?,
-            // TODO(nested)
-            RelOp::Unnest { .. } => return unsupported("unnest"),
+            RelOp::Unnest { input, column, offset, keep_empty } => {
+                let lf = self.rel(input)?;
+                let options = pl::ExplodeOptions { empty_as_null: *keep_empty, keep_nulls: *keep_empty };
+                match offset {
+                    None => lf.explode(pl::cols([column.as_str()]), options),
+                    Some(offset) => {
+                        // the elements' positions, exploded alongside them
+                        let len = pl::col(column.as_str()).list().len().cast(pl::DataType::Int64);
+                        let positions = pl::int_ranges(pl::lit(0i64), len, pl::lit(1i64), pl::DataType::Int64);
+                        lf.with_columns([positions.alias(offset.as_str())])
+                            .explode(pl::cols([column.as_str(), offset.as_str()]), options)
+                    }
+                }
+            }
         })
     }
 
@@ -156,6 +184,32 @@ impl Planner<'_> {
             });
             return Ok(lf.select(kept.chain(cols).collect::<Vec<_>>()));
         }
+        // `arr.unnest()`: the arrays become columns, the frame is exploded
+        // over them, and the expressions read the elements from there
+        let mut lifted: Vec<(String, Expr, DataType)> = vec![];
+        let (mut lf, mut wide) = (lf, None);
+        let lifted_exprs: Vec<(String, Expr)>;
+        let (schema, exprs) = if exprs.iter().any(|(_, e)| e.is_unnest()) {
+            lifted_exprs = exprs
+                .iter()
+                .map(|(n, e)| Ok((n.clone(), lift_unnests(e.clone(), schema, &mut lifted)?)))
+                .collect::<Result<_>>()?;
+            let tx = self.tx(schema, &[]);
+            let arrays = lifted
+                .iter()
+                .map(|(name, array, t)| Ok(typed(tx.expr(array)?, t).alias(name.as_str())))
+                .collect::<Result<Vec<_>>>()?;
+            let names = lifted.iter().map(|(name, ..)| name.as_str());
+            lf = lf
+                .with_columns(arrays)
+                .explode(pl::cols(names), pl::ExplodeOptions { empty_as_null: false, keep_nulls: false });
+            let elements =
+                lifted.iter().map(|(name, _, t)| Field::new(name, t.item().cloned().unwrap_or(DataType::Null)));
+            let fields = schema.fields.iter().cloned().chain(elements).collect();
+            (&*wide.insert(Schema::new(fields)), lifted_exprs.as_slice())
+        } else {
+            (schema, exprs)
+        };
         // `with_columns` broadcasts reductions to every row, which is what a
         // reduction in a projection means; temporary names keep new columns
         // from shadowing the inputs other expressions still read.
@@ -207,7 +261,7 @@ impl Planner<'_> {
                 }
             }
         }
-        let tx = Tx { be: self.be, schema: &input.schema, scopes: &[], col_prefix: "", subs: &subs };
+        let tx = Tx { be: self.be, schema: &input.schema, scopes: &[], col_prefix: "", subs: &subs, lambda: None };
         let preds = rest.iter().map(|p| tx.expr(p)).collect::<Result<Vec<_>>>()?;
         let lf = filtered(lf, preds);
         Ok(if subs.is_empty() { lf } else { lf.select(input.schema.names().map(pl::col).collect::<Vec<_>>()) })
@@ -225,7 +279,14 @@ impl Planner<'_> {
         let scopes = [Scope { id: outer.id, deref: outer.deref_map(), prefix: "" }];
         let outer_tx = self.tx(&outer.schema, &scopes);
         let local_tx = self.tx(&inner.schema, &[]);
-        let both_tx = Tx { be: self.be, schema: &inner.schema, scopes: &scopes, col_prefix: inner_prefix, subs: &[] };
+        let both_tx = Tx {
+            be: self.be,
+            schema: &inner.schema,
+            scopes: &scopes,
+            col_prefix: inner_prefix,
+            subs: &[],
+            lambda: None,
+        };
         let mut c = Correlation { keys: vec![], local: vec![], residual: vec![] };
         for p in conjuncts(predicates) {
             if !has_field(p) {
