@@ -22,7 +22,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `Backend::create_table_with(name, schema, data, CreateOptions { overwrite, temp })`: a table from a schema and data, failing on an existing table unless `overwrite`, temporary with `temp` (not on Trino, Spark, Impala or ClickHouse). `Backend::create_table_from(name, query, options)` creates one from a query, which may read the table it replaces.
 - A `Field` with `nullable: false` is created `NOT NULL`, and `Backend::table` reports it on DuckDB, SQLite, Postgres, MySQL, ClickHouse and Trino.
 - `Backend::upsert(name, data, on)` and `upsert_from(name, query, on)`: `MERGE INTO` on DuckDB and Postgres, `Unsupported` elsewhere (as in Ibis).
-- `Backend::sql(query)`: a query in the engine's own SQL as a table expression (`RelOp::Sql`, `Table::sql`), on every SQL backend.
+- `Backend::sql(query)`: a query in the engine's own SQL as a table expression (`RelOp::Sql`, `Table::sql`), on every backend.
+- ibis-polars: `Backend::sql`, through Polars's own SQL (`polars-sql`, the `sql` feature of the `polars` crate; a new dependency, with `sqlparser` behind it). The query sees the connection's tables and views.
 - `ibis_sql::ddl`: `create_table`, `create_table_statement`, `upsert_from`, `sql`; `SqlClient::after_create`. `Dialect` hooks `column_type`, `temporary`, `create_table_suffix`, `merge`.
 - `ibis_core::scratch_name`: a name for a table or view the library creates and drops again.
 - Conformance: 18 more of Ibis's client tests (create options, temporary tables, nullability, `sql`, upsert, inserts by column name, a table replaced by a query on itself): 43 in all.

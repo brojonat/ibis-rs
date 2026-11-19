@@ -9,6 +9,9 @@
 //! Ibis output type where Polars would infer something else (Polars keeps
 //! `int32 + int32` in `int32`; Ibis widens to `int64`).
 //!
+//! `Backend::sql` hands a query to Polars's own SQL (`polars-sql`), with the
+//! connection's tables and views registered.
+//!
 //! Polars has no subqueries, so correlated ones (`EXISTS`, a scalar subquery
 //! that refers to the outer table) are rewritten as joins.
 //!
@@ -314,6 +317,23 @@ impl Polars {
         }
     }
 
+    /// A query in Polars's SQL (`polars-sql`), over every table and view.
+    pub(crate) fn sql_frame(&self, query: &str) -> Result<pl::LazyFrame> {
+        let mut context = polars::sql::SQLContext::new();
+        let tables: Vec<(String, pl::LazyFrame)> =
+            self.tables.lock().unwrap().iter().map(|(name, (df, _))| (name.clone(), df.clone().lazy())).collect();
+        for (name, lf) in tables {
+            context.register(&name, lf);
+        }
+        // cloned out, so the lock is free while each view's own tables are read
+        let views: Vec<(String, Table)> =
+            self.views.lock().unwrap().iter().map(|(name, view)| (name.clone(), view.clone())).collect();
+        for (name, view) in views {
+            context.register(&name, self.lazy(&view)?);
+        }
+        context.execute(query).map_err(pl_err)
+    }
+
     /// The Polars query for an expression, for callers who want to keep
     /// working in Polars.
     pub fn lazy(&self, table: &Table) -> Result<pl::LazyFrame> {
@@ -415,6 +435,16 @@ impl Backend for Polars {
         let new = frame(schema, &conform_to(data, schema)?)?;
         *df = if overwrite { new } else { df.vstack(&new).map_err(pl_err)? };
         Ok(())
+    }
+
+    fn sql(&self, query: &str) -> Result<Table> {
+        let query = query.trim().trim_end_matches(';').trim_end();
+        let schema = self.sql_frame(query)?.collect_schema().map_err(pl_err)?;
+        let fields = schema
+            .iter()
+            .map(|(name, dtype)| Ok(Field::new(name.as_str(), from_pl(dtype)?)))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(Table::sql(query, Schema::new(fields)))
     }
 
     fn create_view(&self, name: &str, source: &Table, overwrite: bool) -> Result<()> {

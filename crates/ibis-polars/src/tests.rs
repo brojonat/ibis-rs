@@ -256,6 +256,20 @@ fn create_table_without_overwrite_keeps_a_table_that_is_there() -> Result<()> {
     con.insert("orders", &data, false)?;
     con.create_table_from("orders", &t.filter([col("amount").gt(lit(100))])?, CreateOptions::REPLACE)?;
     assert_eq!(rows(&con, &con.table("orders")?)?.len(), 3);
-    assert!(matches!(con.sql("SELECT 1"), Err(Error::Unsupported { .. })));
+    Ok(())
+}
+
+#[test]
+fn sql_is_a_table_other_operations_run_on() -> Result<()> {
+    let (con, t) = orders()?;
+    con.create_view("big", &t.filter([col("amount").gt(lit(100))])?, false)?;
+    let totals = con.sql("SELECT region, SUM(amount) AS total FROM orders GROUP BY region;")?;
+    assert_eq!(totals.schema().to_string(), "region: string, total: int32");
+    let top = totals.filter([col("total").gt(lit(200))])?.select([col("region")])?;
+    assert_eq!(rows(&con, &top)?, [vec![Value::from("us")]]);
+    // a view is a table to the query, and a query that does not parse is an error
+    assert_eq!(rows(&con, &con.sql("SELECT amount FROM big")?)?.len(), 3);
+    assert!(con.sql("SELECT nope FROM orders").is_err());
+    assert!(con.sql("not sql").is_err());
     Ok(())
 }

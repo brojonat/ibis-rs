@@ -24,7 +24,7 @@ Ibis's 22 TPC-H queries:
 | backend | Ibis tests (905) | TPC-H (22) |
 |---|---|---|
 | DuckDB | 905 | 22 |
-| Polars (default) | 895 (9 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns; `con.sql` is not supported) | 22 |
+| Polars (default) | 896 (9 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns) | 22 |
 | Trino | 892 (13 expected failures: no temporary tables, no `MERGE` in the test catalog, no function for the most frequent element of an array) | 22 |
 | Spark SQL | 891 (14 expected failures: the same, and no `NOT NULL` columns) | 22 |
 | Postgres | 879 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
@@ -119,8 +119,9 @@ with them:
 - `upsert` is `MERGE INTO`, on the engines that have it: DuckDB and Postgres.
   The data may have only some of the table's columns; the rest keep their
   values, and are NULL in new rows.
-- `sql` works on every SQL backend; its columns are read from the engine
-  through a view that exists for just that long. Polars has no SQL.
+- `sql` takes the engine's own SQL. On a SQL backend its columns are read
+  through a view that exists for just that long; on Polars the query goes to
+  Polars's SQL (`polars-sql`), over the connection's tables and views.
 
 ### Arrays, structs and maps
 

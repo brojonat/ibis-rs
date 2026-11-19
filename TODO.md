@@ -2,7 +2,7 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 905 Ibis tests (862 expression cases, 43 client tests) + 22 TPC-H queries. DuckDB 905, Polars 895, Trino 892, Spark 891, Postgres 879, ClickHouse 852, Impala 576, MySQL 563, SQLite 562; everything else is an expected failure with its reason in the case file (README has the table), except `con.sql` on Polars, which reports `unsupported`.
+Current: 905 Ibis tests (862 expression cases, 43 client tests) + 22 TPC-H queries. DuckDB 905, Polars 896, Trino 892, Spark 891, Postgres 879, ClickHouse 852, Impala 576, MySQL 563, SQLite 562; everything else is an expected failure with its reason in the case file (README has the table).
 Coverage of the Ibis suite: 908 of 1,778 applicable test ids (51%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
@@ -42,7 +42,7 @@ Coverage of the Ibis suite: 908 of 1,778 applicable test ids (51%); per module a
   - [x] Slice 1, the rest: test_insert_using_col_name_not_position (3), test_overwrite (`Backend::create_table_from`), views on Polars
   - [x] Slice 2: `Backend::create_table_with` with `CreateOptions { overwrite, temp }` (now the one method a backend implements to create a table), `NOT NULL` columns written and read back, `upsert`/`upsert_from` (`MERGE INTO`: DuckDB and Postgres), `Backend::sql` (`RelOp::Sql`). 18 ids ported; 43 of test_client's 83 applicable ids are still missing
   - [ ] Left from slices 1 and 2: test_insert_into_table_missing_columns (insert only the columns given, so a column's `DEFAULT` applies; needs a statement method on `Backend` for the test's DDL), test_create_table_timestamp (needs the timestamp scale; applies to Trino only)
-  - [ ] `con.sql` on Polars (Ibis uses Polars's `SQLContext`; that is the `polars-sql` crate, a dependency to decide on)
+  - [x] `con.sql` on Polars, through `polars-sql` (the Polars project's own crate, the `sql` feature of `polars`)
   - [ ] `upsert` where there is no `MERGE`: MySQL (`INSERT ... ON DUPLICATE KEY UPDATE`) and SQLite (`ON CONFLICT DO UPDATE`) have their own forms, both needing a unique index on the column; Ibis does not use them either
   - [ ] ClickHouse temporary tables: need a `session_id` on every request, and a session takes one request at a time
   - [ ] Slice 3: catalogs and databases (`list_catalogs`, `list_databases`, `create_database`, tables addressed by database)
