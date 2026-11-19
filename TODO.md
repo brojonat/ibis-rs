@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 887 Ibis tests (862 expression cases, 25 client tests) + 22 TPC-H queries. DuckDB 887, Trino 885, Spark 885, Postgres 861, ClickHouse 845, Polars 572 (nested types and views not supported yet), Impala 570, MySQL 553, SQLite 552; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 890 of 1,778 applicable test ids (50%); per module at https://brojonat.github.io/ibis-rs/
+Current: 905 Ibis tests (862 expression cases, 43 client tests) + 22 TPC-H queries. DuckDB 905, Polars 895, Trino 892, Spark 891, Postgres 879, ClickHouse 852, Impala 576, MySQL 563, SQLite 562; everything else is an expected failure with its reason in the case file (README has the table), except `con.sql` on Polars, which reports `unsupported`.
+Coverage of the Ibis suite: 908 of 1,778 applicable test ids (51%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -29,18 +29,22 @@ Coverage of the Ibis suite: 890 of 1,778 applicable test ids (50%); per module a
 - [x] ibis-mysql backend: 531/551 + 20 xfail, 22/22. Full outer joins are emulated (Ibis's own MySQL backend has none)
 - [x] ibis-trino backend (HTTP): 551/551, 22/22
 - [x] Arrays, structs and maps: `DataType`/`Value`, the Ibis operations, lambdas, unnest, collect; test_array, test_struct and test_map ported (311 cases) on DuckDB, Postgres, ClickHouse, Trino and Spark
+- [x] Polars: arrays, structs and maps (all 311 cases), unnest, collect, views. Lists, structs, and maps as lists of `{key, value}` structs; `crates/ibis-polars/src/nested.rs` has the split between Polars expressions and the row-by-row fallback
 
 ## Next: parity
 - [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
 - [ ] Rest of test_aggregation: grouped reductions, mode, argmin/argmax, approx, collect
 - [ ] Rest of test_string: translate, split, join, find_in_set, capitalize, slices
-- [ ] Polars: arrays, structs and maps (the 311 cases report `unsupported` today). Needs `to_pl`/`series`/`value` for lists and structs, the `list` and `struct` namespaces, `list.eval` for lambdas, `explode` for unnest; maps as a list of key/value structs
 - [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
 - [ ] Nested types, loose ends: `collect` options (`order_by`, `distinct`, `include_null`, `where`), several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB
 - [ ] test_client (203 ids), in slices. These test the connection API, not expressions: they run as procedural tests per backend (`crates/ibis-conformance/src/client.rs`, ids `client::<module>::<pytest id>`, no goldens)
   - [x] Slice 1, table lifecycle: `Backend::{drop_table, insert, insert_from, rename_table, create_view, drop_view, create_empty_table}`; shared DDL text in `ibis_sql::ddl` (`SqlClient`, `sql_client_methods!`); each backend's loader split from its `create_table` so `insert` reuses it. 25 ids ported, passing on all nine backends (Polars: views unsupported)
-  - [ ] Slice 1, the rest: test_insert_using_col_name_not_position (3), test_insert_into_table_missing_columns, test_create_table_timestamp (needs the timestamp scale), test_overwrite; views on Polars
-  - [ ] Slice 2: `create_table` options (`overwrite=False` errors on an existing table, `temp`), column nullability in DDL (test_nullable_input_output), `upsert`, `con.sql(query)` as a table expression
+  - [x] Slice 1, the rest: test_insert_using_col_name_not_position (3), test_overwrite (`Backend::create_table_from`), views on Polars
+  - [x] Slice 2: `Backend::create_table_with` with `CreateOptions { overwrite, temp }` (now the one method a backend implements to create a table), `NOT NULL` columns written and read back, `upsert`/`upsert_from` (`MERGE INTO`: DuckDB and Postgres), `Backend::sql` (`RelOp::Sql`). 18 ids ported; 43 of test_client's 83 applicable ids are still missing
+  - [ ] Left from slices 1 and 2: test_insert_into_table_missing_columns (insert only the columns given, so a column's `DEFAULT` applies; needs a statement method on `Backend` for the test's DDL), test_create_table_timestamp (needs the timestamp scale; applies to Trino only)
+  - [ ] `con.sql` on Polars (Ibis uses Polars's `SQLContext`; that is the `polars-sql` crate, a dependency to decide on)
+  - [ ] `upsert` where there is no `MERGE`: MySQL (`INSERT ... ON DUPLICATE KEY UPDATE`) and SQLite (`ON CONFLICT DO UPDATE`) have their own forms, both needing a unique index on the column; Ibis does not use them either
+  - [ ] ClickHouse temporary tables: need a `session_id` on every request, and a session takes one request at a time
   - [ ] Slice 3: catalogs and databases (`list_catalogs`, `list_databases`, `create_database`, tables addressed by database)
   - [ ] Slice 4: `ibis.memtable` (a relation holding its data; backends register it on execute), test_in_memory_table and friends
   - [x] Marked not applicable in conformance/not_applicable.json (now keyed by `module::test` as well as by module): the default/set/get backend options, `__array__`, interactive repr and mimebundle, `has_operation`, memtable bookkeeping through a mock, the suite's own fixture test
@@ -79,6 +83,7 @@ One compose service + one crate each; start in `EXPERIMENTAL` (README: "Adding t
 - [ ] Arrow in and out through the C Data Interface. Today `create_table` and results go through rows of `Value`, which is slow and memory-hungry on large tables
 - [ ] `polars://path`: scan a directory of parquet/CSV files lazily instead of holding tables in memory
 - [ ] Add Polars to `mise run bench` (Rust side, and Python Ibis's Polars backend as the baseline)
+- [ ] Nested ops that run row by row in Rust (`nested.rs`: zip, map get/contains/merge, `index`, `remove`, `unique`, `union`, `intersect`, `flatten`, `modes`, repeat, arrays of arrays) could be Polars expressions where one gives DuckDB's answer; `map`/`filter` with a function that reads a column needs the frame exploded and regrouped
 - [ ] Not supported yet (reported as `Error::Unsupported`): RANGE window frames, min/max over frames wider than 256 rows, std/var over a frame, outer joins on non-equality conditions, correlated scalar subqueries outside a filter or correlated by a non-equality, uncorrelated EXISTS
 
 ## Next: performance

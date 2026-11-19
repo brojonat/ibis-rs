@@ -14,30 +14,30 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. The shape to grow into is
 Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
 The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
-test, whether it is ported, and how each backend does on it: 890 of 1,778
+test, whether it is ported, and how each backend does on it: 908 of 1,778
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 887 ported Ibis tests (862 expression
-cases with a result from Python Ibis, 25 tests of the connection API) and
+Status: pre-alpha. Nine backends, 905 ported Ibis tests (862 expression
+cases with a result from Python Ibis, 43 tests of the connection API) and
 Ibis's 22 TPC-H queries:
 
-| backend | Ibis tests (887) | TPC-H (22) |
+| backend | Ibis tests (905) | TPC-H (22) |
 |---|---|---|
-| DuckDB | 887 | 22 |
-| Trino | 885 (2 expected failures: no function for the most frequent element of an array) | 22 |
-| Spark SQL | 885 (2 expected failures: the same) | 22 |
-| Postgres | 861 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
-| ClickHouse | 845 (42 expected failures, as in Ibis: an array, struct or map cannot be NULL there, and `x IN (NULL)` is false) | 22 |
-| Polars (default) | 572; arrays, structs, maps (311 cases) and views are not supported yet | 22 |
-| Impala | 570 (317 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`) | 22 |
-| MySQL | 553 (334 expected failures: no arrays, structs or maps, no NaN or infinity) | 22 |
-| SQLite | 552 (335 expected failures: no arrays, structs or maps, no NaN) | 22 |
+| DuckDB | 905 | 22 |
+| Polars (default) | 895 (9 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns; `con.sql` is not supported) | 22 |
+| Trino | 892 (13 expected failures: no temporary tables, no `MERGE` in the test catalog, no function for the most frequent element of an array) | 22 |
+| Spark SQL | 891 (14 expected failures: the same, and no `NOT NULL` columns) | 22 |
+| Postgres | 879 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
+| ClickHouse | 852 (53 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`; and no temporary tables over HTTP) | 22 |
+| Impala | 576 (329 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`) | 22 |
+| MySQL | 563 (342 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`) | 22 |
+| SQLite | 562 (343 expected failures: no arrays, structs or maps, no NaN, no `MERGE`) | 22 |
 
 Output column names and types match Ibis's on all 862. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal` (first tier), `test_join`, `test_window`, `test_set_ops`,
-`test_conditionals`, `test_array`, `test_struct`, `test_map`, and the first
-part of `test_client`. What's next is in [TODO.md](TODO.md).
+`test_conditionals`, `test_array`, `test_struct`, `test_map`, and about half
+of `test_client`. What's next is in [TODO.md](TODO.md).
 
 ## Usage
 
@@ -88,16 +88,39 @@ A connection also creates and fills tables, as Ibis's does:
 ```rust
 con.create_table("employees", &batches)?;           // from Arrow data; replaces a table of that name
 con.create_empty_table("audit", &schema)?;          // from a schema
+con.create_table_with("scratch", &schema, &batches, CreateOptions { temp: true, overwrite: false })?;
+con.create_table_from("top", &t.order_by([desc("salary")])?.limit(10, 0), CreateOptions::REPLACE)?;
 con.insert("employees", &more_batches, false)?;     // append; `true` replaces the rows
 con.insert_from("audit", &t.filter([col("salary").gt(100)])?, false)?;  // INSERT INTO ... SELECT
+con.upsert("employees", &changed_batches, "id")?;   // update the rows whose id matches, insert the rest
+con.upsert_from("employees", &con.table("staging")?, "id")?;
 con.create_view("well_paid", &t.filter([col("salary").gt(100)])?, false)?;
 con.rename_table("audit", "audit_2026")?;
 con.drop_view("well_paid", true)?;                  // `true`: fine if it is not there
 con.drop_table("audit_2026", false)?;
+
+let recent = con.sql("SELECT * FROM events WHERE ts > now() - INTERVAL 1 DAY")?;  // the engine's own SQL
+let per_user = recent.group_by(["user_id"]).agg([count().name("n")])?;           // ... as a table expression
 ```
 
 Inserted data is matched to the table's columns by name (by position if the
-names differ) and cast to their types. On Polars a view is not supported yet.
+names differ) and cast to their types. The options and what each engine does
+with them:
+
+- `CreateOptions { overwrite, temp }`: without `overwrite`, creating a table
+  that is already there is an error (`create_table` and `create_empty_table`
+  replace it). `temp` makes a table that goes with the connection; Trino,
+  Spark and Impala have none, and ClickHouse's need a session this HTTP client
+  does not keep.
+- A field with `nullable: false` becomes a `NOT NULL` column, and `con.table`
+  reads that back (not on Polars, Spark or Impala, which have no such
+  columns). Only a stored table's schema carries it: the schema of anything
+  derived from the table is nullable throughout.
+- `upsert` is `MERGE INTO`, on the engines that have it: DuckDB and Postgres.
+  The data may have only some of the table's columns; the rest keep their
+  values, and are NULL in new rows.
+- `sql` works on every SQL backend; its columns are read from the engine
+  through a view that exists for just that long. Polars has no SQL.
 
 ### Arrays, structs and maps
 
@@ -128,7 +151,7 @@ itself. What each engine stores them as:
 | Spark | `ARRAY` | `STRUCT` | `MAP` | no `modes` |
 | ClickHouse | `Array` | named `Tuple` | `Map` | none of the three can be NULL: a NULL one is stored as an empty array or map, or a struct of NULLs |
 | Postgres | `T[]` | `JSONB` | `JSONB` | no arrays of arrays; `create_table` records the Ibis type of each such column in a column comment, and `table` reads it back |
-| Polars | | | | not supported yet |
+| Polars | list | struct | list of `{key, value}` structs | ops Polars has no expression for (zip, map lookups, `index`, `remove`, ...) run row by row in Rust; `map`/`filter` with a function that reads a column is not supported |
 | SQLite, MySQL, Impala | | | | no such types (as in Ibis) |
 
 Column references come in two forms, as in Ibis: `col("x")` is unbound (Ibis's
@@ -287,7 +310,9 @@ libraries emit different SQL.
   method, the default SQL in `ibis-sql`, and dialect overrides where engines
   differ. Port the Ibis tests that cover it.
 - **A SQL backend:** a crate with a `Dialect` impl plus a `Backend` impl that
-  executes SQL and returns Arrow (`ibis-clickhouse` and `ibis-trino` are the
+  executes SQL and returns Arrow; implementing `ibis_sql::SqlClient` (run a
+  statement, load rows) and putting `ibis_sql::sql_client_methods!()` in the
+  `impl Backend` gives it the table, view, upsert and `sql` methods (`ibis-clickhouse` and `ibis-trino` are the
   smallest examples; `ibis-mysql` shows an engine far from the defaults, and
   `ibis-spark` one reached over HiveServer2: an engine that speaks it needs
   only a dialect on top of `ibis-hiveserver2`).

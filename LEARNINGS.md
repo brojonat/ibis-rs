@@ -488,3 +488,45 @@ A type's text form has to survive what a table can hold: `struct<left join:
 int64>` (a field name with a space, from Ibis's test_keyword_fields) went
 into a Postgres column comment and did not parse back until the type parser
 read field names up to the colon rather than as one word.
+
+## Polars: `list.eval` sees the list and nothing else
+
+Inside `list.eval` (and so inside a lambda's body, or any per-element trick)
+a named column is an error: "named columns are not allowed in `eval`". That
+rules out a Polars expression for anything that pairs a list with another
+column per row: zipping two arrays, looking a column's value up in a map,
+the position of a column's value in an array. Those run in `rowwise`
+(`crates/ibis-polars/src/nested.rs`): a `map_many` closure that turns each
+row's arguments into `Value`s, computes the answer as DuckDB gives it, and
+builds the output series. It is slower than a kernel and it is correct on
+columns. Before replacing one with a Polars expression, check it against a
+column argument, not only the literals most Ibis cases use. Two more traps
+in the same file: `concat_list` of lists splices them into one list rather
+than nesting them (so an array of arrays is built row by row), and
+`lit(Series)` is a column of the series's length, which only behaves as a
+scalar after `.first()`.
+
+## NOT NULL belongs to stored columns, not to query results
+
+`Field::nullable` reaches Arrow: `rows_to_batch` refuses a NULL in a field
+that is not nullable. A `NOT NULL` column read through an outer join is NULL
+for the unmatched rows, so a derived relation that kept its input's fields
+would fail to build its own result. `Table::wrap` therefore resets every
+field of a derived schema to nullable, and only `Table::named` (what
+`Backend::table` returns) keeps what the catalog says. ClickHouse reports an
+array, tuple or map column as nullable although its type is not `Nullable`:
+it takes a NULL on insert and stores the empty value, and `insert` conforms
+data to the table's schema before sending it.
+
+## Temporary tables are not where the catalog queries look
+
+`Backend::table` reads a table's columns from the catalog, and a temporary
+table is elsewhere in each engine: Postgres keeps it in a per-connection
+schema (`pg_my_temp_schema()`), not `current_schema()`; MySQL does not list
+it in `information_schema` at all (`SHOW COLUMNS FROM` finds it); SQLite's
+`pragma_table_info` and DuckDB's `DESCRIBE` resolve the name the way a query
+does and need nothing. ClickHouse's temporary tables last a session, and
+each HTTP request is its own unless it carries a `session_id`; a session
+also takes one request at a time, which the conformance run (tests on one
+connection, sometimes from two threads) would trip over. It is marked as
+having none.

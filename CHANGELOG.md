@@ -17,7 +17,21 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Conformance: 25 of Ibis's tests of the connection API (`test_client`, and the two of that kind in `test_struct` and `test_map`) run as procedures against each backend (`crates/ibis-conformance/src/client.rs`).
 - Conformance: `test_array`, `test_struct` and `test_map` ported, 311 cases. `conformance/memtables.json` takes any Ibis type for a column and gained Ibis's `array_types`, `struct` and `map` tables.
 
+- ibis-polars: arrays, structs and maps. An array is a Polars list, a struct a struct, a map a list of `{key, value}` structs; tables, literals and results carry all three. Operations Polars has an expression for become that expression; the others (`zip`, map lookups and merges, `index`, `remove`, `unique`, `union`, `intersect`, `flatten`, `modes`, repeat) are computed row by row in Rust, so they work on columns as well as literals. `map` and `filter` run inside `list.eval`; a function that reads a column there is `Unsupported`. `unnest` (in a select, inside an expression, or `Table::unnest`) explodes the frame; `collect` gathers a group into a list. This supersedes "Polars does not support them yet" above.
+- ibis-polars: views (`create_view`, `drop_view`): a named query, planned again each time it is read.
+- `Backend::create_table_with(name, schema, data, CreateOptions { overwrite, temp })`: a table from a schema and data, failing on an existing table unless `overwrite`, temporary with `temp` (not on Trino, Spark, Impala or ClickHouse). `Backend::create_table_from(name, query, options)` creates one from a query, which may read the table it replaces.
+- A `Field` with `nullable: false` is created `NOT NULL`, and `Backend::table` reports it on DuckDB, SQLite, Postgres, MySQL, ClickHouse and Trino.
+- `Backend::upsert(name, data, on)` and `upsert_from(name, query, on)`: `MERGE INTO` on DuckDB and Postgres, `Unsupported` elsewhere (as in Ibis).
+- `Backend::sql(query)`: a query in the engine's own SQL as a table expression (`RelOp::Sql`, `Table::sql`), on every SQL backend.
+- `ibis_sql::ddl`: `create_table`, `create_table_statement`, `upsert_from`, `sql`; `SqlClient::after_create`. `Dialect` hooks `column_type`, `temporary`, `create_table_suffix`, `merge`.
+- `ibis_core::scratch_name`: a name for a table or view the library creates and drops again.
+- Conformance: 18 more of Ibis's client tests (create options, temporary tables, nullability, `sql`, upsert, inserts by column name, a table replaced by a query on itself): 43 in all.
+
 ### Changed
+- **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
+- `create_table` now creates a `NOT NULL` column for an Arrow field that is not nullable. `ibis_sql::create_table_sql` writes `NOT NULL` and the dialect's storage clause.
+- The schema of every relation derived from a table is nullable in all its fields: `NOT NULL` describes a stored column, not what a query returns.
+- MySQL and Postgres `table` find a temporary table (MySQL through `SHOW COLUMNS`, Postgres in the connection's temporary schema).
 - `Expr::contains` takes an expression or a plain value (`contains("a")`, `contains(1)`, `contains(col("k"))`) instead of a `&str`, and means substring, element or key by the type it is called on. `length` and `repeat` likewise serve strings, arrays and maps. Existing calls compile unchanged.
 - `Dialect::default_type_name` returns `Unsupported` for nested types; `Dialect::type_name` is where an engine names them.
 - Conformance: backends run side by side, one thread each, for loading fixtures, the Ibis cases and TPC-H. Outcomes are reported in the same order as before. The runner does the Ibis cases and TPC-H at the same time.
