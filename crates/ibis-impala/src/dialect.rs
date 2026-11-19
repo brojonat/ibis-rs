@@ -53,6 +53,16 @@ impl Dialect for ImpalaDialect {
     fn name(&self) -> &str {
         "impala"
     }
+    /// Every column takes NULL: there is no `NOT NULL` to declare.
+    fn column_type(&self, t: &DataType, _nullable: bool) -> Result<String> {
+        self.type_name(t)
+    }
+    fn temporary(&self) -> Option<&'static str> {
+        None
+    }
+    fn create_table_suffix(&self) -> &'static str {
+        " STORED AS PARQUET"
+    }
 
     fn quote_ident(&self, s: &str) -> String {
         format!("`{}`", s.replace('`', "``"))

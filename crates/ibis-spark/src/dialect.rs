@@ -44,6 +44,13 @@ impl Dialect for SparkDialect {
     fn name(&self) -> &str {
         "spark"
     }
+    /// Every column takes NULL: there is no `NOT NULL` to declare.
+    fn column_type(&self, t: &DataType, _nullable: bool) -> Result<String> {
+        self.type_name(t)
+    }
+    fn temporary(&self) -> Option<&'static str> {
+        None
+    }
 
     fn quote_ident(&self, s: &str) -> String {
         format!("`{}`", s.replace('`', "``"))

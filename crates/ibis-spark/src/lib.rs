@@ -27,7 +27,7 @@ use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_dat
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_hiveserver2::{Connection, Options, ResultSet, Values};
 use ibis_sql::json::{parse_json, value_to_json};
-use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile};
 
 pub use dialect::SparkDialect;
 use dialect::quote_str;
@@ -299,17 +299,6 @@ impl Backend for Spark {
             })
             .collect::<Vec<_>>();
         Ok(Table::named(name, Schema::new(fields)))
-    }
-
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Other("create_table needs at least one batch".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let q = self.dialect.quote_ident(name);
-        self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
-        self.execute_statement(&create_table_sql(&self.dialect, name, &schema)?)?;
-        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

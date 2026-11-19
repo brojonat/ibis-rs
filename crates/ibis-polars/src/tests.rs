@@ -244,3 +244,18 @@ fn a_view_is_a_named_query() -> Result<()> {
     assert_eq!(con.list_tables()?, ["orders"]);
     Ok(())
 }
+
+#[test]
+fn create_table_without_overwrite_keeps_a_table_that_is_there() -> Result<()> {
+    let (con, t) = orders()?;
+    let data = con.execute(&t)?;
+    assert!(con.create_table_with("orders", t.schema(), &data, CreateOptions::default()).is_err());
+    con.create_table_with("orders", t.schema(), &[], CreateOptions::REPLACE)?;
+    assert!(rows(&con, &con.table("orders")?)?.is_empty());
+    // a query that reads the table it replaces
+    con.insert("orders", &data, false)?;
+    con.create_table_from("orders", &t.filter([col("amount").gt(lit(100))])?, CreateOptions::REPLACE)?;
+    assert_eq!(rows(&con, &con.table("orders")?)?.len(), 3);
+    assert!(matches!(con.sql("SELECT 1"), Err(Error::Unsupported { .. })));
+    Ok(())
+}

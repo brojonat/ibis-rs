@@ -145,6 +145,24 @@ pub trait Dialect: Send + Sync {
         false
     }
 
+    /// A column's type in `CREATE TABLE`, with what keeps NULL out of it.
+    fn column_type(&self, t: &DataType, nullable: bool) -> Result<String> {
+        let name = self.type_name(t)?;
+        Ok(if nullable { name } else { format!("{name} NOT NULL") })
+    }
+    /// The word that makes `CREATE TABLE` create a temporary table, or
+    /// None where there are no temporary tables.
+    fn temporary(&self) -> Option<&'static str> {
+        Some("TEMPORARY")
+    }
+    /// What follows the columns of `CREATE TABLE`: how the table is stored.
+    fn create_table_suffix(&self) -> &'static str {
+        ""
+    }
+    /// Whether the engine has `MERGE INTO`, which is what `upsert` runs.
+    fn merge(&self) -> bool {
+        false
+    }
     /// The statement renaming a table; both names are already quoted.
     fn rename_table(&self, old: &str, new: &str) -> String {
         format!("ALTER TABLE {old} RENAME TO {new}")

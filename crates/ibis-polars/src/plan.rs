@@ -120,6 +120,7 @@ impl Planner<'_> {
         Ok(match &rel.op {
             RelOp::Table { name } => self.be.frame(name)?,
             RelOp::View { input } => self.rel(input)?,
+            RelOp::Sql { .. } => return unsupported("a SQL query (there is no SQL here)"),
             RelOp::Project { input, exprs } => self.project(self.rel(input)?, &input.schema, exprs, &[])?,
             RelOp::Filter { input, predicates } => self.filter(input, predicates)?,
             RelOp::Aggregate { input, groups, metrics } => {

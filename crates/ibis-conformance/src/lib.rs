@@ -236,15 +236,29 @@ fn each<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
     })
 }
 
+/// A connection to the backend `name`: a new, empty database for the ones
+/// that run in this process, the test server for the rest.
+fn open(name: &str) -> Result<Box<dyn Backend>> {
+    Ok(match name {
+        "duckdb" => Box::new(ibis_duckdb::DuckDb::open_in_memory()?),
+        "sqlite" => Box::new(ibis_sqlite::Sqlite::open_in_memory()?),
+        "polars" => Box::new(ibis_polars::Polars::new()),
+        server if SERVERS.contains(&server) => connect(server, &server_url(server)?)?,
+        other => return Err(Error::Other(format!("unknown backend {other:?}"))),
+    })
+}
+
+impl Target {
+    /// Another connection to the same backend: what a client that connects
+    /// anew would see.
+    pub fn reconnect(&self) -> Result<Box<dyn Backend>> {
+        open(self.backend.name())
+    }
+}
+
 pub fn targets(data: &FixtureData, names: &[&str]) -> Result<Vec<Target>> {
     each(names, |n| {
-        let backend: Box<dyn Backend> = match *n {
-            "duckdb" => Box::new(ibis_duckdb::DuckDb::open_in_memory()?),
-            "sqlite" => Box::new(ibis_sqlite::Sqlite::open_in_memory()?),
-            "polars" => Box::new(ibis_polars::Polars::new()),
-            server if SERVERS.contains(&server) => connect(server, &server_url(server)?)?,
-            other => return Err(Error::Other(format!("unknown backend {other:?}"))),
-        };
+        let backend = open(n)?;
         let fx = data.load(backend.as_ref())?;
         Ok(Target { backend, fx })
     })

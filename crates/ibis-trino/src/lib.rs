@@ -26,7 +26,7 @@ use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_sql::json::{value_from_json, value_to_json};
-use ibis_sql::{Dialect, SqlClient, compile, create_table_sql, quote_str};
+use ibis_sql::{Dialect, SqlClient, compile, quote_str};
 use serde_json::Value as Json;
 
 pub use dialect::TrinoDialect;
@@ -392,7 +392,7 @@ impl Backend for Trino {
 
     fn table(&self, name: &str) -> Result<Table> {
         let rows = self.run(&format!(
-            "SELECT column_name, data_type FROM information_schema.columns \
+            "SELECT column_name, data_type, is_nullable FROM information_schema.columns \
              WHERE table_schema = current_schema AND table_name = {} ORDER BY ordinal_position",
             quote_str(&name.to_lowercase())
         ))?;
@@ -402,22 +402,15 @@ impl Backend for Trino {
         let fields = rows
             .iter()
             .map(|r| match (&r[0], &r[1]) {
-                (Value::String(col), Value::String(ty)) => Ok(Field::new(col, parse_type(ty))),
+                (Value::String(col), Value::String(ty)) => {
+                    let mut field = Field::new(col, parse_type(ty));
+                    field.nullable = r[2] != Value::from("NO");
+                    Ok(field)
+                }
                 other => Err(Error::Other(format!("trino: unexpected information_schema.columns row {other:?}"))),
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(Table::named(name, Schema::new(fields)))
-    }
-
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Other("create_table needs at least one batch".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let q = self.dialect.quote_ident(name);
-        self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
-        self.execute_statement(&create_table_sql(&self.dialect, name, &schema)?)?;
-        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

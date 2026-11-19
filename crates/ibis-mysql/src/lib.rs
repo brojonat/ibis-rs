@@ -25,7 +25,7 @@ use std::sync::Mutex;
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
-use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile};
 use mysql::consts::ColumnType;
 use mysql::prelude::Queryable;
 use mysql::{Conn, Opts};
@@ -153,6 +153,36 @@ impl MySql {
         self.conn.lock().unwrap().query_drop(sql).map_err(|e| exec_err(sql, e))
     }
 
+    /// The columns of a table `information_schema` does not list: a
+    /// temporary one. `SHOW COLUMNS` gives name, type, whether NULL fits, ...
+    fn shown_columns(&self, name: &str) -> Result<Table> {
+        let text = |v: &Value| match v {
+            Value::String(s) => Some(s.clone()),
+            Value::Binary(b) => String::from_utf8(b.clone()).ok(),
+            _ => None,
+        };
+        let rows = self
+            .raw_sql(&format!("SHOW COLUMNS FROM {}", self.dialect.quote_ident(name)))
+            .map_err(|e| Error::Other(format!("mysql: no table {name:?}: {e}")))?;
+        let fields = rows
+            .iter()
+            .map(|r| match (text(&r[0]), text(&r[1]), text(&r[2])) {
+                (Some(col), Some(column_type), Some(null)) => {
+                    // `decimal(15,2) unsigned`: the type's name, then its precision and scale
+                    let data_type = column_type.split(['(', ' ']).next().unwrap_or_default();
+                    let args = column_type.split_once('(').and_then(|(_, rest)| rest.split_once(')')).map(|(a, _)| a);
+                    let mut numbers = args.unwrap_or_default().split(',').map(|n| n.trim().parse::<i64>().ok());
+                    let (precision, scale) = (numbers.next().flatten(), numbers.next().flatten());
+                    let mut field = Field::new(col, parse_type(data_type, &column_type, precision, scale));
+                    field.nullable = null != "NO";
+                    Ok(field)
+                }
+                _ => Err(Error::Other(format!("mysql: unexpected SHOW COLUMNS row {r:?}"))),
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(Table::named(name, Schema::new(fields)))
+    }
+
     /// Run a query, returning rows typed by what MySQL says each column is.
     pub fn raw_sql(&self, sql: &str) -> Result<Vec<Vec<Value>>> {
         let mut conn = self.conn.lock().unwrap();
@@ -221,13 +251,13 @@ impl Backend for MySql {
 
     fn table(&self, name: &str) -> Result<Table> {
         let rows = self.raw_sql(&format!(
-            "SELECT column_name, data_type, column_type, numeric_precision, numeric_scale \
+            "SELECT column_name, data_type, column_type, numeric_precision, numeric_scale, is_nullable \
              FROM information_schema.columns \
              WHERE table_schema = DATABASE() AND table_name = {} ORDER BY ordinal_position",
             quote_str(name)
         ))?;
         if rows.is_empty() {
-            return Err(Error::Other(format!("mysql: no table {name:?}")));
+            return self.shown_columns(name);
         }
         let int = |v: &Value| match v {
             Value::Int(i) => Some(*i),
@@ -237,23 +267,14 @@ impl Backend for MySql {
             .iter()
             .map(|r| match (&r[0], &r[1], &r[2]) {
                 (Value::String(col), Value::String(data_type), Value::String(column_type)) => {
-                    Ok(Field::new(col, parse_type(data_type, column_type, int(&r[3]), int(&r[4]))))
+                    let mut field = Field::new(col, parse_type(data_type, column_type, int(&r[3]), int(&r[4])));
+                    field.nullable = r[5] != Value::from("NO");
+                    Ok(field)
                 }
                 other => Err(Error::Other(format!("mysql: unexpected information_schema.columns row {other:?}"))),
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(Table::named(name, Schema::new(fields)))
-    }
-
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Other("create_table needs at least one batch".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let q = self.dialect.quote_ident(name);
-        self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
-        self.execute_statement(&create_table_sql(&self.dialect, name, &schema)?)?;
-        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

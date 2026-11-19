@@ -17,7 +17,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, rows_to_batch};
 use ibis_core::{AggFunc, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Lambda, Result, Schema, Table, Value};
 use ibis_sql::json::{decode_nested, value_to_json};
-use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile, create_table_sql, quote_str};
+use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile, quote_str};
 use postgres::types::{FromSql, Kind, Type};
 use postgres::{Client, NoTls, Row};
 
@@ -28,6 +28,9 @@ pub struct PostgresDialect;
 impl Dialect for PostgresDialect {
     fn name(&self) -> &str {
         "postgres"
+    }
+    fn merge(&self) -> bool {
+        true
     }
 
     fn type_name(&self, t: &DataType) -> Result<String> {
@@ -486,6 +489,16 @@ impl SqlClient for Postgres {
         &self.dialect
     }
 
+    /// A struct and a map are both JSONB: a comment says which, and of what.
+    fn after_create(&self, name: &str, schema: &Schema) -> Vec<String> {
+        let q = |n: &str| self.dialect.quote_ident(n);
+        let comment = |f: &Field| {
+            let text = quote_str(&format!("{TYPE_COMMENT}{}", f.dtype));
+            format!("COMMENT ON COLUMN {}.{} IS {text}", q(name), q(&f.name))
+        };
+        schema.fields.iter().filter(|f| f.dtype.is_nested()).map(comment).collect()
+    }
+
     fn statement(&self, sql: &str) -> Result<()> {
         self.execute_batch(sql)
     }
@@ -536,13 +549,18 @@ impl Backend for Postgres {
     }
 
     fn table(&self, name: &str) -> Result<Table> {
-        // the comment is where `create_table` wrote the Ibis type of a nested column
+        // the comment is where `create_table` wrote the Ibis type of a nested column;
+        // a temporary table is in a schema of its own, and hides a lasting one of its name
         let sql = format!(
             "SELECT column_name::text, data_type::text, numeric_precision, numeric_scale, udt_name::text, \
-             col_description(format('%I.%I', table_schema, table_name)::regclass, ordinal_position) \
+             col_description(format('%I.%I', table_schema, table_name)::regclass, ordinal_position), \
+             is_nullable::text \
              FROM information_schema.columns \
-             WHERE table_schema = current_schema() AND table_name = {} ORDER BY ordinal_position",
-            quote_str(name)
+             WHERE table_name = {name} AND table_schema = COALESCE( \
+               (SELECT n.nspname::text FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace \
+                WHERE c.relname = {name} AND n.oid = pg_my_temp_schema()), current_schema()) \
+             ORDER BY ordinal_position",
+            name = quote_str(name)
         );
         let rows = self.client.lock().unwrap().query(&sql, &[]).map_err(|e| pg_err(&sql, e))?;
         if rows.is_empty() {
@@ -561,26 +579,12 @@ impl Backend for Postgres {
                     (None, "ARRAY", Some(item)) => DataType::array(parse_type(udt_type(item), None, None)),
                     _ => parse_type(&ty, r.get(2), r.get(3)),
                 };
-                Field::new(&col, dtype)
+                let mut field = Field::new(&col, dtype);
+                field.nullable = r.get::<_, String>(6) != "NO";
+                field
             })
             .collect();
         Ok(Table::named(name, Schema::new(fields)))
-    }
-
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Other("create_table needs at least one batch".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let q = self.dialect.quote_ident(name);
-        let mut ddl = format!("DROP TABLE IF EXISTS {q}; {}", create_table_sql(&self.dialect, name, &schema)?);
-        // a struct and a map are both JSONB: the comment says which, and of what
-        for f in schema.fields.iter().filter(|f| f.dtype.is_nested()) {
-            let comment = quote_str(&format!("{TYPE_COMMENT}{}", f.dtype));
-            ddl.push_str(&format!("; COMMENT ON COLUMN {q}.{} IS {comment}", self.dialect.quote_ident(&f.name)));
-        }
-        self.execute_batch(&ddl)?;
-        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

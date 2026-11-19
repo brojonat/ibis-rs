@@ -270,6 +270,25 @@ mod tests {
     }
 
     #[test]
+    fn a_sql_query_is_a_table_other_operations_compile_around() {
+        let schema = Schema::of(&[("a", DataType::Int64)]);
+        let q = Table::sql("SELECT a FROM t WHERE a > 0", schema).filter([col("a").lt(9)]).unwrap();
+        assert_eq!(sql(&q), r#"SELECT * FROM (SELECT a FROM t WHERE a > 0) AS t0 WHERE (t0."a" < 9)"#);
+        let joined = q.join(&t(), [("a", "a")], JoinKind::Inner).unwrap();
+        assert!(sql(&joined).contains("(SELECT a FROM t WHERE a > 0) AS"), "{}", sql(&joined));
+    }
+
+    #[test]
+    fn create_table_says_what_is_temporary_and_what_is_not_null() {
+        let mut schema = Schema::of(&[("a", DataType::Int64), ("s", DataType::String)]);
+        schema.fields[0].nullable = false;
+        let ddl = |temp| ddl::create_table_statement(&GenericDialect, "t", &schema, temp).unwrap();
+        assert_eq!(ddl(false), r#"CREATE TABLE "t" ("a" BIGINT NOT NULL, "s" VARCHAR)"#);
+        assert_eq!(ddl(true), r#"CREATE TEMPORARY TABLE "t" ("a" BIGINT NOT NULL, "s" VARCHAR)"#);
+        assert_eq!(create_table_sql(&GenericDialect, "t", &schema).unwrap(), ddl(false));
+    }
+
+    #[test]
     fn strftime_patterns_translate() {
         assert_eq!(strftime_to_date_format("mysql", "%Y-%m-%d %H:%M:%S").unwrap(), "%Y-%m-%d %H:%i:%S");
         assert_eq!(strftime_to_java_format("spark", "%Y-%m-%d %H:%M:%S.%f").unwrap(), "yyyy-MM-dd HH:mm:ss.SSSSSS");

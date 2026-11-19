@@ -61,6 +61,25 @@ impl Dialect for ClickHouseDialect {
         "clickhouse"
     }
 
+    /// A column that takes no NULL is one whose type is not `Nullable`.
+    fn column_type(&self, t: &DataType, nullable: bool) -> Result<String> {
+        let name = self.type_name(t)?;
+        let bare = name.strip_prefix("Nullable(").and_then(|n| n.strip_suffix(')'));
+        Ok(match (nullable, bare) {
+            (false, Some(bare)) => bare.to_string(),
+            _ => name,
+        })
+    }
+    /// A temporary table lasts as long as a session, and each statement
+    /// sent over HTTP is a session of its own.
+    fn temporary(&self) -> Option<&'static str> {
+        None
+    }
+    /// Insertion order is kept: there is no sorting key.
+    fn create_table_suffix(&self) -> &'static str {
+        " ENGINE = MergeTree ORDER BY tuple()"
+    }
+
     /// Always `Nullable`: a bare ClickHouse type cannot hold NULL, and a cast
     /// to one turns NULL into an error.
     fn type_name(&self, t: &DataType) -> Result<String> {

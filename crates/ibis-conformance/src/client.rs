@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ibis_core::convert::{batch_to_rows, rows_to_batch};
 use ibis_core::prelude::*;
-use ibis_core::{Error, Result, Value};
+use ibis_core::{CreateOptions, Error, Result, Value};
 use serde_json::json;
 
 use crate::cases::NO_NESTED;
@@ -104,6 +104,23 @@ type Employee = (&'static str, &'static str, &'static str, f64);
 
 const EMPLOYEES_1: [Employee; 3] = [("A", "D", "AA", 100.0), ("B", "E", "BB", 200.0), ("C", "F", "CC", 300.0)];
 const EMPLOYEES_2: [Employee; 3] = [("X", "A", "XX", 400.0), ("Y", "B", "YY", 500.0), ("Z", "C", "ZZ", 600.0)];
+const EMPLOYEES_3: [Employee; 3] = [("B", "A", "XX", 400.0), ("Y", "B", "YY", 500.0), ("Z", "C", "ZZ", 600.0)];
+/// `EMPLOYEES_1` after `EMPLOYEES_3` is upserted on the first name.
+const EMPLOYEES_1_AND_3: [Employee; 5] = [
+    ("A", "D", "AA", 100.0),
+    ("B", "A", "XX", 400.0),
+    ("C", "F", "CC", 300.0),
+    ("Y", "B", "YY", 500.0),
+    ("Z", "C", "ZZ", 600.0),
+];
+
+/// Engines with no temporary tables (Ibis marks Impala, PySpark and Trino),
+/// and ClickHouse: its temporary tables last a session, and each statement
+/// this client sends over HTTP is a session of its own.
+const NO_TEMP_TABLES: [&str; 4] = ["clickhouse", "impala", "spark", "trino"];
+
+/// Engines with no `MERGE INTO` (Ibis `NO_MERGE_SUPPORT`).
+const NO_MERGE: [&str; 7] = ["clickhouse", "impala", "mysql", "polars", "spark", "sqlite", "trino"];
 
 fn employees(rows: &[Employee]) -> Vec<Vec<Value>> {
     rows.iter().map(|(a, b, c, d)| vec![(*a).into(), (*b).into(), (*c).into(), (*d).into()]).collect()
@@ -258,6 +275,155 @@ pub fn all() -> Vec<ClientCase> {
     v.push(case("test_table_not_found", |b, _| {
         let missing = Temp::table(b);
         check(b.table(&missing.name).is_err(), || format!("the table {} is not there, yet was found", missing.name))
+    }));
+
+    for (id, temp, overwrite) in
+        [("temp overwrite", true, true), ("no temp, overwrite", false, true), ("temp, no overwrite", true, false)]
+    {
+        let c = case(&format!("test_create_table_overwrite_temp[{id}]"), move |b, _| {
+            let t = Temp::table(b);
+            let rows = employees(&EMPLOYEES_1);
+            let data = [rows_to_batch(&employee_schema(), &rows)?];
+            let options = CreateOptions { overwrite, temp };
+            b.create_table_with(&t.name, &employee_schema(), &data, options)?;
+            if overwrite {
+                b.create_table_with(&t.name, &employee_schema(), &data, options)?;
+            }
+            check_rows(b, &t.name, &rows)
+        });
+        v.push(if temp { c.notimpl(&NO_TEMP_TABLES) } else { c });
+    }
+    v.push(
+        case("test_create_temporary_table_from_schema", move |b, target| {
+            let t = Temp::table(b);
+            b.create_table_with(&t.name, &abc(), &[], CreateOptions { overwrite: false, temp: true })?;
+            let got = described(b.table(&t.name)?.schema());
+            check(got == described(&abc()), || format!("want {:?}, got {got:?}", described(&abc())))?;
+            // Ibis reconnects and looks again; a second connection sees what a new one would
+            let tables = target.reconnect()?.list_tables()?;
+            check(!tables.contains(&t.name), || format!("{} is listed for another connection", t.name))
+        })
+        .notimpl(&NO_TEMP_TABLES),
+    );
+    // Polars has no NOT NULL (Ibis: notimpl); Impala and Spark have no such columns (Ibis: never)
+    v.push(
+        case("test_nullable_input_output", |b, _| {
+            let t = Temp::table(b);
+            let mut schema =
+                Schema::of(&[("foo", DataType::Int64), ("bar", DataType::Int64), ("baz", DataType::Boolean)]);
+            schema.fields[1].nullable = false;
+            b.create_empty_table(&t.name, &schema)?;
+            let got: Vec<bool> = b.table(&t.name)?.schema().fields.iter().map(|f| f.nullable).collect();
+            check(got == [true, false, true], || format!("nullable: want [true, false, true], got {got:?}"))
+        })
+        .notimpl(&["polars", "impala", "spark"]),
+    );
+    v.push(case("test_sql", |b, _| {
+        let t = b.sql("SELECT * FROM functional_alltypes LIMIT 10")?;
+        let rows: usize = b.execute(&t)?.iter().map(|batch| batch.num_rows()).sum();
+        check(rows == 10, || format!("want 10 rows, got {rows}"))
+    }));
+
+    v.push(
+        case("test_upsert_from_dataframe", |b, _| {
+            let t = Temp::table(b);
+            create(b, &t.name, &employee_schema(), &employees(&EMPLOYEES_1))?;
+            b.upsert(&t.name, &[rows_to_batch(&employee_schema(), &employees(&EMPLOYEES_3))?], "first_name")?;
+            check_rows(b, &t.name, &employees(&EMPLOYEES_1_AND_3))
+        })
+        .notimpl(&NO_MERGE),
+    );
+    for (id, with_order_by) in [("True", true), ("False", false)] {
+        let run = move |b: &dyn Backend, _: &Target| {
+            let (t, from) = (Temp::table(b), Temp::table(b));
+            create(b, &t.name, &employee_schema(), &employees(&EMPLOYEES_1))?;
+            create(b, &from.name, &employee_schema(), &employees(&EMPLOYEES_3))?;
+            let mut source = b.table(&from.name)?;
+            if with_order_by {
+                source = source.filter([col("salary").gt(lit(0))])?.order_by(["first_name"])?;
+            }
+            b.upsert_from(&t.name, &source, "first_name")?;
+            check_rows(b, &t.name, &employees(&EMPLOYEES_1_AND_3))
+        };
+        v.push(case(&format!("test_upsert_from_expr[{id}]"), run).notimpl(&NO_MERGE));
+    }
+    // x, y, z upserted on x by data that has some of the columns, in some order
+    type Xyz = (i64, Option<f64>, &'static str);
+    let all: &[Xyz] = &[(1, Some(4.0), "a"), (2, Some(8.0), "e"), (3, Some(7.0), "d"), (6, Some(9.0), "f")];
+    let no_y: &[Xyz] = &[(1, Some(4.0), "a"), (2, Some(5.0), "e"), (3, Some(6.0), "d"), (6, None, "f")];
+    let upserts: [(&[(&str, DataType)], Option<&'static [Xyz]>); 5] = [
+        (&[("x", DataType::Int64), ("y", DataType::Float64), ("z", strings())], Some(all)),
+        (&[("z", strings()), ("y", DataType::Float32), ("x", DataType::Int8)], Some(all)),
+        // nothing to write
+        (&[("x", DataType::Int64)], None),
+        (&[("x", DataType::Int64), ("z", strings())], Some(no_y)),
+        // no column to match on
+        (&[("z", strings())], None),
+    ];
+    for (i, (columns, want)) in upserts.into_iter().enumerate() {
+        let update = Schema::of(columns);
+        let run = move |b: &dyn Backend, _: &Target| {
+            let t = Temp::table(b);
+            let schema = Schema::of(&[("x", DataType::Int64), ("y", DataType::Float64), ("z", strings())]);
+            let first: Vec<Vec<Value>> = [(1, 4.0, "a"), (2, 5.0, "b"), (3, 6.0, "c")]
+                .iter()
+                .map(|(x, y, z)| vec![(*x).into(), (*y).into(), (*z).into()])
+                .collect();
+            b.create_empty_table(&t.name, &schema)?;
+            b.upsert(&t.name, &[rows_to_batch(&schema, &first)?], "x")?;
+            let cell = |name: &str, (x, y, z): (i64, f64, &str)| -> Value {
+                match name {
+                    "x" => x.into(),
+                    "y" => y.into(),
+                    _ => z.into(),
+                }
+            };
+            let second: Vec<Vec<Value>> = [(3, 7.0, "d"), (2, 8.0, "e"), (6, 9.0, "f")]
+                .into_iter()
+                .map(|row| update.names().map(|n| cell(n, row)).collect())
+                .collect();
+            let upserted = b.upsert(&t.name, &[rows_to_batch(&update, &second)?], "x");
+            let Some(want) = want else {
+                return check(upserted.is_err(), || format!("an upsert of only {update} went through"));
+            };
+            upserted?;
+            let want: Vec<Vec<Value>> = want
+                .iter()
+                .map(|(x, y, z)| vec![(*x).into(), y.map_or(Value::Null, Value::from), (*z).into()])
+                .collect();
+            check_rows(b, &t.name, &want)
+        };
+        v.push(case(&format!("test_upsert_from_memtable[sch{i}-expectation{i}]"), run).notimpl(&NO_MERGE));
+    }
+
+    // Ibis inserts a list of dicts, then of dicts in another order, then of bare tuples
+    let ab = |a: &str, b: &str| Schema::of(&[(a, DataType::Int64), (b, DataType::Int64)]);
+    for (id, second) in [
+        ("column order reversed", (ab("b", "a"), [22, 11])),
+        ("column order matching", (ab("a", "b"), [11, 22])),
+        ("auto generated cols", (ab("col0", "col1"), [11, 22])),
+    ] {
+        v.push(case(&format!("test_insert_using_col_name_not_position[{id}]"), move |b, _| {
+            let t = Temp::table(b);
+            create(b, &t.name, &ab("a", "b"), &[vec![1.into(), 2.into()]])?;
+            let (schema, row) = &second;
+            b.insert(&t.name, &[rows_to_batch(schema, &[row.iter().map(|v| Value::Int(*v)).collect()])?], false)?;
+            check_rows(b, &t.name, &[vec![1.into(), 2.into()], vec![11.into(), 22.into()]])
+        }));
+    }
+    v.push(case("test_overwrite", |b, _| {
+        let (x, y) = (Temp::table(b), Temp::table(b));
+        let count = |t: &Table| -> Result<usize> { Ok(b.execute(t)?.iter().map(|batch| batch.num_rows()).sum()) };
+        let schema = Schema::of(&[("a", DataType::Int64)]);
+        create(b, &x.name, &schema, &[vec![1.into()], vec![2.into()], vec![3.into()]])?;
+        let small = b.table(&x.name)?.filter([col("a").lt(lit(3))])?;
+        check(count(&small)? == 2, || "a < 3 does not keep 2 of 1, 2, 3".to_string())?;
+        b.create_table_from(&y.name, &small, CreateOptions::default())?;
+        check(count(&b.table(&y.name)?)? == 2, || format!("{} does not have 2 rows", y.name))?;
+        // the table is replaced by a query that reads it
+        b.create_table_from(&x.name, &small, CreateOptions::REPLACE)?;
+        check(count(&b.table(&x.name)?)? == 2, || format!("{} does not have 2 rows", x.name))?;
+        check(count(&small)? == 2, || "the query does not find 2 rows in the replaced table".to_string())
     }));
 
     // field names that are SQL keywords

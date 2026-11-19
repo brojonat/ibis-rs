@@ -32,7 +32,7 @@ use std::sync::Mutex;
 
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, conform_to, rows_to_batch};
-use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
+use ibis_core::{Backend, CreateOptions, DataType, Error, Field, Result, Schema, Table, Value};
 use polars::prelude as pl;
 use polars::prelude::{IntoLazy, IntoSeries, NamedFrom};
 
@@ -370,13 +370,24 @@ impl Backend for Polars {
         }
     }
 
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Invalid("create_table needs at least one batch (for the schema)".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let df = frame(&schema, data)?;
-        self.tables.lock().unwrap().insert(name.to_string(), (df, schema));
+    /// Every table is in memory and goes with the connection, so a
+    /// temporary table is a table like any other. A column holds NULLs
+    /// whatever its field says: Polars has no `NOT NULL`.
+    fn create_table_with(
+        &self,
+        name: &str,
+        schema: &Schema,
+        data: &[RecordBatch],
+        options: CreateOptions,
+    ) -> Result<()> {
+        let mut schema = schema.clone();
+        schema.fields.iter_mut().for_each(|f| f.nullable = true);
+        let df = frame(&schema, &conform_to(data, &schema)?)?;
+        let mut tables = self.tables.lock().unwrap();
+        if !options.overwrite && tables.contains_key(name) {
+            return Err(Error::Invalid(format!("polars: the table {name:?} already exists")));
+        }
+        tables.insert(name.to_string(), (df, schema));
         Ok(())
     }
 

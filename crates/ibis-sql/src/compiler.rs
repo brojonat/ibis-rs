@@ -22,12 +22,7 @@ pub fn compile(d: &dyn Dialect, t: &Table) -> Result<String> {
 
 /// `CREATE TABLE` DDL for `schema` (no `OR REPLACE`: not portable).
 pub fn create_table_sql(d: &dyn Dialect, name: &str, schema: &Schema) -> Result<String> {
-    let cols = schema
-        .fields
-        .iter()
-        .map(|f| Ok(format!("{} {}", d.quote_ident(&f.name), d.type_name(&f.dtype)?)))
-        .collect::<Result<Vec<_>>>()?;
-    Ok(format!("CREATE TABLE {} ({})", d.quote_ident(name), cols.join(", ")))
+    crate::ddl::create_table_statement(d, name, schema, false)
 }
 
 pub(crate) fn unsupported<T>(d: &dyn Dialect, what: impl Into<String>) -> Result<T> {
@@ -263,6 +258,7 @@ impl RelCompiler<'_> {
     fn source(&self, r: &Rel, alias: &str) -> Result<String> {
         match &r.op {
             RelOp::Table { name } => return Ok(format!("{} AS {alias}", self.d.quote_ident(name))),
+            RelOp::Sql { query } => return Ok(format!("({query}) AS {alias}")),
             RelOp::View { input } => return self.source(input, alias),
             _ => {}
         }
@@ -275,6 +271,10 @@ impl RelCompiler<'_> {
             RelOp::Table { name } => {
                 let a = self.alias();
                 Ok(Select::aliased(format!("{} AS {a}", q(name)), a))
+            }
+            RelOp::Sql { query } => {
+                let a = self.alias();
+                Ok(Select::aliased(format!("({query}) AS {a}"), a))
             }
             RelOp::View { input } => self.rel(input),
 

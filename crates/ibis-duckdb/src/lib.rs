@@ -11,13 +11,16 @@ use duckdb::Connection;
 use duckdb::arrow::datatypes::SchemaRef;
 use ibis_core::convert::conform_batch;
 use ibis_core::{Backend, Error, Result, Schema, Table};
-use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile};
 
 pub struct DuckDbDialect;
 
 impl Dialect for DuckDbDialect {
     fn name(&self) -> &str {
         "duckdb"
+    }
+    fn merge(&self) -> bool {
+        true
     }
 }
 
@@ -99,17 +102,21 @@ impl Backend for DuckDb {
     fn table(&self, name: &str) -> Result<Table> {
         let sql = format!("SELECT * FROM {} LIMIT 0", self.dialect.quote_ident(name));
         let (_, schema) = self.query(&sql)?;
-        Ok(Table::named(name, Schema::from_arrow(&schema)?))
-    }
-
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Other("create_table needs at least one batch".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let q = self.dialect.quote_ident(name);
-        self.execute_batch(&format!("DROP TABLE IF EXISTS {q}; {}", create_table_sql(&self.dialect, name, &schema)?))?;
-        self.load(name, &schema, data)
+        let mut schema = Schema::from_arrow(&schema)?;
+        // the types come with the query; which columns are NOT NULL does not
+        let sql = format!("DESCRIBE {}", self.dialect.quote_ident(name));
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(&sql).map_err(|e| exec_err(&sql, e))?;
+        let described = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(2)?)))
+            .map_err(|e| exec_err(&sql, e))?;
+        for column in described {
+            let (column, null) = column.map_err(|e| exec_err(&sql, e))?;
+            if let Some(field) = schema.fields.iter_mut().find(|f| f.name == column) {
+                field.nullable = null != "NO";
+            }
+        }
+        Ok(Table::named(name, schema))
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {
@@ -140,5 +147,61 @@ mod tests {
         let rows = ibis_core::convert::batch_to_rows(&out[0]).unwrap();
         assert_eq!(rows, vec![vec![Value::Int(35), Value::Int(5)]]);
         assert_eq!(out[0].schema().field(0).data_type(), &arrow_array::types::Int64Type::DATA_TYPE);
+    }
+
+    fn ints(con: &DuckDb, t: &Table) -> Vec<Vec<Value>> {
+        let out = con.execute(t).unwrap();
+        out.iter().flat_map(|b| ibis_core::convert::batch_to_rows(b).unwrap()).collect()
+    }
+
+    fn batch(schema: &Schema, rows: &[Vec<Value>]) -> RecordBatch {
+        ibis_core::convert::rows_to_batch(schema, rows).unwrap()
+    }
+
+    #[test]
+    fn create_table_options() {
+        let con = DuckDb::open_in_memory().unwrap();
+        let mut schema = Schema::of(&[("a", DataType::Int64), ("b", DataType::Int64)]);
+        schema.fields[0].nullable = false;
+        let data = [batch(&schema, &[vec![1.into(), 2.into()]])];
+        let plain = CreateOptions::default();
+        con.create_table_with("t", &schema, &data, plain).unwrap();
+        // without `overwrite` a table that is there stays, and the call fails
+        assert!(con.create_table_with("t", &schema, &[], plain).is_err());
+        assert_eq!(ints(&con, &con.table("t").unwrap()), [vec![Value::Int(1), Value::Int(2)]]);
+        con.create_table_with("t", &schema, &[], CreateOptions::REPLACE).unwrap();
+        assert!(ints(&con, &con.table("t").unwrap()).is_empty());
+        // NOT NULL is declared, enforced by the engine, and read back
+        let nullable: Vec<bool> = con.table("t").unwrap().schema().fields.iter().map(|f| f.nullable).collect();
+        assert_eq!(nullable, [false, true]);
+        assert!(con.execute_batch("INSERT INTO t VALUES (NULL, 1)").is_err());
+        // a temporary table hides the table of its name for this connection
+        con.create_table_with("t", &schema, &data, CreateOptions { overwrite: false, temp: true }).unwrap();
+        assert_eq!(ints(&con, &con.table("t").unwrap()).len(), 1);
+    }
+
+    #[test]
+    fn sql_and_upsert() {
+        let con = DuckDb::open_in_memory().unwrap();
+        let schema = Schema::of(&[("k", DataType::Int64), ("v", DataType::String), ("w", DataType::Int64)]);
+        let row = |k: i64, v: &str, w: i64| vec![Value::Int(k), v.into(), Value::Int(w)];
+        con.create_table("t", &[batch(&schema, &[row(1, "a", 10), row(2, "b", 20)])]).unwrap();
+
+        let big = con.sql("SELECT k, w * 2 AS double FROM t;").unwrap();
+        assert_eq!(big.schema().to_string(), "k: int64, double: int64");
+        let q = big.filter([col("double").gt(20)]).unwrap().select([col("k")]).unwrap();
+        assert_eq!(ints(&con, &q), [vec![Value::Int(2)]]);
+        assert!(con.list_tables().unwrap().iter().all(|name| !name.starts_with("ibis_sql")));
+
+        // only `k` and `v` are given: `w` stays where a row matches, and is NULL in a new row
+        let update = Schema::of(&[("v", DataType::String), ("k", DataType::Int64)]);
+        con.upsert("t", &[batch(&update, &[vec!["B".into(), 2.into()], vec!["c".into(), 3.into()]])], "k").unwrap();
+        let rows = ints(&con, &con.table("t").unwrap().order_by(["k"]).unwrap());
+        assert_eq!(rows, [row(1, "a", 10), row(2, "B", 20), vec![Value::Int(3), "c".into(), Value::Null]]);
+        assert_eq!(con.list_tables().unwrap(), ["t"]);
+        // data that is not the table's is refused, and its staging table is gone too
+        let other = Schema::of(&[("nope", DataType::Int64)]);
+        assert!(con.upsert("t", &[batch(&other, &[vec![1.into()]])], "k").is_err());
+        assert_eq!(con.list_tables().unwrap(), ["t"]);
     }
 }

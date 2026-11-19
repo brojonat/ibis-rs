@@ -28,7 +28,7 @@ use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_hiveserver2::{Connection, Options, ResultSet, Values};
-use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile};
 
 pub use dialect::ImpalaDialect;
 use dialect::quote_str;
@@ -300,17 +300,6 @@ impl Backend for Impala {
             })
             .collect::<Vec<_>>();
         Ok(Table::named(name, Schema::new(fields)))
-    }
-
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Other("create_table needs at least one batch".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let q = self.dialect.quote_ident(name);
-        self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
-        self.execute_statement(&format!("{} STORED AS PARQUET", create_table_sql(&self.dialect, name, &schema)?))?;
-        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

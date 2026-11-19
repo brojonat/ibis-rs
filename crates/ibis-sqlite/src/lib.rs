@@ -19,7 +19,7 @@ use std::sync::Mutex;
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, rows_to_batch};
 use ibis_core::{AggFunc, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Result, Schema, Table, Value};
-use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile, create_table_sql, quote_str};
+use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile, quote_str};
 use rusqlite::Connection;
 use rusqlite::types::Value as SqlValue;
 
@@ -368,7 +368,7 @@ impl Backend for Sqlite {
     }
 
     fn table(&self, name: &str) -> Result<Table> {
-        let sql = format!("SELECT name, type FROM pragma_table_info({})", quote_str(name));
+        let sql = format!("SELECT name, type, \"notnull\" FROM pragma_table_info({})", quote_str(name));
         let rows = self.raw_sql(&sql)?;
         if rows.is_empty() {
             return Err(Error::Other(format!("sqlite: no table {name:?}")));
@@ -376,22 +376,15 @@ impl Backend for Sqlite {
         let fields = rows
             .into_iter()
             .map(|r| match (&r[0], &r[1]) {
-                (Value::String(n), Value::String(t)) => Ok(Field::new(n, parse_declared(t))),
+                (Value::String(n), Value::String(t)) => {
+                    let mut field = Field::new(n, parse_declared(t));
+                    field.nullable = r[2] != Value::Int(1);
+                    Ok(field)
+                }
                 other => Err(Error::Other(format!("unexpected table_info row {other:?}"))),
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(Table::named(name, Schema::new(fields)))
-    }
-
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Other("create_table needs at least one batch".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let q = self.dialect.quote_ident(name);
-        let ddl = format!("DROP TABLE IF EXISTS {q}; {}", create_table_sql(&self.dialect, name, &schema)?);
-        self.statement(&ddl)?;
-        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

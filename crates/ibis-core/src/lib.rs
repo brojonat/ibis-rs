@@ -11,7 +11,7 @@ pub mod expr;
 pub mod table;
 pub mod value;
 
-pub use backend::Backend;
+pub use backend::{Backend, CreateOptions, scratch_name};
 pub use datatypes::{DataType, Field, Schema};
 pub use error::{Error, Result};
 pub use expr::{
@@ -22,7 +22,7 @@ pub use value::Value;
 
 /// Everything needed to write queries.
 pub mod prelude {
-    pub use crate::backend::Backend;
+    pub use crate::backend::{Backend, CreateOptions};
     pub use crate::datatypes::{DataType, Schema};
     pub use crate::expr::{
         Expr, WindowSpec, array, asc, cases, coalesce, col, count, date, date_from_ymd, desc, e, greatest, least, lit,
@@ -155,6 +155,18 @@ mod tests {
         let batch = rows_to_batch(&schema, &rows).unwrap();
         assert_eq!(Schema::from_arrow(&batch.schema()).unwrap(), schema);
         assert_eq!(batch_to_rows(&batch).unwrap(), rows);
+    }
+
+    #[test]
+    fn not_null_is_a_fact_about_a_stored_column_only() {
+        let mut schema = Schema::of(&[("a", DataType::Int64), ("b", DataType::Int64)]);
+        schema.fields[0].nullable = false;
+        let t = Table::named("t", schema);
+        assert!(!t.schema().fields[0].nullable);
+        // what a query returns may be NULL: an outer join pads the column
+        for derived in [t.filter([col("a").gt(1)]).unwrap(), t.select([col("a")]).unwrap(), t.limit(1, 0)] {
+            assert!(derived.schema().fields.iter().all(|f| f.nullable), "{:?}", derived.schema());
+        }
     }
 
     #[test]

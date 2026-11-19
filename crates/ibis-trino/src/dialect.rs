@@ -26,6 +26,9 @@ impl Dialect for TrinoDialect {
     fn name(&self) -> &str {
         "trino"
     }
+    fn temporary(&self) -> Option<&'static str> {
+        None
+    }
 
     /// No unsigned integers: each takes the next wider signed type.
     fn type_name(&self, t: &DataType) -> Result<String> {

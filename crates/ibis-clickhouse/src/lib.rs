@@ -21,7 +21,7 @@ use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, parse_date, parse_timestamp, rows_to_batch};
 use ibis_core::{Backend, DataType, Error, Field, Result, Schema, Table, Value};
 use ibis_sql::json::{value_from_json, value_to_json};
-use ibis_sql::{Dialect, SqlClient, compile, create_table_sql};
+use ibis_sql::{Dialect, SqlClient, compile};
 
 pub use dialect::ClickHouseDialect;
 use dialect::quote_str;
@@ -420,26 +420,16 @@ impl Backend for ClickHouse {
         let fields = rows
             .iter()
             .map(|r| match (&r[0], &r[1]) {
-                (Value::String(col), Value::String(ty)) => Ok(Field::new(col, parse_type(ty))),
+                (Value::String(col), Value::String(ty)) => {
+                    let mut field = Field::new(col, parse_type(ty));
+                    // arrays, tuples and maps are never Nullable, and take NULL as their empty value
+                    field.nullable = field.dtype.is_nested() || ty.contains("Nullable(");
+                    Ok(field)
+                }
                 other => Err(Error::Other(format!("clickhouse: unexpected system.columns row {other:?}"))),
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(Table::named(name, Schema::new(fields)))
-    }
-
-    fn create_table(&self, name: &str, data: &[RecordBatch]) -> Result<()> {
-        let Some(first) = data.first() else {
-            return Err(Error::Other("create_table needs at least one batch".into()));
-        };
-        let schema = Schema::from_arrow(&first.schema())?;
-        let q = self.dialect.quote_ident(name);
-        self.execute_statement(&format!("DROP TABLE IF EXISTS {q}"))?;
-        // insertion order is kept: no sorting key
-        self.execute_statement(&format!(
-            "{} ENGINE = MergeTree ORDER BY tuple()",
-            create_table_sql(&self.dialect, name, &schema)?
-        ))?;
-        self.load(name, &schema, data)
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {

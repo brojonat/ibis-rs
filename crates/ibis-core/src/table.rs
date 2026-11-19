@@ -111,6 +111,10 @@ pub enum RelOp {
         offset: Option<String>,
         keep_empty: bool,
     },
+    /// A query in the backend's own SQL (`Backend::sql`).
+    Sql {
+        query: String,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -155,7 +159,7 @@ impl Rel {
 
     pub fn inputs(&self) -> Vec<&Arc<Rel>> {
         match &self.op {
-            RelOp::Table { .. } => vec![],
+            RelOp::Table { .. } | RelOp::Sql { .. } => vec![],
             RelOp::View { input }
             | RelOp::Project { input, .. }
             | RelOp::Filter { input, .. }
@@ -184,7 +188,7 @@ impl Rel {
             }
         };
         match &self.op {
-            RelOp::Table { .. } | RelOp::View { .. } | RelOp::SetOp { .. } => {}
+            RelOp::Table { .. } | RelOp::Sql { .. } | RelOp::View { .. } | RelOp::SetOp { .. } => {}
             RelOp::Filter { input, .. }
             | RelOp::Sort { input, .. }
             | RelOp::Limit { input, .. }
@@ -295,7 +299,16 @@ impl Table {
         Table { rel }
     }
 
-    fn wrap(&self, op: RelOp, schema: Schema) -> Table {
+    /// A query in a backend's own SQL, whose result has `schema`. Backends
+    /// build this in `Backend::sql`, which reads the schema from the engine.
+    pub fn sql(query: &str, mut schema: Schema) -> Table {
+        schema.fields.iter_mut().for_each(|f| f.nullable = true);
+        Table::from_rel(Rel::new(RelOp::Sql { query: query.to_string() }, schema))
+    }
+
+    fn wrap(&self, op: RelOp, mut schema: Schema) -> Table {
+        // NOT NULL is a fact about a stored column, not about what a query returns
+        schema.fields.iter_mut().for_each(|f| f.nullable = true);
         Table::from_rel(Rel::new(op, schema))
     }
 

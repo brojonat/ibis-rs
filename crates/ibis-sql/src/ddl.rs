@@ -4,9 +4,9 @@
 
 use arrow_array::RecordBatch;
 use ibis_core::convert::conform_to;
-use ibis_core::{Backend, Result, Schema, Table};
+use ibis_core::{Backend, CreateOptions, Error, Field, Result, Schema, Table, scratch_name};
 
-use crate::compiler::compile;
+use crate::compiler::{compile, unsupported};
 use crate::dialect::Dialect;
 
 /// What the shared statements need of a SQL backend.
@@ -18,6 +18,47 @@ pub trait SqlClient: Backend {
 
     /// Append `data`, already shaped like `schema`, to the table `name`.
     fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()>;
+
+    /// Statements to run on a table just created, before its data is loaded.
+    fn after_create(&self, name: &str, schema: &Schema) -> Vec<String> {
+        let _ = (name, schema);
+        vec![]
+    }
+}
+
+/// `CREATE [TEMPORARY] TABLE name (column type [NOT NULL], ...)`.
+pub fn create_table_statement(d: &dyn Dialect, name: &str, schema: &Schema, temp: bool) -> Result<String> {
+    let temporary = match (temp, d.temporary()) {
+        (false, _) => String::new(),
+        (true, Some(word)) => format!("{word} "),
+        (true, None) => return unsupported(d, "temporary tables"),
+    };
+    let cols = schema
+        .fields
+        .iter()
+        .map(|f| Ok(format!("{} {}", d.quote_ident(&f.name), d.column_type(&f.dtype, f.nullable)?)))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(format!("CREATE {temporary}TABLE {} ({}){}", d.quote_ident(name), cols.join(", "), d.create_table_suffix()))
+}
+
+pub fn create_table(
+    c: &dyn SqlClient,
+    name: &str,
+    schema: &Schema,
+    data: &[RecordBatch],
+    options: CreateOptions,
+) -> Result<()> {
+    // both before anything is dropped: a table that cannot be made changes nothing
+    let create = create_table_statement(c.dialect(), name, schema, options.temp)?;
+    let data = conform_to(data, schema)?;
+    if options.overwrite {
+        drop_table(c, name, true)?;
+    }
+    c.statement(&create)?;
+    for statement in c.after_create(name, schema) {
+        c.statement(&statement)?;
+    }
+    c.load(name, schema, &data)
 }
 
 pub fn drop_table(c: &dyn SqlClient, name: &str, force: bool) -> Result<()> {
@@ -78,6 +119,64 @@ pub fn insert_from(c: &dyn SqlClient, name: &str, source: &Table, overwrite: boo
     c.statement(&format!("INSERT INTO {} {query}", d.quote_ident(name)))
 }
 
+/// Which column of the table each column of the data goes to: the one of
+/// its name when every name is the table's, else the one in its position.
+fn targets<'a>(table: &'a Schema, data: &'a Schema, name: &str) -> Result<Vec<(&'a Field, &'a str)>> {
+    if let Some(named) = data.names().map(|n| Some((table.field(n)?, n))).collect::<Option<Vec<_>>>() {
+        return Ok(named);
+    }
+    if data.len() != table.len() {
+        return Err(Error::Invalid(format!(
+            "the data's columns ({data}) are not columns of the table {name:?} ({table}), nor as many"
+        )));
+    }
+    Ok(table.fields.iter().zip(data.names()).collect())
+}
+
+/// `MERGE INTO name USING (query) ON ...`: update the rows that match on
+/// `on`, insert the rest. Only the query's columns are written.
+pub fn upsert_from(c: &dyn SqlClient, name: &str, source: &Table, on: &str) -> Result<()> {
+    let d = c.dialect();
+    if !d.merge() {
+        return unsupported(d, "upsert (there is no MERGE INTO)");
+    }
+    let target = c.table(name)?;
+    let columns = targets(target.schema(), source.schema(), name)?;
+    if !columns.iter().any(|(to, _)| to.name == on) {
+        return Err(Error::Invalid(format!("upsert on {on:?}: the data has no such column ({})", source.schema())));
+    }
+    if columns.len() < 2 {
+        return Err(Error::Invalid(format!("upsert: the data has no column besides {on:?} to write")));
+    }
+    let shaped = columns.iter().map(|(to, from)| ibis_core::prelude::col(from).cast(to.dtype.clone()).name(&to.name));
+    let query = compile(d, &source.select(shaped.collect::<Vec<_>>())?)?;
+    let q = |n: &str| d.quote_ident(n);
+    let names: Vec<String> = columns.iter().map(|(to, _)| q(&to.name)).collect();
+    let set: Vec<String> = names.iter().filter(|n| **n != q(on)).map(|n| format!("{n} = ibis_source.{n}")).collect();
+    let values: Vec<String> = names.iter().map(|n| format!("ibis_source.{n}")).collect();
+    c.statement(&format!(
+        "MERGE INTO {} AS ibis_target USING ({query}) AS ibis_source ON (ibis_target.{on} = ibis_source.{on}) \
+         WHEN MATCHED THEN UPDATE SET {} WHEN NOT MATCHED THEN INSERT ({}) VALUES ({})",
+        q(name),
+        set.join(", "),
+        names.join(", "),
+        values.join(", "),
+        on = q(on),
+    ))
+}
+
+/// A query in the engine's SQL as a table expression. Its columns are read
+/// the way a table's are, from a view that exists for just that long.
+pub fn sql(c: &dyn SqlClient, query: &str) -> Result<Table> {
+    let query = query.trim().trim_end_matches(';').trim_end();
+    let view = scratch_name("sql");
+    let q = c.dialect().quote_ident(&view);
+    c.statement(&format!("CREATE VIEW {q} AS {query}"))?;
+    let described = c.table(&view);
+    c.statement(&format!("DROP VIEW {q}"))?;
+    Ok(Table::sql(query, described?.schema().clone()))
+}
+
 fn truncate(c: &dyn SqlClient, name: &str) -> Result<()> {
     let d = c.dialect();
     c.statement(&d.truncate_table(&d.quote_ident(name)))
@@ -88,6 +187,21 @@ fn truncate(c: &dyn SqlClient, name: &str) -> Result<()> {
 #[macro_export]
 macro_rules! sql_client_methods {
     () => {
+        fn create_table_with(
+            &self,
+            name: &str,
+            schema: &::ibis_core::Schema,
+            data: &[::arrow_array::RecordBatch],
+            options: ::ibis_core::CreateOptions,
+        ) -> ::ibis_core::Result<()> {
+            $crate::ddl::create_table(self, name, schema, data, options)
+        }
+        fn upsert_from(&self, name: &str, source: &::ibis_core::Table, on: &str) -> ::ibis_core::Result<()> {
+            $crate::ddl::upsert_from(self, name, source, on)
+        }
+        fn sql(&self, query: &str) -> ::ibis_core::Result<::ibis_core::Table> {
+            $crate::ddl::sql(self, query)
+        }
         fn drop_table(&self, name: &str, force: bool) -> ::ibis_core::Result<()> {
             $crate::ddl::drop_table(self, name, force)
         }
