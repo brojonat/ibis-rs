@@ -384,6 +384,11 @@ pub enum AggFunc {
     /// Pearson's correlation coefficient with the other column.
     CorrSamp,
     CorrPop,
+    /// The value below which the fraction `options.args[0]` of the values
+    /// lie, interpolated between two numbers; or, where that argument is
+    /// an array of fractions, the array of those values.
+    Quantile,
+    ApproxQuantile,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -676,6 +681,9 @@ fn func(f: Func, args: Vec<Expr>) -> Expr {
 }
 fn agg(f: AggFunc, arg: Expr) -> Expr {
     Expr::Agg { func: f, arg: Some(Box::new(arg)), filter: None, options: AggOptions::default() }
+}
+fn fractions(qs: impl IntoIterator<Item = f64>) -> Expr {
+    Expr::Literal(Value::Array(qs.into_iter().map(Value::Float).collect()), DataType::array(DataType::Float64))
 }
 fn agg_with(f: AggFunc, arg: Expr, args: Vec<Expr>) -> Expr {
     let options = AggOptions { args, ..AggOptions::default() };
@@ -1239,6 +1247,21 @@ impl Expr {
     pub fn corr_pop(self, other: impl Into<Expr>) -> Expr {
         agg_with(AggFunc::CorrPop, self, vec![other.into()])
     }
+    /// The value below which the fraction `q` of the values lie (0.5: the
+    /// median). Between two numbers it is interpolated.
+    pub fn quantile(self, q: f64) -> Expr {
+        agg_with(AggFunc::Quantile, self, vec![lit(q)])
+    }
+    /// An array of quantiles, one for each fraction (Ibis `quantile([...])`).
+    pub fn quantiles(self, qs: impl IntoIterator<Item = f64>) -> Expr {
+        agg_with(AggFunc::Quantile, self, vec![fractions(qs)])
+    }
+    pub fn approx_quantile(self, q: f64) -> Expr {
+        agg_with(AggFunc::ApproxQuantile, self, vec![lit(q)])
+    }
+    pub fn approx_quantiles(self, qs: impl IntoIterator<Item = f64>) -> Expr {
+        agg_with(AggFunc::ApproxQuantile, self, vec![fractions(qs)])
+    }
     /// No row is true (Ibis `notany`).
     pub fn notany(self) -> Expr {
         !self.any()
@@ -1707,7 +1730,7 @@ impl Expr {
                 }
                 use AggFunc::*;
                 let wants = match func {
-                    ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop => 1,
+                    ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop | Quantile | ApproxQuantile => 1,
                     _ => 0,
                 };
                 if more.len() != wants {
@@ -1715,6 +1738,14 @@ impl Expr {
                 }
                 match (func, t) {
                     (ArgMin | ArgMax, Some(t)) => t,
+                    (Quantile | ApproxQuantile, Some(t)) => {
+                        let one = if t.is_numeric() { T::Float64 } else { t };
+                        match &more[0] {
+                            T::Array(_) => T::array(one),
+                            q if q.is_numeric() => one,
+                            q => return invalid(format!("a quantile is a number between 0 and 1, got {q}")),
+                        }
+                    }
                     (CovSamp | CovPop | CorrSamp | CorrPop, Some(t)) => {
                         for t in [&t, &more[0]] {
                             if !t.is_numeric() && *t != T::Boolean {

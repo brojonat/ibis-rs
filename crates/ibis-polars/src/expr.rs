@@ -548,6 +548,10 @@ impl Tx<'_> {
                     pl::SortMultipleOptions::default().with_order_descending(func == ArgMax).with_maintain_order(true);
                 x.filter(keyed.clone()).sort_by([key.filter(keyed)], order).first()
             }
+            Quantile | ApproxQuantile => match &options.args[0] {
+                Expr::Literal(Value::Float(q), _) => x.quantile(pl::lit(*q), pl::QuantileMethod::Linear),
+                _ => return unsupported("an array of quantiles"),
+            },
             CovSamp | CovPop | CorrSamp | CorrPop => {
                 // as in SQL: only the rows where both are present
                 let y = other()?;

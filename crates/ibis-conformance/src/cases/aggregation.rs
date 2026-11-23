@@ -148,6 +148,36 @@ pub fn register(v: &mut Vec<Case>) {
         }
     }
 
+    // ids are "<cond>-<quantile|multi-quantile>"
+    for (cid, cond) in &conds {
+        for (qid, many) in [("quantile", false), ("multi-quantile", true)] {
+            let cond = *cond;
+            let case = table(&format!("test_quantile[{cid}-{qid}]"), move |t| {
+                let mut e = if many { c("double_col").quantiles([0.5]) } else { c("double_col").quantile(0.5) };
+                if let Some(w) = cond() {
+                    e = e.filter_where(w);
+                }
+                t.aggregate([e.name("tmp")])
+            });
+            // Trino has approximate quantiles only; Polars takes one fraction at a time
+            let none: &[&str] = match many {
+                true => &["impala", "mysql", "sqlite", "trino", "polars"],
+                false => &["impala", "mysql", "sqlite", "trino"],
+            };
+            v.push(case.notimpl(none));
+        }
+    }
+    v.push(
+        table("test_string_quantile[quantile]", |t| {
+            t.select([lit("a").name("col")])?.limit(5, 0).aggregate([c("col").quantile(0.5).name("tmp")])
+        })
+        .notimpl(&["impala", "mysql", "sqlite", "trino", "clickhouse", "spark", "polars"]),
+    );
+    v.push(
+        table("test_date_quantile", |t| t.aggregate([c("timestamp_col").date().quantile(0.5).name("tmp")]))
+            .notimpl(&["impala", "mysql", "sqlite", "trino", "spark"]),
+    );
+
     v.push(table("test_binds_are_cast", |t| {
         let urgent = c("string_col").cases([(lit("1-URGENT"), lit(1))], Some(lit(0)));
         t.aggregate([urgent.sum().name("high_line_count")])

@@ -159,3 +159,17 @@ for cid, cond in {"no_cond": lambda t: None, "cond": lambda t: t.yearID.isin([20
             f"test_corr_cov[{cid}-{fid}]",
             tables(lambda c, fn=fn, cond=cond: c.batting.aggregate(tmp=fn(c.batting, cond(c.batting)))),
         )
+
+# ids are "<cond>-<quantile|multi-quantile>"
+QUANTILES = {
+    "quantile": lambda t, w: t.double_col.quantile(0.5, where=w),
+    "multi-quantile": lambda t, w: t.double_col.quantile([0.5], where=w),
+}
+for cid, cond in CONDS.items():
+    for qid, q in QUANTILES.items():
+        r.add(f"test_quantile[{cid}-{qid}]", table(lambda t, q=q, cond=cond: t.aggregate(tmp=q(t, cond(t)))))
+r.add(
+    "test_string_quantile[quantile]",
+    table(lambda t: (lambda s: s.aggregate(tmp=s.col.quantile(0.5)))(t.select(col=ibis.literal("a")).limit(5))),
+)
+r.add("test_date_quantile", table(lambda t: t.aggregate(tmp=t.timestamp_col.date().quantile(0.5))))

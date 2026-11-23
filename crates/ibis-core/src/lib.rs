@@ -200,6 +200,9 @@ mod tests {
         assert_eq!(dtype(col("string_col").argmin("id")), "string");
         assert_eq!(dtype(col("int_col").gt(1).corr(col("double_col"))), "float64");
         assert!(t.aggregate([col("string_col").cov("id").name("x")]).is_err());
+        assert_eq!(dtype(col("int_col").quantile(0.5)), "float64");
+        assert_eq!(dtype(col("string_col").quantile(0.5)), "string");
+        assert_eq!(dtype(col("int_col").approx_quantiles([0.25, 0.75])), "array<float64>");
         // the key of `argmin` is bound like any column, and is in the default name
         let by_key = t.aggregate([col("int_col").argmin(t.col("id"))]).unwrap();
         assert_eq!(by_key.schema().to_string(), "ArgMin(int_col, id): int32");

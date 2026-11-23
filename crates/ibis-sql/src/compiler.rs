@@ -1039,7 +1039,8 @@ impl ExprCompiler<'_> {
             Collect => format!("ARRAY_AGG({x})"),
             // each engine names these its own way, or has none
             Mode | KurtosisSamp | KurtosisPop | ApproxCountDistinct | BitAnd | BitOr | BitXor | Arbitrary | Median
-            | ApproxMedian | First | Last | ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop => {
+            | ApproxMedian | First | Last | ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop | Quantile
+            | ApproxQuantile => {
                 return unsupported(self.d, snake(&format!("{f:?}")));
             }
         };
@@ -1063,6 +1064,27 @@ impl ExprCompiler<'_> {
             _ => return Ok(None),
         };
         Ok(Some(format!("{name}({}, {}){tail}", self.sql(arg)?, self.sql(&options.args[0])?)))
+    }
+
+    /// `PERCENTILE_CONT(q) WITHIN GROUP (ORDER BY arg)`: the SQL-standard
+    /// quantile, for a dialect's `reduction`. What cannot be interpolated
+    /// (text, dates) gets `PERCENTILE_DISC`, one of the values.
+    pub fn percentile(&self, arg: &Expr, options: &AggOptions, tail: &str) -> Result<String> {
+        let name = if self.dtype(arg)?.is_numeric() { "PERCENTILE_CONT" } else { "PERCENTILE_DISC" };
+        Ok(format!("{name}({}) WITHIN GROUP (ORDER BY {}){tail}", self.sql(&options.args[0])?, self.sql(arg)?))
+    }
+
+    /// The fractions of a quantile, where the engine wants them as numbers
+    /// in its own syntax, and whether they were given as an array.
+    pub fn fractions(&self, options: &AggOptions) -> Result<(Vec<f64>, bool)> {
+        match options.args.first() {
+            Some(Expr::Literal(Value::Float(q), _)) => Ok((vec![*q], false)),
+            Some(Expr::Literal(Value::Array(qs), _)) => {
+                let qs = qs.iter().filter_map(|q| if let Value::Float(q) = q { Some(*q) } else { None });
+                Ok((qs.collect(), true))
+            }
+            _ => unsupported(self.d, "a quantile that is not a literal"),
+        }
     }
 
     /// `arg ORDER BY key`, smallest key first (or largest), NULL keys last:

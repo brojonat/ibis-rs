@@ -3137,6 +3137,22 @@
    "postgres": "same"
   }
  },
+ "test_date_quantile": {
+  "file": "test_aggregation/test_date_quantile.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
  "test_date_scalar_from_iso": {
   "file": "test_temporal/test_date_scalar_from_iso.parquet",
   "kind": "scalar",
@@ -11311,6 +11327,70 @@
    "postgres": "same"
   }
  },
+ "test_quantile[is_in-multi-quantile]": {
+  "file": "test_aggregation/test_quantile[is_in-multi-quantile].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_quantile[is_in-quantile]": {
+  "file": "test_aggregation/test_quantile[is_in-quantile].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_quantile[no_cond-multi-quantile]": {
+  "file": "test_aggregation/test_quantile[no_cond-multi-quantile].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "array<float64>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_quantile[no_cond-quantile]": {
+  "file": "test_aggregation/test_quantile[no_cond-quantile].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
  "test_range_single_argument[-2]": {
   "file": "test_array/test_range_single_argument[-2].parquet",
   "kind": "scalar",
@@ -14539,6 +14619,22 @@
  },
  "test_string_quantile[median]": {
   "file": "test_aggregation/test_string_quantile[median].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_string_quantile[quantile]": {
+  "file": "test_aggregation/test_string_quantile[quantile].parquet",
   "kind": "table",
   "ordered": false,
   "columns": [

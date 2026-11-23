@@ -75,6 +75,41 @@ pub(crate) fn cases() -> Vec<ClientCase> {
         .notimpl(&["mysql", "sqlite"]),
     );
 
+    // ids are multi-filtered. An approximation: Ibis allows it 10 either way.
+    for many in [false, true] {
+        for filtered in [false, true] {
+            let id = |b: bool| if b { "True" } else { "False" };
+            let run = move |b: &dyn Backend, target: &Target| {
+                let t = target.fx.mem("approx_quantile_x")?;
+                let mut e = if many { col("x").approx_quantiles([0.25, 0.75]) } else { col("x").approx_quantile(0.25) };
+                if filtered {
+                    e = e.filter_where(col("x").le(100));
+                }
+                let got = value(b, &t.aggregate([e.name("tmp")])?)?;
+                let want: &[f64] = match (many, filtered) {
+                    (true, true) => &[25.0, 75.0],
+                    (true, false) => &[50.0, 150.0],
+                    (false, true) => &[25.0],
+                    (false, false) => &[50.0],
+                };
+                let floats = match (&got, many) {
+                    (Value::Array(items), true) => items.clone(),
+                    (one, false) => vec![one.clone()],
+                    _ => vec![],
+                };
+                let near = |(v, w): (&Value, &f64)| matches!(v, Value::Float(f) if (f - w).abs() <= 10.0);
+                check(floats.len() == want.len() && floats.iter().zip(want).all(near), || {
+                    format!("want floats within 10 of {want:?}, got {got:?}")
+                })
+            };
+            let case = test(&format!("test_approx_quantile[{}-{}]", id(many), id(filtered)), run);
+            // Ibis marks Polars for several fractions at once
+            let none: &[&str] =
+                if many { &["impala", "mysql", "sqlite", "polars"] } else { &["impala", "mysql", "sqlite"] };
+            v.push(case.notimpl(none));
+        }
+    }
+
     // Every value of string_col occurs as often as every other, so which
     // three are on top is the engine's choice: Ibis checks the counts.
     v.push(test("test_topk_op", |b, target| {

@@ -249,6 +249,31 @@ impl Dialect for ClickHouseDialect {
         options: &AggOptions,
         tail: &str,
     ) -> Result<Option<String>> {
+        if let AggFunc::Quantile | AggFunc::ApproxQuantile = f {
+            // The fractions are parameters of the function. `quantile`
+            // samples large inputs; `quantileExactInclusive` interpolates as
+            // the other engines do, and takes numbers only.
+            let (fractions, many) = c.fractions(options)?;
+            let dtype = c.dtype(arg)?;
+            let numeric = dtype.is_numeric();
+            let name = match (f == AggFunc::Quantile, numeric, many) {
+                (true, true, true) => "quantilesExactInclusive",
+                (true, true, false) => "quantileExactInclusive",
+                // Of dates: one of the values, and of two middle ones the
+                // lower, as PERCENTILE_DISC picks (`quantileExact` the higher).
+                (true, false, true) => "quantilesExactLow",
+                (true, false, false) => "quantileExactLow",
+                (false, _, true) => "quantiles",
+                (false, _, false) => "quantile",
+            };
+            let fractions: Vec<String> = fractions.iter().map(|q| format!("{q:?}")).collect();
+            let fractions = fractions.join(", ");
+            // no quantile function takes a Date32: as days since 1970, and back
+            if dtype == DataType::Date && !many {
+                return Ok(Some(format!("toDate32({name}({fractions})(toInt32({})){tail})", c.sql(arg)?)));
+            }
+            return Ok(Some(format!("{name}({fractions})({}){tail}", c.sql(arg)?)));
+        }
         let (x, other) = (c.sql(arg)?, c.sql(&options.args[0])?);
         Ok(Some(match f {
             // `argMin` passes over a NULL argument; inside a tuple it is a value

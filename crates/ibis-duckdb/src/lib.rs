@@ -54,6 +54,21 @@ impl Dialect for DuckDbDialect {
                 let ordered = c.by_key(arg, &options.args[0], f == AggFunc::ArgMin)?;
                 Ok(Some(format!("FIRST({ordered}){tail}")))
             }
+            AggFunc::Quantile => Ok(Some(c.percentile(arg, options, tail)?)),
+            // a number of the column's type; Ibis's is a float
+            AggFunc::ApproxQuantile => {
+                let (x, mut q) = (c.sql(arg)?, c.sql(&options.args[0])?);
+                let many = c.fractions(options)?.1;
+                if many {
+                    // a list of decimals is no list of floats to APPROX_QUANTILE
+                    q = format!("CAST({q} AS FLOAT[])");
+                }
+                let double = if many { "DOUBLE[]" } else { "DOUBLE" };
+                Ok(Some(match c.dtype(arg)?.is_numeric() {
+                    true => format!("CAST(APPROX_QUANTILE({x}, {q}){tail} AS {double})"),
+                    false => format!("APPROX_QUANTILE({x}, {q}){tail}"),
+                }))
+            }
             _ => c.standard_reduction(f, arg, options, tail),
         }
     }

@@ -161,6 +161,11 @@ impl Dialect for SparkDialect {
             AggFunc::ArgMax => Ok(Some(format!("MAX_BY({}, {}){tail}", c.sql(arg)?, other()?))),
             // one number for the sample and for the population
             AggFunc::CorrSamp => Ok(Some(format!("CORR({}, {}){tail}", c.sql(arg)?, other()?))),
+            AggFunc::Quantile => Ok(Some(format!("PERCENTILE({}, {}){tail}", c.sql(arg)?, other()?))),
+            AggFunc::ApproxQuantile => {
+                let x = arg.clone().cast(DataType::Float64);
+                Ok(Some(format!("PERCENTILE_APPROX({}, {}){tail}", c.sql(&x)?, other()?)))
+            }
             _ => c.standard_reduction(f, arg, options, tail),
         }
     }
