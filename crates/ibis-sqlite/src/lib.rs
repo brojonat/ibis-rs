@@ -236,6 +236,14 @@ impl Dialect for SqliteDialect {
         Ok(match (f, arg) {
             (AggFunc::Any, Some(x)) => Some(format!("(MAX({}){filter} <> 0)", c.sql(x)?)),
             (AggFunc::All, Some(x)) => Some(format!("(MIN({}){filter} <> 0)", c.sql(x)?)),
+            (AggFunc::ApproxCountDistinct, Some(x)) => Some(format!("COUNT(DISTINCT {}){filter}", c.sql(x)?)),
+            // aggregates this crate registers on the connection (polyfill.rs)
+            (AggFunc::Mode, Some(x)) => c.call_agg("ibis_mode", x, filter)?,
+            (AggFunc::BitAnd, Some(x)) => c.call_agg("ibis_bit_and", x, filter)?,
+            (AggFunc::BitOr, Some(x)) => c.call_agg("ibis_bit_or", x, filter)?,
+            (AggFunc::BitXor, Some(x)) => c.call_agg("ibis_bit_xor", x, filter)?,
+            (AggFunc::First | AggFunc::Arbitrary, Some(x)) => c.call_agg("ibis_first", x, filter)?,
+            (AggFunc::Last, Some(x)) => c.call_agg("ibis_last", x, filter)?,
             _ => None,
         })
     }
@@ -426,6 +434,26 @@ mod tests {
     #[test]
     fn like_is_case_sensitive_like_ibis() {
         assert_eq!(like_to_glob("6%_x*"), "6*?x[*]");
+    }
+
+    #[test]
+    fn registered_aggregates_pass_over_nulls() {
+        let con = Sqlite::open_in_memory().unwrap();
+        let schema = Schema::of(&[("g", DataType::Int64), ("x", DataType::Int64)]);
+        let row = |g: i64, x: Option<i64>| vec![Value::Int(g), x.map_or(Value::Null, Value::Int)];
+        // group 1: a NULL at each end, 5 and 3 twice each (5 met first); group 2: only NULLs
+        let rows = [row(1, None), row(1, Some(5)), row(1, Some(3)), row(1, Some(3)), row(1, Some(5)), row(1, Some(6))];
+        let rows: Vec<_> = rows.into_iter().chain([row(1, None), row(2, None)]).collect();
+        con.create_table("t", &[rows_to_batch(&schema, &rows).unwrap()]).unwrap();
+        let x = || col("x");
+        let reductions = [x().first(), x().last(), x().mode(), x().bit_and(), x().bit_or(), x().bit_xor()];
+        let named = reductions.into_iter().enumerate().map(|(i, e)| e.name(&format!("c{i}")));
+        let q = con.table("t").unwrap().group_by(["g"]).agg(named).unwrap().order_by(["g"]).unwrap();
+        let got = batch_to_rows(&con.execute(&q).unwrap()[0]).unwrap();
+        let ints = |v: [i64; 7]| v.map(Value::Int).to_vec();
+        // of 5, 3, 3, 5, 6: AND 0, OR 7, XOR 6
+        assert_eq!(got[0], ints([1, 5, 6, 5, 0, 7, 6]));
+        assert_eq!(got[1][1..], vec![Value::Null; 6]);
     }
 
     #[test]

@@ -188,6 +188,11 @@ impl Dialect for MySqlDialect {
             // no BOOL_OR / BOOL_AND; a boolean is 0 or 1
             AggFunc::Any => Some(format!("MAX({}){tail}", c.sql(x)?)),
             AggFunc::All => Some(format!("MIN({}){tail}", c.sql(x)?)),
+            AggFunc::ApproxCountDistinct => Some(format!("COUNT(DISTINCT {}){tail}", c.sql(x)?)),
+            // unsigned in MySQL; the columns are not
+            AggFunc::BitAnd => Some(format!("CAST(BIT_AND({}){tail} AS SIGNED)", c.sql(x)?)),
+            AggFunc::BitOr => Some(format!("CAST(BIT_OR({}){tail} AS SIGNED)", c.sql(x)?)),
+            AggFunc::BitXor => Some(format!("CAST(BIT_XOR({}){tail} AS SIGNED)", c.sql(x)?)),
             _ => None,
         })
     }

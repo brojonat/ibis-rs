@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import ibis
+
 from cases import Registry, table
 
 r = Registry("test_aggregation")
@@ -13,6 +15,8 @@ AGGREGATE = {
     "mean": lambda t: t.double_col.mean(),
     "min": lambda t: t.double_col.min(),
     "max": lambda t: t.double_col.max(),
+    # int_col % 3 so there are no ties for most common value
+    "mode": lambda t: (t.int_col % 3).mode(),
     "complex_sum": lambda t: (t.double_col + 5).sum(),
     "timestamp_max": lambda t: t.timestamp_col.max(),
 }
@@ -40,6 +44,14 @@ REDUCTIONS = {
     "std_pop": lambda t, w: t.double_col.std(how="pop", where=w),
     "var_pop": lambda t, w: t.double_col.var(how="pop", where=w),
     "count_star": lambda t, w: t.count(where=w),
+    "notany": lambda t, w: t.bool_col.notany(where=w),
+    "notall": lambda t, w: t.bool_col.notall(where=w),
+    "mode": lambda t, w: (t.int_col % 3).mode(where=w),
+    "kurtosis_samp": lambda t, w: t.double_col.kurtosis(how="sample", where=w),
+    "approx_nunique": lambda t, w: t.string_col.approx_nunique(where=w),
+    "bit_and": lambda t, w: t.bigint_col.bit_and(where=w),
+    "bit_or": lambda t, w: t.bigint_col.bit_or(where=w),
+    "bit_xor": lambda t, w: t.bigint_col.bit_xor(where=w),
 }
 CONDS = {
     "no_cond": lambda t: None,
@@ -54,3 +66,8 @@ for cid, cond in CONDS.items():
 
         r.add(f"test_reduction_ops[{cid}-{rid}]", table(build))
 
+r.add("test_median", table(lambda t: t.aggregate(tmp=t.double_col.median())))
+r.add(
+    "test_string_quantile[median]",
+    table(lambda t: (lambda s: s.aggregate(tmp=s.col.median()))(t.select(col=ibis.literal("a")).limit(5))),
+)

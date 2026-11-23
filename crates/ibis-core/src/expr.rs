@@ -353,6 +353,26 @@ pub enum AggFunc {
     All,
     /// The values as an array, NULLs left out, in no particular order.
     Collect,
+    /// The most frequent value.
+    Mode,
+    /// Excess kurtosis, with the sample's bias correction.
+    KurtosisSamp,
+    KurtosisPop,
+    /// How many distinct values, counted approximately where the engine
+    /// has a function for that and exactly where it has not.
+    ApproxCountDistinct,
+    BitAnd,
+    BitOr,
+    BitXor,
+    /// Some value that is not NULL.
+    Arbitrary,
+    /// The middle value: of numbers, interpolated between the two middle ones.
+    Median,
+    ApproxMedian,
+    /// The first value that is not NULL, in the order the engine reads
+    /// the rows.
+    First,
+    Last,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1126,6 +1146,41 @@ impl Expr {
     pub fn all(self) -> Expr {
         agg(AggFunc::All, self)
     }
+    /// The most frequent value.
+    pub fn mode(self) -> Expr {
+        agg(AggFunc::Mode, self)
+    }
+    /// Sample excess kurtosis (Ibis default `how="sample"`).
+    pub fn kurtosis(self) -> Expr {
+        agg(AggFunc::KurtosisSamp, self)
+    }
+    pub fn kurtosis_pop(self) -> Expr {
+        agg(AggFunc::KurtosisPop, self)
+    }
+    /// The number of distinct values, approximately.
+    pub fn approx_nunique(self) -> Expr {
+        agg(AggFunc::ApproxCountDistinct, self)
+    }
+    /// Bitwise AND of all the values.
+    pub fn bit_and(self) -> Expr {
+        agg(AggFunc::BitAnd, self)
+    }
+    pub fn bit_or(self) -> Expr {
+        agg(AggFunc::BitOr, self)
+    }
+    pub fn bit_xor(self) -> Expr {
+        agg(AggFunc::BitXor, self)
+    }
+    /// Some value that is not NULL.
+    pub fn arbitrary(self) -> Expr {
+        agg(AggFunc::Arbitrary, self)
+    }
+    pub fn median(self) -> Expr {
+        agg(AggFunc::Median, self)
+    }
+    pub fn approx_median(self) -> Expr {
+        agg(AggFunc::ApproxMedian, self)
+    }
     /// No row is true (Ibis `notany`).
     pub fn notany(self) -> Expr {
         !self.any()
@@ -1142,10 +1197,12 @@ impl Expr {
     pub fn desc(self) -> SortKey {
         desc(self)
     }
-    /// Restrict a reduction to rows matching `cond` (Ibis `where=`).
+    /// Restrict a reduction to rows matching `cond` (Ibis `where=`). On
+    /// `notany()` and `notall()` it restricts the reduction they negate.
     pub fn filter_where(self, cond: Expr) -> Expr {
         match self {
             Expr::Agg { func, arg, .. } => Expr::Agg { func, arg, filter: Some(Box::new(cond)) },
+            Expr::Unary(UnaryOp::Not, inner) if matches!(*inner, Expr::Agg { .. }) => !inner.filter_where(cond),
             other => other,
         }
     }
@@ -1185,11 +1242,14 @@ impl Expr {
         a.extend(offset.map(lit));
         Expr::Analytic(Analytic::Lead, a)
     }
+    /// The first value that is not NULL. Rows have no order of their own:
+    /// over a window with `order_by` (`first().over(w)`) it is the first
+    /// value of the frame, NULL or not.
     pub fn first(self) -> Expr {
-        Expr::Analytic(Analytic::FirstValue, vec![self])
+        agg(AggFunc::First, self)
     }
     pub fn last(self) -> Expr {
-        Expr::Analytic(Analytic::LastValue, vec![self])
+        agg(AggFunc::Last, self)
     }
     /// The `n`th value of the window frame, **0-based**; NULL if the frame is shorter.
     pub fn nth(self, n: i64) -> Expr {
@@ -1220,6 +1280,11 @@ impl Expr {
                     spec.order_by = order;
                     spec.frame = w.frame.clone().or(spec.frame);
                     Expr::Window(f, spec)
+                }
+                // the first value of a frame is the frame's, not the first that is not NULL
+                Expr::Agg { func: func @ (AggFunc::First | AggFunc::Last), arg: Some(arg), filter: None } => {
+                    let value = if func == AggFunc::First { Analytic::FirstValue } else { Analytic::LastValue };
+                    Expr::Window(Box::new(Expr::Analytic(value, vec![*arg])), w.clone())
                 }
                 e @ (Expr::Agg { .. } | Expr::Analytic(..)) => Expr::Window(Box::new(e), w.clone()),
                 e if windowable(&e) => e.map_children(&mut |c| Ok(go(c, w))).expect("infallible"),
@@ -1572,7 +1637,12 @@ impl Expr {
                     // Ibis: the mean of a decimal is that decimal type
                     (Mean, Some(t @ T::Decimal { .. })) => t,
                     (Mean | StdSamp | StdPop | VarSamp | VarPop, _) => T::Float64,
-                    (Min | Max, Some(t)) => t,
+                    (Median | ApproxMedian, Some(t)) if t.is_numeric() => T::Float64,
+                    (Min | Max | Mode | Arbitrary | First | Last | Median | ApproxMedian, Some(t)) => t,
+                    (BitAnd | BitOr | BitXor, Some(t)) if t.is_integer() => t,
+                    (BitAnd | BitOr | BitXor, Some(t)) => return invalid(format!("{func:?} needs integers, got {t}")),
+                    (KurtosisSamp | KurtosisPop, _) => T::Float64,
+                    (ApproxCountDistinct, _) => T::Int64,
                     (Collect, Some(t)) => T::array(t),
                     (Any | All, _) => T::Boolean,
                     (f, None) => return invalid(format!("{f:?} needs an argument")),

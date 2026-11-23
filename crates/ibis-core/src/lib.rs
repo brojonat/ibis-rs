@@ -186,6 +186,25 @@ mod tests {
     }
 
     #[test]
+    fn reductions_have_ibis_types() {
+        let t = alltypes();
+        let dtype = |e: Expr| t.aggregate([e.name("x")]).unwrap().schema().fields[0].dtype.to_string();
+        assert_eq!(dtype(col("int_col").median()), "float64");
+        assert_eq!(dtype(col("string_col").median()), "string");
+        assert_eq!(dtype(col("int_col").mode()), "int32");
+        assert_eq!(dtype(col("int_col").bit_xor()), "int32");
+        assert_eq!(dtype(col("string_col").approx_nunique()), "int64");
+        assert_eq!(dtype(col("int_col").kurtosis()), "float64");
+        assert!(t.aggregate([col("double_col").bit_and().name("x")]).is_err());
+        // the condition of `notany` is the condition of the `any` it negates
+        let filtered = col("int_col").gt(0).notany().filter_where(col("id").lt(5));
+        assert!(format!("{filtered:?}").contains("filter: Some"), "{filtered:?}");
+        // over a window, `first` is the first value of the frame
+        let w = WindowSpec::new().order_by([asc(col("id"))]);
+        assert!(format!("{:?}", col("int_col").first().over(w)).contains("FirstValue"));
+    }
+
+    #[test]
     fn join_renames_collisions() {
         let t = alltypes();
         let j = t.join(&t, [("id", "id")], JoinKind::Inner).unwrap();

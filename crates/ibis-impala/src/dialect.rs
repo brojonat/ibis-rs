@@ -179,6 +179,8 @@ impl Dialect for ImpalaDialect {
             // no BOOL_OR / BOOL_AND; false sorts before true
             AggFunc::Any => Some(format!("MAX({}){tail}", c.sql(x)?)),
             AggFunc::All => Some(format!("MIN({}){tail}", c.sql(x)?)),
+            AggFunc::ApproxCountDistinct => c.call_agg("NDV", x, tail)?,
+            AggFunc::ApproxMedian => c.call_agg("APPX_MEDIAN", x, tail)?,
             _ => None,
         })
     }

@@ -510,6 +510,18 @@ impl Tx<'_> {
             All => x.min(),
             // SQL's ARRAY_AGG of no rows is NULL
             Collect => some(&x, x.clone().filter(x.clone().is_not_null()).implode(false)),
+            Mode => x.drop_nulls().mode(true).first(),
+            // Fisher's definition (0 for a normal distribution), as pandas and DuckDB compute it
+            KurtosisSamp => f64_of(x).kurtosis(true, false),
+            KurtosisPop => f64_of(x).kurtosis(true, true),
+            // exact: an approximation that is never wrong
+            ApproxCountDistinct => x.drop_nulls().n_unique(),
+            BitAnd => x.bitwise_and(),
+            BitOr => x.bitwise_or(),
+            BitXor => x.bitwise_xor(),
+            Arbitrary | First => x.drop_nulls().first(),
+            Last => x.drop_nulls().last(),
+            Median | ApproxMedian => x.median(),
         }
         .cast(t))
     }

@@ -227,6 +227,16 @@ impl Dialect for ClickHouseDialect {
             AggFunc::Any => Some(format!("max({}){tail}", c.sql(x)?)),
             AggFunc::All => Some(format!("min({}){tail}", c.sql(x)?)),
             AggFunc::Collect => Some(format!("groupArray({}){tail}", c.sql(x)?)),
+            AggFunc::ApproxCountDistinct => c.call_agg("uniq", x, tail)?,
+            AggFunc::BitAnd => c.call_agg("groupBitAnd", x, tail)?,
+            AggFunc::BitOr => c.call_agg("groupBitOr", x, tail)?,
+            AggFunc::BitXor => c.call_agg("groupBitXor", x, tail)?,
+            // `any` and `anyLast` pass over NULLs
+            AggFunc::Arbitrary | AggFunc::First => c.call_agg("any", x, tail)?,
+            AggFunc::Last => c.call_agg("anyLast", x, tail)?,
+            // interpolates between the two middle values, as the others do
+            AggFunc::Median => c.call_agg("quantileExactInclusive(0.5)", x, tail)?,
+            AggFunc::ApproxMedian => c.call_agg("median", x, tail)?,
             _ => None,
         })
     }

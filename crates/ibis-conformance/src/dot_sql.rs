@@ -11,12 +11,11 @@
 
 use std::collections::HashMap;
 
-use ibis_core::convert::batch_to_rows;
 use ibis_core::prelude::*;
 use ibis_core::{Result, Value};
 
 use crate::Target;
-use crate::client::{ClientCase, case, check};
+use crate::client::{ClientCase, case, check, rows};
 
 fn test(id: &str, run: impl Fn(&dyn Backend, &Target) -> Result<()> + Send + Sync + 'static) -> ClientCase {
     let mut c = case(id, run);
@@ -33,14 +32,6 @@ fn native(b: &dyn Backend, sql: &str) -> String {
         "postgres" => sql.replace("AS DOUBLE)", "AS DOUBLE PRECISION)"),
         _ => sql.to_string(),
     }
-}
-
-fn rows(b: &dyn Backend, t: &Table) -> Result<Vec<Vec<Value>>> {
-    let mut rows = vec![];
-    for batch in b.execute(t)? {
-        rows.extend(batch_to_rows(&batch)?);
-    }
-    Ok(rows)
 }
 
 /// Rows in an order of their own, for results the query does not order.

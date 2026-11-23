@@ -130,6 +130,15 @@ fn create(b: &dyn Backend, name: &str, schema: &Schema, rows: &[Vec<Value>]) -> 
     b.create_table(name, &[rows_to_batch(schema, rows)?])
 }
 
+/// The rows of the result of a query.
+pub(crate) fn rows(b: &dyn Backend, t: &Table) -> Result<Vec<Vec<Value>>> {
+    let mut rows = vec![];
+    for batch in b.execute(t)? {
+        rows.extend(batch_to_rows(&batch)?);
+    }
+    Ok(rows)
+}
+
 /// The rows of a table, sorted by its first column.
 fn rows_of(b: &dyn Backend, name: &str) -> Result<Vec<Vec<Value>>> {
     let t = b.table(name)?;
@@ -453,6 +462,7 @@ pub fn all() -> Vec<ClientCase> {
     c.module = "test_map";
     v.push(c);
     v.extend(crate::dot_sql::cases());
+    v.extend(crate::reductions::cases());
     v
 }
 

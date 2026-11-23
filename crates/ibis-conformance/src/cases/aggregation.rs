@@ -15,16 +15,18 @@ pub fn register(v: &mut Vec<Case>) {
         ("max", || c("double_col").max()),
         ("complex_sum", || (c("double_col") + 5).sum()),
         ("timestamp_max", || c("timestamp_col").max()),
+        // int_col % 3 so there are no ties for most common value
+        ("mode", || (c("int_col") % 3).mode()),
     ];
     for (id, f) in &aggs {
         let f = *f;
-        v.push(table(&format!("test_aggregate[{id}]"), move |t| t.aggregate([f().name("tmp")])));
+        v.push(table(&format!("test_aggregate[{id}]"), move |t| t.aggregate([f().name("tmp")])).notimpl(missing(id)));
     }
     for (id, f) in &aggs {
         let f = *f;
-        v.push(table(&format!("test_aggregate_grouped[{id}]"), move |t| {
-            t.group_by(["bigint_col"]).agg([f().name("tmp")])
-        }));
+        let grouped =
+            table(&format!("test_aggregate_grouped[{id}]"), move |t| t.group_by(["bigint_col"]).agg([f().name("tmp")]));
+        v.push(grouped.notimpl(missing(id)));
     }
 
     let reductions: Vec<(&str, fn() -> Expr)> = vec![
@@ -44,13 +46,21 @@ pub fn register(v: &mut Vec<Case>) {
         ("std_pop", || c("double_col").std_pop()),
         ("var_pop", || c("double_col").var_pop()),
         ("count_star", count),
+        ("notany", || c("bool_col").notany()),
+        ("notall", || c("bool_col").notall()),
+        ("mode", || (c("int_col") % 3).mode()),
+        ("kurtosis_samp", || c("double_col").kurtosis()),
+        ("approx_nunique", || c("string_col").approx_nunique()),
+        ("bit_and", || c("bigint_col").bit_and()),
+        ("bit_or", || c("bigint_col").bit_or()),
+        ("bit_xor", || c("bigint_col").bit_xor()),
     ];
     let conds: Vec<(&str, fn() -> Option<Expr>)> =
         vec![("no_cond", || None), ("is_in", || Some(c("string_col").isin([lit("1"), lit("7")])))];
     for (cid, cond) in &conds {
         for (rid, red) in &reductions {
             let (cond, red, negate) = (*cond, *red, rid.ends_with("_negate"));
-            v.push(table(&format!("test_reduction_ops[{cid}-{rid}]"), move |t| {
+            let case = table(&format!("test_reduction_ops[{cid}-{rid}]"), move |t| {
                 let mut e = red();
                 if let Some(w) = cond() {
                     e = e.filter_where(w);
@@ -59,7 +69,30 @@ pub fn register(v: &mut Vec<Case>) {
                     e = !e;
                 }
                 t.filter([c("id").lt(1550)])?.aggregate([e.name("tmp")])
-            }));
+            });
+            v.push(case.notimpl(missing(rid)));
         }
+    }
+
+    v.push(
+        table("test_median", |t| t.aggregate([c("double_col").median().name("tmp")]))
+            .notimpl(&["impala", "mysql", "sqlite", "trino"]),
+    );
+    v.push(
+        table("test_string_quantile[median]", |t| {
+            t.select([lit("a").name("col")])?.limit(5, 0).aggregate([c("col").median().name("tmp")])
+        })
+        // Ibis marks ClickHouse, PySpark and Polars too: no median of strings there
+        .notimpl(&["impala", "mysql", "sqlite", "trino", "clickhouse", "spark", "polars"]),
+    );
+}
+
+/// The backends Ibis marks as having no such reduction.
+fn missing(reduction: &str) -> &'static [&'static str] {
+    match reduction {
+        "mode" => &["clickhouse", "impala", "mysql", "spark", "trino"],
+        "kurtosis_samp" => &["clickhouse", "impala", "mysql", "postgres", "spark", "sqlite"],
+        "bit_and" | "bit_or" | "bit_xor" => &["impala", "spark"],
+        _ => &[],
     }
 }

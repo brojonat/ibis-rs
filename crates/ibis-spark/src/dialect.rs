@@ -137,6 +137,12 @@ impl Dialect for SparkDialect {
     fn agg(&self, c: &ExprCompiler, f: AggFunc, arg: Option<&Expr>, tail: &str) -> Result<Option<String>> {
         Ok(match (f, arg) {
             (AggFunc::Collect, Some(x)) => Some(format!("COLLECT_LIST({}){tail}", c.sql(x)?)),
+            (AggFunc::ApproxCountDistinct, Some(x)) => c.call_agg("APPROX_COUNT_DISTINCT", x, tail)?,
+            // the second argument: pass over NULLs
+            (AggFunc::Arbitrary | AggFunc::First, Some(x)) => Some(format!("FIRST({}, TRUE){tail}", c.sql(x)?)),
+            (AggFunc::Last, Some(x)) => Some(format!("LAST({}, TRUE){tail}", c.sql(x)?)),
+            (AggFunc::Median, Some(x)) => Some(format!("PERCENTILE({}, 0.5){tail}", c.sql(x)?)),
+            (AggFunc::ApproxMedian, Some(x)) => Some(format!("PERCENTILE_APPROX({}, 0.5){tail}", c.sql(x)?)),
             _ => None,
         })
     }

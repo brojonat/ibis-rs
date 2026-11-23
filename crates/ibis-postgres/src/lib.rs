@@ -162,6 +162,23 @@ impl Dialect for PostgresDialect {
                 };
                 Some(format!("CAST({} AS DOUBLE PRECISION)", inner(name)?))
             }
+            AggFunc::Mode => Some(format!("MODE() WITHIN GROUP (ORDER BY {}){filter}", c.sql(x)?)),
+            // the middle value of what cannot be interpolated is one of the values
+            AggFunc::Median | AggFunc::ApproxMedian => {
+                let percentile = if t.is_numeric() { "PERCENTILE_CONT" } else { "PERCENTILE_DISC" };
+                Some(format!("{percentile}(0.5) WITHIN GROUP (ORDER BY {}){filter}", c.sql(x)?))
+            }
+            AggFunc::ApproxCountDistinct => Some(format!("COUNT(DISTINCT {}){filter}", c.sql(x)?)),
+            AggFunc::BitAnd => Some(inner("BIT_AND")?),
+            AggFunc::BitOr => Some(inner("BIT_OR")?),
+            AggFunc::BitXor => Some(inner("BIT_XOR")?),
+            AggFunc::Arbitrary => Some(inner("ANY_VALUE")?),
+            // no FIRST or LAST: the ends of the values gathered
+            AggFunc::First => Some(format!("({})[1]", inner("ARRAY_AGG")?)),
+            AggFunc::Last => {
+                let values = inner("ARRAY_AGG")?;
+                Some(format!("({values})[ARRAY_LENGTH({values}, 1)]"))
+            }
             _ => None,
         })
     }

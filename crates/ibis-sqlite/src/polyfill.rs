@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use regex::Regex;
 use rusqlite::functions::{Aggregate, Context, FunctionFlags};
+use rusqlite::types::Value as SqlValue;
 use rusqlite::{Connection, Result};
 
 const DET: FunctionFlags = FunctionFlags::SQLITE_UTF8.union(FunctionFlags::SQLITE_DETERMINISTIC);
@@ -118,7 +119,93 @@ pub fn register(conn: &Connection) -> Result<()> {
     {
         conn.create_aggregate_function(name, 1, DET, Moments { sample, root })?;
     }
+    for (name, op) in [("ibis_bit_and", Bits::And), ("ibis_bit_or", Bits::Or), ("ibis_bit_xor", Bits::Xor)] {
+        conn.create_aggregate_function(name, 1, DET, op)?;
+    }
+    conn.create_aggregate_function("ibis_first", 1, DET, End { last: false })?;
+    conn.create_aggregate_function("ibis_last", 1, DET, End { last: true })?;
+    conn.create_aggregate_function("ibis_mode", 1, DET, Mode)?;
     Ok(())
+}
+
+/// Bitwise AND, OR or XOR of the integers of a group; NULL for none.
+#[derive(Clone, Copy)]
+enum Bits {
+    And,
+    Or,
+    Xor,
+}
+
+impl Aggregate<Option<i64>, Option<i64>> for Bits {
+    fn init(&self, _: &mut Context<'_>) -> Result<Option<i64>> {
+        Ok(None)
+    }
+
+    fn step(&self, ctx: &mut Context<'_>, acc: &mut Option<i64>) -> Result<()> {
+        if let Some(x) = ctx.get::<Option<i64>>(0)? {
+            *acc = Some(match (*acc, self) {
+                (None, _) => x,
+                (Some(a), Bits::And) => a & x,
+                (Some(a), Bits::Or) => a | x,
+                (Some(a), Bits::Xor) => a ^ x,
+            });
+        }
+        Ok(())
+    }
+
+    fn finalize(&self, _: &mut Context<'_>, acc: Option<Option<i64>>) -> Result<Option<i64>> {
+        Ok(acc.flatten())
+    }
+}
+
+/// The first or the last value of a group that is not NULL.
+struct End {
+    last: bool,
+}
+
+impl Aggregate<Option<SqlValue>, Option<SqlValue>> for End {
+    fn init(&self, _: &mut Context<'_>) -> Result<Option<SqlValue>> {
+        Ok(None)
+    }
+
+    fn step(&self, ctx: &mut Context<'_>, acc: &mut Option<SqlValue>) -> Result<()> {
+        let x: SqlValue = ctx.get(0)?;
+        if x != SqlValue::Null && (self.last || acc.is_none()) {
+            *acc = Some(x);
+        }
+        Ok(())
+    }
+
+    fn finalize(&self, _: &mut Context<'_>, acc: Option<Option<SqlValue>>) -> Result<Option<SqlValue>> {
+        Ok(acc.flatten())
+    }
+}
+
+/// The most frequent value of a group that is not NULL; of several, the
+/// one met first.
+struct Mode;
+
+impl Aggregate<Vec<(SqlValue, usize)>, Option<SqlValue>> for Mode {
+    fn init(&self, _: &mut Context<'_>) -> Result<Vec<(SqlValue, usize)>> {
+        Ok(vec![])
+    }
+
+    fn step(&self, ctx: &mut Context<'_>, acc: &mut Vec<(SqlValue, usize)>) -> Result<()> {
+        let x: SqlValue = ctx.get(0)?;
+        if x == SqlValue::Null {
+            return Ok(());
+        }
+        match acc.iter_mut().find(|(seen, _)| *seen == x) {
+            Some(entry) => entry.1 += 1,
+            None => acc.push((x, 1)),
+        }
+        Ok(())
+    }
+
+    fn finalize(&self, _: &mut Context<'_>, acc: Option<Vec<(SqlValue, usize)>>) -> Result<Option<SqlValue>> {
+        // `max_by_key` keeps the last of equals: read from the end to keep the first
+        Ok(acc.unwrap_or_default().into_iter().rev().max_by_key(|(_, n)| *n).map(|(value, _)| value))
+    }
 }
 
 /// Welford's online variance.

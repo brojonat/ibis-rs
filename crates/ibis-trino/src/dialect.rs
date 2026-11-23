@@ -1,6 +1,6 @@
 //! What Trino spells or means differently from the defaults in `ibis-sql`.
 
-use ibis_core::{BinaryOp, DataType, Error, Expr, Func, Lambda, Result, Value};
+use ibis_core::{AggFunc, BinaryOp, DataType, Error, Expr, Func, Lambda, Result, Value};
 use ibis_sql::{Dialect, ExprCompiler, Unnest, quote_str, strftime_to_date_format};
 
 use crate::nested;
@@ -98,6 +98,24 @@ impl Dialect for TrinoDialect {
             }
         }
         Ok(None)
+    }
+
+    fn agg(&self, c: &ExprCompiler, f: AggFunc, arg: Option<&Expr>, tail: &str) -> Result<Option<String>> {
+        let Some(x) = arg else { return Ok(None) };
+        use AggFunc::*;
+        match f {
+            KurtosisSamp => c.call_agg("KURTOSIS", x, tail),
+            ApproxCountDistinct => c.call_agg("APPROX_DISTINCT", x, tail),
+            BitAnd => c.call_agg("BITWISE_AND_AGG", x, tail),
+            BitOr => c.call_agg("BITWISE_OR_AGG", x, tail),
+            BitXor => c.call_agg("BITWISE_XOR_AGG", x, tail),
+            Arbitrary => c.call_agg("ARBITRARY", x, tail),
+            ApproxMedian => Ok(Some(format!("APPROX_PERCENTILE({}, 0.5){tail}", c.sql(x)?))),
+            // no FIRST or LAST: the ends of the values gathered (NULL past them)
+            First => Ok(Some(format!("ELEMENT_AT(ARRAY_AGG({}){tail}, 1)", c.sql(x)?))),
+            Last => Ok(Some(format!("ELEMENT_AT(ARRAY_AGG({}){tail}, -1)", c.sql(x)?))),
+            _ => Ok(None),
+        }
     }
 
     fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {

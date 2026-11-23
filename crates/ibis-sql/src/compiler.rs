@@ -671,8 +671,9 @@ impl ExprCompiler<'_> {
     /// An aggregate call with its FILTER and OVER clauses. Both must follow
     /// the call itself, inside anything a dialect wraps around it.
     fn agg(&self, func: AggFunc, arg: Option<&Expr>, filter: Option<&Expr>, over: Option<&str>) -> Result<String> {
-        // `collect` leaves NULLs out: one more condition on the rows it sees
-        if let (AggFunc::Collect, Some(a)) = (func, arg) {
+        // `collect`, `first` and `last` leave NULLs out: one more condition
+        // on the rows they see
+        if let (AggFunc::Collect | AggFunc::First | AggFunc::Last, Some(a)) = (func, arg) {
             let present = a.clone().notnull();
             let filter = match filter {
                 Some(f) => present.and(f.clone()),
@@ -967,8 +968,26 @@ impl ExprCompiler<'_> {
             Any => format!("BOOL_OR({x})"),
             All => format!("BOOL_AND({x})"),
             Collect => format!("ARRAY_AGG({x})"),
+            // each engine names these its own way, or has none
+            Mode | KurtosisSamp | KurtosisPop | ApproxCountDistinct | BitAnd | BitOr | BitXor | Arbitrary | Median
+            | ApproxMedian | First | Last => {
+                // `KurtosisSamp` -> `kurtosis_samp`
+                let mut name = String::new();
+                for ch in format!("{f:?}").chars() {
+                    if ch.is_uppercase() && !name.is_empty() {
+                        name.push('_');
+                    }
+                    name.extend(ch.to_lowercase());
+                }
+                return unsupported(self.d, name);
+            }
         };
         Ok(format!("{call}{filter}"))
+    }
+
+    /// `NAME(arg)` and what follows the call: for a dialect's `agg`.
+    pub fn call_agg(&self, name: &str, arg: &Expr, tail: &str) -> Result<Option<String>> {
+        Ok(Some(format!("{name}({}){tail}", self.sql(arg)?)))
     }
 
     fn window(&self, f: &Expr, spec: &WindowSpec) -> Result<String> {

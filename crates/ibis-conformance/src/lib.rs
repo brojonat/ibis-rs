@@ -4,6 +4,7 @@
 pub mod cases;
 pub mod client;
 mod dot_sql;
+mod reductions;
 pub mod tpch;
 
 use std::collections::BTreeMap;

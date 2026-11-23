@@ -10,8 +10,8 @@ use arrow_array::RecordBatch;
 use duckdb::Connection;
 use duckdb::arrow::datatypes::SchemaRef;
 use ibis_core::convert::conform_batch;
-use ibis_core::{Backend, Error, Result, Schema, Table};
-use ibis_sql::{Dialect, SqlClient, compile};
+use ibis_core::{AggFunc, Backend, Error, Expr, Result, Schema, Table};
+use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile};
 
 pub struct DuckDbDialect;
 
@@ -21,6 +21,25 @@ impl Dialect for DuckDbDialect {
     }
     fn merge(&self) -> bool {
         true
+    }
+    fn agg(&self, c: &ExprCompiler, f: AggFunc, arg: Option<&Expr>, tail: &str) -> Result<Option<String>> {
+        let Some(x) = arg else { return Ok(None) };
+        use AggFunc::*;
+        match f {
+            Mode => c.call_agg("MODE", x, tail),
+            KurtosisSamp => c.call_agg("KURTOSIS", x, tail),
+            KurtosisPop => c.call_agg("KURTOSIS_POP", x, tail),
+            ApproxCountDistinct => c.call_agg("APPROX_COUNT_DISTINCT", x, tail),
+            BitAnd => c.call_agg("BIT_AND", x, tail),
+            BitOr => c.call_agg("BIT_OR", x, tail),
+            BitXor => c.call_agg("BIT_XOR", x, tail),
+            Arbitrary => c.call_agg("ANY_VALUE", x, tail),
+            Median => c.call_agg("MEDIAN", x, tail),
+            ApproxMedian => Ok(Some(format!("APPROX_QUANTILE({}, 0.5){tail}", c.sql(x)?))),
+            First => c.call_agg("FIRST", x, tail),
+            Last => c.call_agg("LAST", x, tail),
+            _ => Ok(None),
+        }
     }
 }
 

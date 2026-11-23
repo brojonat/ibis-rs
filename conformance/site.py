@@ -141,14 +141,16 @@ def ported(repo: str) -> dict[str, dict[str, list[dict]]]:
 
 
 def client_cases(repo: str, ids: list[str], mine: dict[str, dict[str, list[dict]]]) -> None:
-    """Add the tests of the connection API (crates/ibis-conformance/src/client.rs,
-    and dot_sql.rs for test_dot_sql) to `mine`. They have no Python side:
-    results ids are `client::<module>::<pytest id>`."""
+    """Add the tests that are procedures (crates/ibis-conformance/src/client.rs
+    for the connection API, dot_sql.rs for test_dot_sql, reductions.rs for
+    test_aggregation) to `mine`. They have no Python side: results ids are
+    `client::<module>::<pytest id>`."""
     src = "crates/ibis-conformance/src"
-    files = {name: (ROOT / src / name).read_text().splitlines() for name in ("client.rs", "dot_sql.rs")}
+    by_module = {"test_dot_sql": "dot_sql.rs", "test_aggregation": "reductions.rs"}
+    files = {name: (ROOT / src / name).read_text().splitlines() for name in ("client.rs", *by_module.values())}
     for case_id in ids:
         _, module, test_id = case_id.split("::", 2)
-        name = "dot_sql.rs" if module == "test_dot_sql" else "client.rs"
+        name = by_module.get(module, "client.rs")
         line = rust_line(files[name], test_id)
         rs = f"{repo}/blob/main/{src}/{name}" + (f"#L{line}" if line else "")
         mine.setdefault(module, {}).setdefault(test_id, []).append(
@@ -196,8 +198,10 @@ def build(results_path: Path) -> dict:
             rows = []
             for test_id in ids:
                 group = known.pop(test_id, [])
-                state = "ported" if group else "na" if reason else "missing"
-                rows.append({"id": test_id, "state": state, "cases": group})
+                # one parameter of a test can be not applicable by itself
+                why = not_applicable.get(f"{module}::{test_id}")
+                state = "ported" if group else "na" if reason or why else "missing"
+                rows.append({"id": test_id, "state": state, "cases": group, "not_applicable": why})
             line = lines.get(name.split("::")[-1])
             url = f"{IBIS_URL}/{IBIS_TESTS}/{module}.py" + (f"#L{line}" if line else "")
             out_tests.append({"name": name, "url": url, "not_applicable": reason, "ids": rows})
@@ -397,10 +401,11 @@ def module_page(data: dict, m: dict) -> str:
             group = row["cases"]
             if not group:
                 state = "not applicable" if row["state"] == "na" else "not ported"
+                why = escape(row.get("not_applicable") or "")
                 rows.append(
                     f'<tr><td class="id"><code>{escape(row["id"])}</code></td>'
                     f'<td><span class="chip {row["state"]}">{state}</span></td>'
-                    f'<td colspan="{len(backends)}"></td></tr>'
+                    f'<td colspan="{len(backends)}" class="muted">{why}</td></tr>'
                 )
                 continue
             links = []
