@@ -530,3 +530,30 @@ each HTTP request is its own unless it carries a `session_id`; a session
 also takes one request at a time, which the conformance run (tests on one
 connection, sometimes from two threads) would trip over. It is marked as
 having none.
+
+## SQL as text: where each engine's reading of a query's columns breaks
+
+`Backend::sql` needs the columns of a query it has not run. The portable way
+is a view created and dropped again, read like a table. Two engines needed
+something else:
+
+- SQLite gives a view column that is an expression no declared type
+  (`pragma_table_info` returns `''`), which read as string: `COUNT(*)` came
+  back as text. Ibis asks `typeof()` of the first row for those columns, and
+  so does ibis-sqlite now. An empty result still reads as string.
+- Trino refuses a view with an unnamed column (`SELECT 'a', 1 AS x`:
+  `MISSING_COLUMN_NAME`), where a plain query names it `_col0`. Its REST
+  response carries the columns of any result, so ibis-trino runs
+  `SELECT * FROM (query) LIMIT 0` and reads them there
+  (`SqlClient::query_schema`).
+
+Two more things that looked harmless:
+
+- `SELECT * FROM (query ORDER BY x) AS t0` keeps the order on most engines
+  and not on Trino. A `Table` that is only a SQL query now compiles to the
+  query itself; anything built on it is still a derived table, and should
+  order explicitly.
+- A query given to `sql_over` may open with its own `WITH`, so the aliased
+  tables cannot be prepended as `WITH a AS (...) ` to it. They go around it:
+  `WITH a AS (...) SELECT * FROM (query) AS ibis_sql`. Every engine here
+  accepts a `WITH` inside a derived table.

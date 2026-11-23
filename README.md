@@ -17,27 +17,27 @@ The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
 test, whether it is ported, and how each backend does on it: 908 of 1,778
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 905 ported Ibis tests (862 expression
-cases with a result from Python Ibis, 43 tests of the connection API) and
+Status: pre-alpha. Nine backends, 920 ported Ibis tests (862 expression
+cases with a result from Python Ibis, 58 tests of the connection API) and
 Ibis's 22 TPC-H queries:
 
-| backend | Ibis tests (905) | TPC-H (22) |
+| backend | Ibis tests (920) | TPC-H (22) |
 |---|---|---|
-| DuckDB | 905 | 22 |
-| Polars (default) | 896 (9 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns) | 22 |
-| Trino | 892 (13 expected failures: no temporary tables, no `MERGE` in the test catalog, no function for the most frequent element of an array) | 22 |
-| Spark SQL | 891 (14 expected failures: the same, and no `NOT NULL` columns) | 22 |
-| Postgres | 879 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
-| ClickHouse | 852 (53 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`; and no temporary tables over HTTP) | 22 |
-| Impala | 576 (329 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`) | 22 |
-| MySQL | 563 (342 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`) | 22 |
-| SQLite | 562 (343 expected failures: no arrays, structs or maps, no NaN, no `MERGE`) | 22 |
+| DuckDB | 920 | 22 |
+| Polars (default) | 910 (10 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns, no SQL text for an expression) | 22 |
+| Trino | 907 (13 expected failures: no temporary tables, no `MERGE` in the test catalog, no function for the most frequent element of an array) | 22 |
+| Spark SQL | 906 (14 expected failures: the same, and no `NOT NULL` columns) | 22 |
+| Postgres | 894 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
+| ClickHouse | 867 (53 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`; and no temporary tables over HTTP) | 22 |
+| Impala | 591 (329 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`) | 22 |
+| MySQL | 578 (342 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`) | 22 |
+| SQLite | 577 (343 expected failures: no arrays, structs or maps, no NaN, no `MERGE`) | 22 |
 
 Output column names and types match Ibis's on all 862. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal` (first tier), `test_join`, `test_window`, `test_set_ops`,
-`test_conditionals`, `test_array`, `test_struct`, `test_map`, and about half
-of `test_client`. What's next is in [TODO.md](TODO.md).
+`test_conditionals`, `test_array`, `test_struct`, `test_map`,
+`test_dot_sql`, and about half of `test_client`. What's next is in [TODO.md](TODO.md).
 
 ## Usage
 
@@ -101,6 +101,8 @@ con.drop_table("audit_2026", false)?;
 
 let recent = con.sql("SELECT * FROM events WHERE ts > now() - INTERVAL 1 DAY")?;  // the engine's own SQL
 let per_user = recent.group_by(["user_id"]).agg([count().name("n")])?;           // ... as a table expression
+let busy = per_user.filter([col("n").gt(100)])?.alias("busy");                    // a name for an expression ...
+let ranked = con.sql_over(&busy, "SELECT *, rank() OVER (ORDER BY n DESC) AS r FROM busy")?;  // ... that SQL reads
 ```
 
 Inserted data is matched to the table's columns by name (by position if the
@@ -119,9 +121,16 @@ with them:
 - `upsert` is `MERGE INTO`, on the engines that have it: DuckDB and Postgres.
   The data may have only some of the table's columns; the rest keep their
   values, and are NULL in new rows.
-- `sql` takes the engine's own SQL. On a SQL backend its columns are read
-  through a view that exists for just that long; on Polars the query goes to
-  Polars's SQL (`polars-sql`), over the connection's tables and views.
+- `sql` takes the engine's own SQL, as written: nothing translates it from
+  another dialect (Ibis has sqlglot for that). On a SQL backend its columns
+  are read through a view that exists for just that long (Trino: by running
+  it for no rows); on Polars the query goes to Polars's SQL (`polars-sql`),
+  over the connection's tables and views. Executed with nothing built on it,
+  the query runs exactly as given, `ORDER BY` included.
+- `sql_over(&table, query)` is Ibis's `table.sql(query)`: the query also
+  reads every expression in `table` that was named with `alias`, as a table
+  of that name (a common table expression on SQL backends). An alias is
+  visible only to SQL run over an expression that contains it.
 
 ### Arrays, structs and maps
 

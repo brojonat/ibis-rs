@@ -49,6 +49,10 @@ Coverage of the Ibis suite: 908 of 1,778 applicable test ids (51%); per module a
   - [ ] Slice 4: `ibis.memtable` (a relation holding its data; backends register it on execute), test_in_memory_table and friends
   - [x] Marked not applicable in conformance/not_applicable.json (now keyed by `module::test` as well as by module): the default/set/get backend options, `__array__`, interactive repr and mimebundle, `has_operation`, memtable bookkeeping through a mock, the suite's own fixture test
   - [ ] Still to decide: `test_from_connection` (wrapping a driver connection: `Postgres::new(client)` exists), `test_json_to_pyarrow` (needs a JSON type), `test_schema_with_caching`, `test_close_connection`, `test_connect_url`
+- [x] test_dot_sql: `Table::alias`, `Backend::sql_over` (Ibis `t.sql`), `Table::as_scalar`. 15 ids ported as procedures (`crates/ibis-conformance/src/dot_sql.rs`), passing on all nine backends; 45 ids not applicable (sqlglot transpiling between dialects, a repr test)
+  - [ ] `test_order_by_no_projection` reads awards_players, not Ibis's astronauts table (not among the fixtures): load astronauts and use it
+  - [ ] An alias inside a subquery expression (`ScalarSubquery`, `InSubquery`) is not found by `Table::aliases`
+  - [ ] `con.sql(query, schema)` on the `Backend` trait for an explicit schema (today: `Table::sql(query, schema)` directly)
 - [ ] TPC-DS (100 ids): Ibis's queries, like TPC-H
 - [ ] `distinct(on=..., keep=...)`, `GroupedTable.order_by().mutate()`, negative slices
 - [ ] Timestamp scale in `DataType` (the schema check normalizes `timestamp(6)` away today)

@@ -27,6 +27,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ibis_sql::ddl`: `create_table`, `create_table_statement`, `upsert_from`, `sql`; `SqlClient::after_create`. `Dialect` hooks `column_type`, `temporary`, `create_table_suffix`, `merge`.
 - `ibis_core::scratch_name`: a name for a table or view the library creates and drops again.
 - Conformance: 18 more of Ibis's client tests (create options, temporary tables, nullability, `sql`, upsert, inserts by column name, a table replaced by a query on itself): 43 in all.
+- `Table::alias(name)` and `Backend::sql_over(table, query)` (Ibis `t.alias(name)` and `t.sql(query)`): SQL in the engine's dialect that reads the aliased expressions of `table` as tables of those names. `RelOp::Alias`; `RelOp::Sql` carries the views it reads, compiled as common table expressions; `Table::sql_over` and `Table::aliases` for backends. On every backend, Polars included.
+- `Table::as_scalar()` (Ibis `t.as_scalar()`): a one-column table as a value.
+- `SqlClient::query_schema`: how a backend reads the columns of a query's result. The default is the short-lived view `sql` already used; ibis-trino runs the query for no rows instead, so a query with an unnamed column works there.
+- `ibis_sql::sql_query`: the text of a SQL query after the common table expressions it reads.
+- Conformance: `test_dot_sql` ported, 15 tests as procedures (`crates/ibis-conformance/src/dot_sql.rs`), passing on all nine backends (one expected failure on Polars, as in Ibis). Its 44 `transpile` ids and the repr test are marked not applicable: ibis-rs passes SQL on as written and has no translator between dialects.
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
@@ -36,6 +41,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `Expr::contains` takes an expression or a plain value (`contains("a")`, `contains(1)`, `contains(col("k"))`) instead of a `&str`, and means substring, element or key by the type it is called on. `length` and `repeat` likewise serve strings, arrays and maps. Existing calls compile unchanged.
 - `Dialect::default_type_name` returns `Unsupported` for nested types; `Dialect::type_name` is where an engine names them.
 - Conformance: backends run side by side, one thread each, for loading fixtures, the Ibis cases and TPC-H. Outcomes are reported in the same order as before. The runner does the Ibis cases and TPC-H at the same time.
+- A `Table` that is only a SQL query (`con.sql(q)` with nothing built on it) compiles to the query itself, not `SELECT * FROM (q)`: its `ORDER BY` holds on engines that drop the order of a subquery.
+- **Breaking:** `RelOp::Sql` has a `views` field. `ibis_sql::ddl::sql` takes the table the query is run over (`None` for `Backend::sql`).
+- ibis-sqlite: a view column that is an expression has no declared type; `table` (and so `sql`) now gives it the type of its value in the first row, as Ibis does, instead of string.
 - CI runs the suite once instead of twice: `mise run unit` (new: unit tests and doctests, no containers) and then `mise run site`, whose conformance run fails the job on any failing case. Images are pulled while the code compiles.
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
