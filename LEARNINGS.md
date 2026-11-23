@@ -595,3 +595,25 @@ integer there is a position in the select list, so a key that reads no
 column is now written as its position (`GROUP BY 1`), which all nine accept.
 Dropping the key from `GROUP BY` instead would be wrong: with no `GROUP BY`
 an aggregate of no rows returns one row, not none.
+
+## argmin and a NULL argument: three engines, three spellings
+
+`x.argmin(key)` is `x` in the row with the smallest key, and that `x` may be
+NULL (Ibis tests it). The obvious function drops such rows on two engines:
+
+- DuckDB's `ARG_MIN(x, key)` passes over rows where `x` is NULL. Ibis writes
+  `FIRST(x ORDER BY key)` instead, and so does ibis-duckdb.
+- ClickHouse's `argMin(x, key)` does the same; wrapped as
+  `tupleElement(argMin(tuple(x), key), 1)` the NULL is a value inside a
+  tuple and survives.
+- Postgres has no such aggregate: `(ARRAY_AGG(x ORDER BY key))[1]`.
+- Trino and Spark have `MIN_BY`, which keeps the NULL.
+
+In every form the key's NULLs must sort last (`NULLS LAST`, also descending
+for `argmax`), or a NULL key wins.
+
+Pearson's correlation is one number for a sample and a population, but
+DuckDB, Postgres and Trino say theirs is the population's and ClickHouse
+that its is the sample's; Ibis refuses the other on each, and so does
+ibis-rs. The consequence for the suite: `corr_samp` has no golden (DuckDB
+cannot compute one), so those two ids need a procedure.
