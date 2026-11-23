@@ -33,11 +33,12 @@ Coverage of the Ibis suite: 908 of 1,778 applicable test ids (51%); per module a
 
 ## Next: parity
 - [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
-- [ ] Rest of test_aggregation (45 ids left of 162 applicable)
+- [ ] Rest of test_aggregation (36 ids left of 162 applicable)
   - [x] Reductions of one argument: mode, median, approx_median, approx_nunique, kurtosis, bit_and/or/xor, arbitrary, first/last, notany/notall (27 ids; the Python-UDF ids are not applicable)
   - [x] `AggOptions` on `Expr::Agg` (further arguments, order, distinct, include_null) and `Dialect::reduction`; argmin/argmax and corr/cov on it (26 ids)
   - [x] quantile, quantiles, approx_quantile, approx_quantiles (10 ids)
-  - [ ] On `AggOptions`, still to do: group_concat (a separator, an order; 9 ids), first/last with `order_by` and `include_null` (16 ids), collect with `order_by`, `distinct`, `include_null` (16 ids), test_count_distinct_star (2 ids)
+  - [x] group_concat with a separator, a condition, an order, over a window (9 ids); `Expr::order_by` for a reduction's order
+  - [ ] On `AggOptions`, still to do: first/last with `order_by` and `include_null` (16 ids), collect with `order_by`, `distinct`, `include_null` (16 ids), test_count_distinct_star (2 ids)
   - [ ] `test_corr_cov[*-corr_samp]` (2 ids): DuckDB has no sample correlation, so there is no golden; needs a procedure that computes the coefficient from the rows
   - [x] topk, value_counts, test_filter, test_grouped_case, test_group_by_expr, test_group_by_scalar, test_binds_are_cast, test_empty_sum, test_agg_sort, test_agg_name_in_output_column (13 ids)
   - [ ] Engines that have a reduction Ibis does not use there (Spark `mode`, `bit_and`, kurtosis; ClickHouse `kurtSamp`): today `Unsupported`, as in Ibis

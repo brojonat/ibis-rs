@@ -636,3 +636,20 @@ cannot compute one), so those two ids need a procedure.
 - Ids of stacked `parametrize` decorators read bottom-up: for
   `@parametrize("filtered") @parametrize("multi") def test_approx_quantile`
   the id `[True-False]` is multi=True, filtered=False.
+
+## group_concat: an empty group, and MySQL's silent 1,024 bytes
+
+- MySQL's `GROUP_CONCAT` cuts its result at `group_concat_max_len`, 1,024
+  bytes by default, and reports that as a warning the client never sees:
+  the test compared 730 joined strings and got the first 512. ibis-mysql
+  raises the limit when it connects (with its other session settings).
+- No strings in a group must give NULL. `STRING_AGG` and `GROUP_CONCAT` do;
+  joining an array does not: Spark's `ARRAY_JOIN(COLLECT_LIST(x), sep)` and
+  ClickHouse's `arrayStringConcat(groupArray(x), sep)` give `''` and need
+  the empty array turned into NULL first. Trino's `ARRAY_AGG` of no rows is
+  already NULL.
+- MySQL's separator is syntax (`SEPARATOR ':'`), so it must be a literal.
+- Ibis marks the windowed form unsupported on ClickHouse, Trino and PySpark;
+  the array forms above work over a window on all three, so those marks
+  were dropped here (the harness reports an unexpected pass as a failure,
+  which is how it showed).
