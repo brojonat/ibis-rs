@@ -21,6 +21,8 @@ AGGREGATE = {
     "mode": lambda t: (t.int_col % 3).mode(),
     "complex_sum": lambda t: (t.double_col + 5).sum(),
     "timestamp_max": lambda t: t.timestamp_col.max(),
+    "argmin": lambda t: t.timestamp_col.argmin(t.id),
+    "argmax": lambda t: t.double_col.argmax(t.id),
 }
 register("test_aggregate", {k: table(lambda t, f=f: t.aggregate(tmp=f(t))) for k, f in AGGREGATE.items()})
 register(
@@ -54,6 +56,8 @@ REDUCTIONS = {
     "bit_and": lambda t, w: t.bigint_col.bit_and(where=w),
     "bit_or": lambda t, w: t.bigint_col.bit_or(where=w),
     "bit_xor": lambda t, w: t.bigint_col.bit_xor(where=w),
+    "argmin": lambda t, w: t.double_col.argmin(t.int_col, where=w),
+    "argmax": lambda t, w: t.double_col.argmax(t.int_col, where=w),
 }
 CONDS = {
     "no_cond": lambda t: None,
@@ -119,3 +123,39 @@ for vid, value in {"string": lambda: ibis.literal("a"), "null": lambda: ibis.nul
 # the test's two results: a count, and the sum of no rows
 r.add("test_empty_sum#1", tables(lambda c: c.mem("x_one").aggregate(tmp=_.count())))
 r.add("test_empty_sum#2", tables(lambda c: (lambda t: t.aggregate(tmp=t.x.sum(where=t.x > 1)))(c.mem("x_one"))))
+
+# ids are "<null>-<filtered>-<method>": the key is NULL where int_col is 0 or
+# 9, and with "null" the value at the answer's row is NULL too.
+for null_id, null_result in {"null": True, "non-null": False}.items():
+    for filtered_id, filtered in {"filtered": True, "unfiltered": False}.items():
+        for method in ("argmin", "argmax"):
+
+            def build(t, method=method, filtered=filtered, null_result=null_result):
+                t = t.mutate(by_col=_.int_col.nullif(0).nullif(9), val_col=10 * _.int_col)
+                if filtered:
+                    where = _.int_col != (1 if method == "argmin" else 8)
+                    sol = 20 if method == "argmin" else 70
+                else:
+                    where = None
+                    sol = 10 if method == "argmin" else 80
+                if null_result:
+                    t = t.mutate(val_col=_.val_col.nullif(sol))
+                return t.aggregate(tmp=getattr(t.val_col, method)("by_col", where=where))
+
+            r.add(f"test_argmin_argmax[{null_id}-{filtered_id}-{method}]", table(build))
+
+# test_corr_cov runs on batting; ids are "<cond>-<fn>". DuckDB has no sample
+# correlation, so "corr_samp" has no golden and is not here.
+CORR_COV = {
+    "covar_pop": lambda t, w: t.G.cov(t.RBI, where=w, how="pop"),
+    "covar_samp": lambda t, w: t.G.cov(t.RBI, where=w, how="sample"),
+    "corr_pop": lambda t, w: t.G.corr(t.RBI, where=w, how="pop"),
+    "covar_pop_bool": lambda t, w: (t.G > 34.0).cov(t.G <= 34.0, where=w, how="pop"),
+    "corr_pop_bool": lambda t, w: (t.G > 34.0).corr(t.G <= 34.0, where=w, how="pop"),
+}
+for cid, cond in {"no_cond": lambda t: None, "cond": lambda t: t.yearID.isin([2009, 2015])}.items():
+    for fid, fn in CORR_COV.items():
+        r.add(
+            f"test_corr_cov[{cid}-{fid}]",
+            tables(lambda c, fn=fn, cond=cond: c.batting.aggregate(tmp=fn(c.batting, cond(c.batting)))),
+        )

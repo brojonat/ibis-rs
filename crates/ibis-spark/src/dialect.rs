@@ -1,7 +1,7 @@
 //! What Spark SQL spells or means differently from the defaults in `ibis-sql`.
 
 use ibis_core::convert::format_timestamp;
-use ibis_core::{AggFunc, BinaryOp, DataType, Error, Expr, Func, Lambda, Result, Value};
+use ibis_core::{AggFunc, AggOptions, BinaryOp, DataType, Error, Expr, Func, Lambda, Result, Value};
 use ibis_sql::{Dialect, ExprCompiler, Unnest, strftime_to_java_format};
 
 use crate::nested;
@@ -145,6 +145,24 @@ impl Dialect for SparkDialect {
             (AggFunc::ApproxMedian, Some(x)) => Some(format!("PERCENTILE_APPROX({}, 0.5){tail}", c.sql(x)?)),
             _ => None,
         })
+    }
+
+    fn reduction(
+        &self,
+        c: &ExprCompiler,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        let other = || c.sql(&options.args[0]);
+        match f {
+            AggFunc::ArgMin => Ok(Some(format!("MIN_BY({}, {}){tail}", c.sql(arg)?, other()?))),
+            AggFunc::ArgMax => Ok(Some(format!("MAX_BY({}, {}){tail}", c.sql(arg)?, other()?))),
+            // one number for the sample and for the population
+            AggFunc::CorrSamp => Ok(Some(format!("CORR({}, {}){tail}", c.sql(arg)?, other()?))),
+            _ => c.standard_reduction(f, arg, options, tail),
+        }
     }
 
     fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {

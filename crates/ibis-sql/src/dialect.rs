@@ -2,7 +2,7 @@
 //! spells differently; everything else falls through to the defaults in
 //! `compiler.rs` (DuckDB/Postgres-flavored ANSI SQL).
 
-use ibis_core::{AggFunc, Analytic, BinaryOp, DataType, Expr, Func, Lambda, Result, Value};
+use ibis_core::{AggFunc, AggOptions, Analytic, BinaryOp, DataType, Expr, Func, Lambda, Result, Value};
 
 use crate::compiler::ExprCompiler;
 
@@ -59,6 +59,19 @@ pub trait Dialect: Send + Sync {
     /// (either may be absent): place it directly after the aggregate call,
     /// inside any expression wrapped around it.
     fn agg(&self, _c: &ExprCompiler, _f: AggFunc, _arg: Option<&Expr>, _tail: &str) -> Result<Option<String>> {
+        Ok(None)
+    }
+    /// A reduction that takes more than its argument: `options` has the
+    /// rest (`argmin`'s key, the other column of `corr`, ...). `tail` is as
+    /// for `agg`. `None` where the engine has no such reduction.
+    fn reduction(
+        &self,
+        _c: &ExprCompiler,
+        _f: AggFunc,
+        _arg: &Expr,
+        _options: &AggOptions,
+        _tail: &str,
+    ) -> Result<Option<String>> {
         Ok(None)
     }
     /// A ranking or offset function over a window. `args` are already

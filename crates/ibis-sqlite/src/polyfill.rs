@@ -125,7 +125,55 @@ pub fn register(conn: &Connection) -> Result<()> {
     conn.create_aggregate_function("ibis_first", 1, DET, End { last: false })?;
     conn.create_aggregate_function("ibis_last", 1, DET, End { last: true })?;
     conn.create_aggregate_function("ibis_mode", 1, DET, Mode)?;
+    conn.create_aggregate_function("ibis_argmin", 2, DET, ArgEnd { largest: false })?;
+    conn.create_aggregate_function("ibis_argmax", 2, DET, ArgEnd { largest: true })?;
     Ok(())
+}
+
+/// The first argument in the row where the second, the key, is smallest
+/// (or largest); of equal keys the first met. NULL keys do not count.
+struct ArgEnd {
+    largest: bool,
+}
+
+/// How SQLite orders two values that are not NULL: numbers, then text, then blobs.
+fn compare(a: &SqlValue, b: &SqlValue) -> std::cmp::Ordering {
+    use SqlValue::*;
+    use std::cmp::Ordering::*;
+    match (a, b) {
+        (Integer(x), Integer(y)) => x.cmp(y),
+        (Integer(x), Real(y)) => (*x as f64).total_cmp(y),
+        (Real(x), Integer(y)) => x.total_cmp(&(*y as f64)),
+        (Real(x), Real(y)) => x.total_cmp(y),
+        (Text(x), Text(y)) => x.cmp(y),
+        (Blob(x), Blob(y)) => x.cmp(y),
+        (Integer(_) | Real(_), _) | (Text(_), Blob(_)) => Less,
+        _ => Greater,
+    }
+}
+
+type Best = Option<(SqlValue, SqlValue)>;
+
+impl Aggregate<Best, Option<SqlValue>> for ArgEnd {
+    fn init(&self, _: &mut Context<'_>) -> Result<Best> {
+        Ok(None)
+    }
+
+    fn step(&self, ctx: &mut Context<'_>, best: &mut Best) -> Result<()> {
+        let (arg, key): (SqlValue, SqlValue) = (ctx.get(0)?, ctx.get(1)?);
+        if key == SqlValue::Null {
+            return Ok(());
+        }
+        let wanted = if self.largest { std::cmp::Ordering::Greater } else { std::cmp::Ordering::Less };
+        if best.as_ref().is_none_or(|(_, seen)| compare(&key, seen) == wanted) {
+            *best = Some((arg, key));
+        }
+        Ok(())
+    }
+
+    fn finalize(&self, _: &mut Context<'_>, best: Option<Best>) -> Result<Option<SqlValue>> {
+        Ok(best.flatten().map(|(arg, _)| arg))
+    }
 }
 
 /// Bitwise AND, OR or XOR of the integers of a group; NULL for none.

@@ -5,7 +5,7 @@
 //! answer to the upper-case spelling the defaults use.
 
 use ibis_core::convert::{format_date, format_timestamp};
-use ibis_core::{AggFunc, Analytic, DataType, Error, Expr, Func, Lambda, Result, Value};
+use ibis_core::{AggFunc, AggOptions, Analytic, DataType, Error, Expr, Func, Lambda, Result, Value};
 use ibis_sql::{Dialect, ExprCompiler, Unnest};
 
 use crate::nested;
@@ -239,5 +239,26 @@ impl Dialect for ClickHouseDialect {
             AggFunc::ApproxMedian => c.call_agg("median", x, tail)?,
             _ => None,
         })
+    }
+
+    fn reduction(
+        &self,
+        c: &ExprCompiler,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        let (x, other) = (c.sql(arg)?, c.sql(&options.args[0])?);
+        Ok(Some(match f {
+            // `argMin` passes over a NULL argument; inside a tuple it is a value
+            AggFunc::ArgMin => format!("tupleElement(argMin(tuple({x}), {other}){tail}, 1)"),
+            AggFunc::ArgMax => format!("tupleElement(argMax(tuple({x}), {other}){tail}, 1)"),
+            AggFunc::CovSamp => format!("covarSamp({x}, {other}){tail}"),
+            AggFunc::CovPop => format!("covarPop({x}, {other}){tail}"),
+            // the only one ClickHouse names (Ibis: "only implements `sample` correlation")
+            AggFunc::CorrSamp => format!("corr({x}, {other}){tail}"),
+            _ => return Ok(None),
+        }))
     }
 }

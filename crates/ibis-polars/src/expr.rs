@@ -1,7 +1,8 @@
 //! Expressions -> Polars expressions, with the meaning Ibis gives each op.
 
 use ibis_core::{
-    AggFunc, Analytic, BinaryOp, Bound, DataType, DerefMap, Expr, Func, Rel, Result, Schema, UnaryOp, Value, WindowSpec,
+    AggFunc, AggOptions, Analytic, BinaryOp, Bound, DataType, DerefMap, Expr, Func, Rel, Result, Schema, UnaryOp,
+    Value, WindowSpec,
 };
 use polars::prelude as pl;
 
@@ -196,7 +197,9 @@ impl Tx<'_> {
                 let first = args.first().map(|a| self.dtype(a)).transpose()?;
                 self.func(e, f.resolve(first.as_ref()), args)?
             }
-            Expr::Agg { func, arg, filter } => self.agg(e, *func, arg.as_deref(), filter.as_deref())?,
+            Expr::Agg { func, arg, filter, options } => {
+                self.agg(e, *func, arg.as_deref(), filter.as_deref(), options)?
+            }
             Expr::Analytic(..) => return unsupported(format!("{e} without a window (use .over(...))")),
             Expr::Window(f, spec) => self.window(f, spec)?,
             Expr::Case { branches, default } => {
@@ -468,9 +471,24 @@ impl Tx<'_> {
         })
     }
 
-    fn agg(&self, e: &Expr, func: AggFunc, arg: Option<&Expr>, filter: Option<&Expr>) -> Result<pl::Expr> {
+    fn agg(
+        &self,
+        e: &Expr,
+        func: AggFunc,
+        arg: Option<&Expr>,
+        filter: Option<&Expr>,
+        options: &AggOptions,
+    ) -> Result<pl::Expr> {
         let t = to_pl(&self.dtype(e)?);
         let pred = filter.map(|p| self.expr(p)).transpose()?;
+        // the other argument of a reduction of two, on the rows the first is read on
+        let other = || -> Result<pl::Expr> {
+            let y = self.expr(&options.args[0])?;
+            Ok(match &pred {
+                Some(p) => y.filter(p.clone()),
+                None => y,
+            })
+        };
         let x = match arg {
             Some(a) => {
                 let x = self.expr(a)?;
@@ -522,6 +540,25 @@ impl Tx<'_> {
             Arbitrary | First => x.drop_nulls().first(),
             Last => x.drop_nulls().last(),
             Median | ApproxMedian => x.median(),
+            ArgMin | ArgMax => {
+                // rows with a NULL key do not count; of equal keys the first
+                let key = other()?;
+                let keyed = key.clone().is_not_null();
+                let order =
+                    pl::SortMultipleOptions::default().with_order_descending(func == ArgMax).with_maintain_order(true);
+                x.filter(keyed.clone()).sort_by([key.filter(keyed)], order).first()
+            }
+            CovSamp | CovPop | CorrSamp | CorrPop => {
+                // as in SQL: only the rows where both are present
+                let y = other()?;
+                let both = x.clone().is_not_null().and(y.clone().is_not_null());
+                let (x, y) = (f64_of(x.filter(both.clone())), f64_of(y.filter(both)));
+                match func {
+                    CovSamp => pl::cov(x, y, 1),
+                    CovPop => pl::cov(x, y, 0),
+                    _ => pl::pearson_corr(x, y),
+                }
+            }
         }
         .cast(t))
     }
@@ -579,13 +616,16 @@ impl Tx<'_> {
         let idx = || pl::int_range(pl::lit(0), pl::len(), 1, pl::DataType::Int64);
         let last_idx = || int(pl::len()) - pl::lit(1);
         match f {
-            Expr::Agg { func, arg, filter } => {
+            Expr::Agg { func, arg, filter, options } => {
                 let Some((lo, hi)) = frame else {
                     // order does not change a whole-partition aggregate
-                    return over(self.agg(f, *func, arg.as_deref(), filter.as_deref())?, None);
+                    return over(self.agg(f, *func, arg.as_deref(), filter.as_deref(), options)?, None);
                 };
                 if filter.is_some() {
                     return unsupported("a framed window aggregate with a filter");
+                }
+                if !options.is_plain() {
+                    return unsupported(format!("{func:?} over a window frame"));
                 }
                 let t = to_pl(&self.dtype(f)?);
                 let x = match arg {

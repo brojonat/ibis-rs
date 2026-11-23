@@ -295,6 +295,13 @@ mod tests {
     }
 
     #[test]
+    fn a_reduction_of_two_columns_is_the_dialects_to_write() {
+        let q = t().aggregate([col("a").cov(col("a")).name("c")]).unwrap();
+        let err = compile(&GenericDialect, &q).unwrap_err().to_string();
+        assert!(err.contains("cov_samp"), "{err}");
+    }
+
+    #[test]
     fn a_constant_group_key_is_named_by_its_place() {
         let q = t().group_by([lit("a").name("key"), col("a")]).agg([count().name("n")]).unwrap();
         let sql = sql(&q);

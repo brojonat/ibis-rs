@@ -57,6 +57,7 @@ pub enum Expr {
         func: AggFunc,
         arg: Option<Box<Expr>>,
         filter: Option<Box<Expr>>,
+        options: AggOptions,
     },
     /// Analytic-only function (row_number, rank, lag, ...). Must be windowed.
     Analytic(Analytic, Vec<Expr>),
@@ -373,6 +374,16 @@ pub enum AggFunc {
     /// the rows.
     First,
     Last,
+    /// The argument's value in the row where the key (`options.args[0]`)
+    /// is smallest; rows with a NULL key do not count.
+    ArgMin,
+    ArgMax,
+    /// Covariance with the other column (`options.args[0]`).
+    CovSamp,
+    CovPop,
+    /// Pearson's correlation coefficient with the other column.
+    CorrSamp,
+    CorrPop,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -416,6 +427,26 @@ pub enum Bound {
     Preceding(u64),
     CurrentRow,
     Following(u64),
+}
+
+/// What a reduction takes besides its argument and its condition.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AggOptions {
+    /// Further arguments: the key of `argmin`, the other column of `corr`.
+    pub args: Vec<Expr>,
+    /// The order the rows are read in, where the result depends on it.
+    pub order_by: Vec<SortKey>,
+    /// Each distinct value once.
+    pub distinct: bool,
+    /// NULLs are values like any other.
+    pub include_null: bool,
+}
+
+impl AggOptions {
+    /// Nothing but the argument and the condition.
+    pub fn is_plain(&self) -> bool {
+        self.args.is_empty() && self.order_by.is_empty() && !self.distinct && !self.include_null
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -543,7 +574,7 @@ pub fn null(dtype: DataType) -> Expr {
 
 /// Number of rows (Ibis `t.count()`).
 pub fn count() -> Expr {
-    Expr::Agg { func: AggFunc::CountStar, arg: None, filter: None }
+    Expr::Agg { func: AggFunc::CountStar, arg: None, filter: None, options: AggOptions::default() }
 }
 
 /// 0-based row number; use with `.over(...)`.
@@ -644,7 +675,11 @@ fn func(f: Func, args: Vec<Expr>) -> Expr {
     Expr::Func(f, args)
 }
 fn agg(f: AggFunc, arg: Expr) -> Expr {
-    Expr::Agg { func: f, arg: Some(Box::new(arg)), filter: None }
+    Expr::Agg { func: f, arg: Some(Box::new(arg)), filter: None, options: AggOptions::default() }
+}
+fn agg_with(f: AggFunc, arg: Expr, args: Vec<Expr>) -> Expr {
+    let options = AggOptions { args, ..AggOptions::default() };
+    Expr::Agg { func: f, arg: Some(Box::new(arg)), filter: None, options }
 }
 
 /// How deep lambdas nest inside `e`.
@@ -1181,6 +1216,29 @@ impl Expr {
     pub fn approx_median(self) -> Expr {
         agg(AggFunc::ApproxMedian, self)
     }
+    /// This expression's value in the row where `key` is smallest (Ibis
+    /// `argmin`). It may be NULL; rows with a NULL key do not count.
+    pub fn argmin(self, key: impl Into<Expr>) -> Expr {
+        agg_with(AggFunc::ArgMin, self, vec![key.into()])
+    }
+    pub fn argmax(self, key: impl Into<Expr>) -> Expr {
+        agg_with(AggFunc::ArgMax, self, vec![key.into()])
+    }
+    /// Sample covariance with `other` (Ibis default `how="sample"`).
+    pub fn cov(self, other: impl Into<Expr>) -> Expr {
+        agg_with(AggFunc::CovSamp, self, vec![other.into()])
+    }
+    pub fn cov_pop(self, other: impl Into<Expr>) -> Expr {
+        agg_with(AggFunc::CovPop, self, vec![other.into()])
+    }
+    /// Sample correlation with `other` (Ibis default `how="sample"`). The
+    /// number is the population's too; engines name one or the other.
+    pub fn corr(self, other: impl Into<Expr>) -> Expr {
+        agg_with(AggFunc::CorrSamp, self, vec![other.into()])
+    }
+    pub fn corr_pop(self, other: impl Into<Expr>) -> Expr {
+        agg_with(AggFunc::CorrPop, self, vec![other.into()])
+    }
     /// No row is true (Ibis `notany`).
     pub fn notany(self) -> Expr {
         !self.any()
@@ -1201,7 +1259,7 @@ impl Expr {
     /// `notany()` and `notall()` it restricts the reduction they negate.
     pub fn filter_where(self, cond: Expr) -> Expr {
         match self {
-            Expr::Agg { func, arg, .. } => Expr::Agg { func, arg, filter: Some(Box::new(cond)) },
+            Expr::Agg { func, arg, options, .. } => Expr::Agg { func, arg, filter: Some(Box::new(cond)), options },
             Expr::Unary(UnaryOp::Not, inner) if matches!(*inner, Expr::Agg { .. }) => !inner.filter_where(cond),
             other => other,
         }
@@ -1282,7 +1340,9 @@ impl Expr {
                     Expr::Window(f, spec)
                 }
                 // the first value of a frame is the frame's, not the first that is not NULL
-                Expr::Agg { func: func @ (AggFunc::First | AggFunc::Last), arg: Some(arg), filter: None } => {
+                Expr::Agg { func: func @ (AggFunc::First | AggFunc::Last), arg: Some(arg), filter: None, options }
+                    if options.is_plain() =>
+                {
                     let value = if func == AggFunc::First { Analytic::FirstValue } else { Analytic::LastValue };
                     Expr::Window(Box::new(Expr::Analytic(value, vec![*arg])), w.clone())
                 }
@@ -1434,7 +1494,12 @@ impl Expr {
             Expr::Alias(e, _) | Expr::Cast(e, _) | Expr::Unary(_, e) => vec![e],
             Expr::Binary(_, l, r) => vec![l, r],
             Expr::Func(_, a) | Expr::Analytic(_, a) => a.iter().collect(),
-            Expr::Agg { arg, filter, .. } => arg.iter().chain(filter.iter()).map(|b| &**b).collect(),
+            Expr::Agg { arg, filter, options, .. } => {
+                let mut v: Vec<&Expr> = arg.iter().chain(filter.iter()).map(|b| &**b).collect();
+                v.extend(options.args.iter());
+                v.extend(options.order_by.iter().map(|k| &k.expr));
+                v
+            }
             Expr::Window(f, spec) => {
                 let mut v: Vec<&Expr> = vec![f];
                 v.extend(spec.partition_by.iter());
@@ -1471,10 +1536,19 @@ impl Expr {
             Expr::Binary(op, l, r) => Expr::Binary(op, Box::new(f(*l)?), Box::new(f(*r)?)),
             Expr::Func(func, a) => Expr::Func(func, a.into_iter().map(&mut *f).collect::<Result<_>>()?),
             Expr::Analytic(a, args) => Expr::Analytic(a, args.into_iter().map(&mut *f).collect::<Result<_>>()?),
-            Expr::Agg { func, arg, filter } => Expr::Agg {
+            Expr::Agg { func, arg, filter, options } => Expr::Agg {
                 func,
                 arg: arg.map(|x| f(*x).map(Box::new)).transpose()?,
                 filter: filter.map(|x| f(*x).map(Box::new)).transpose()?,
+                options: AggOptions {
+                    args: options.args.into_iter().map(&mut *f).collect::<Result<_>>()?,
+                    order_by: options
+                        .order_by
+                        .into_iter()
+                        .map(|k| Ok(SortKey { expr: f(k.expr)?, ..k }))
+                        .collect::<Result<_>>()?,
+                    ..options
+                },
             },
             Expr::Window(e, spec) => {
                 let e = Box::new(f(*e)?);
@@ -1622,13 +1696,33 @@ impl Expr {
                     f => func_dtype(f, &ts)?,
                 }
             }
-            Expr::Agg { func, arg, filter } => {
+            Expr::Agg { func, arg, filter, options } => {
                 if let Some(f) = filter {
                     f.dtype(schema)?;
                 }
                 let t = arg.as_ref().map(|a| a.dtype(schema)).transpose()?;
+                let more = options.args.iter().map(|a| a.dtype(schema)).collect::<Result<Vec<_>>>()?;
+                for k in &options.order_by {
+                    k.expr.dtype(schema)?;
+                }
                 use AggFunc::*;
+                let wants = match func {
+                    ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop => 1,
+                    _ => 0,
+                };
+                if more.len() != wants {
+                    return invalid(format!("{func:?} takes {wants} more argument(s), got {}", more.len()));
+                }
                 match (func, t) {
+                    (ArgMin | ArgMax, Some(t)) => t,
+                    (CovSamp | CovPop | CorrSamp | CorrPop, Some(t)) => {
+                        for t in [&t, &more[0]] {
+                            if !t.is_numeric() && *t != T::Boolean {
+                                return invalid(format!("{func:?} needs numbers, got {t}"));
+                            }
+                        }
+                        T::Float64
+                    }
                     (CountStar | Count | CountDistinct, _) => T::Int64,
                     (Sum, Some(t)) if t.is_integer() || t == T::Boolean => T::Int64,
                     (Sum, Some(t)) if t.is_floating() => T::Float64,
@@ -1902,7 +1996,10 @@ impl fmt::Display for Expr {
             Expr::Unary(op, e) => list(f, &format!("{op:?}"), &[e]),
             Expr::Binary(op, l, r) => list(f, &format!("{op:?}"), &[l, r]),
             Expr::Func(func, a) => list(f, &format!("{func:?}"), &a.iter().collect::<Vec<_>>()),
-            Expr::Agg { func, arg, .. } => list(f, &format!("{func:?}"), &arg.iter().map(|b| &**b).collect::<Vec<_>>()),
+            Expr::Agg { func, arg, options, .. } => {
+                let args: Vec<&Expr> = arg.iter().map(|b| &**b).chain(options.args.iter()).collect();
+                list(f, &format!("{func:?}"), &args)
+            }
             Expr::Analytic(a, args) => list(f, &format!("{a:?}"), &args.iter().collect::<Vec<_>>()),
             Expr::Window(e, _) => write!(f, "{e}"),
             Expr::Case { .. } => f.write_str("SearchedCase"),

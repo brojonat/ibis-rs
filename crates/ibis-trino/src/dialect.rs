@@ -1,6 +1,6 @@
 //! What Trino spells or means differently from the defaults in `ibis-sql`.
 
-use ibis_core::{AggFunc, BinaryOp, DataType, Error, Expr, Func, Lambda, Result, Value};
+use ibis_core::{AggFunc, AggOptions, BinaryOp, DataType, Error, Expr, Func, Lambda, Result, Value};
 use ibis_sql::{Dialect, ExprCompiler, Unnest, quote_str, strftime_to_date_format};
 
 use crate::nested;
@@ -115,6 +115,22 @@ impl Dialect for TrinoDialect {
             First => Ok(Some(format!("ELEMENT_AT(ARRAY_AGG({}){tail}, 1)", c.sql(x)?))),
             Last => Ok(Some(format!("ELEMENT_AT(ARRAY_AGG({}){tail}, -1)", c.sql(x)?))),
             _ => Ok(None),
+        }
+    }
+
+    fn reduction(
+        &self,
+        c: &ExprCompiler,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        let other = || c.sql(&options.args[0]);
+        match f {
+            AggFunc::ArgMin => Ok(Some(format!("MIN_BY({}, {}){tail}", c.sql(arg)?, other()?))),
+            AggFunc::ArgMax => Ok(Some(format!("MAX_BY({}, {}){tail}", c.sql(arg)?, other()?))),
+            _ => c.standard_reduction(f, arg, options, tail),
         }
     }
 

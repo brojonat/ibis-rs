@@ -3,6 +3,38 @@
   "ibis": "12.0.0",
   "backend": "duckdb"
  },
+ "test_aggregate[argmax]": {
+  "file": "test_aggregation/test_aggregate[argmax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_aggregate[argmin]": {
+  "file": "test_aggregation/test_aggregate[argmin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp(6)"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_aggregate[complex_sum]": {
   "file": "test_aggregation/test_aggregate[complex_sum].parquet",
   "kind": "table",
@@ -94,6 +126,42 @@
    "timestamp(6)"
   ],
   "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_aggregate_grouped[argmax]": {
+  "file": "test_aggregation/test_aggregate_grouped[argmax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_aggregate_grouped[argmin]": {
+  "file": "test_aggregation/test_aggregate_grouped[argmin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 10,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -221,6 +289,134 @@
   "ibis": {
    "sqlite": "error: TableNotFound",
    "postgres": "error: TableNotFound"
+  }
+ },
+ "test_argmin_argmax[non-null-filtered-argmax]": {
+  "file": "test_aggregation/test_argmin_argmax[non-null-filtered-argmax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_argmin_argmax[non-null-filtered-argmin]": {
+  "file": "test_aggregation/test_argmin_argmax[non-null-filtered-argmin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_argmin_argmax[non-null-unfiltered-argmax]": {
+  "file": "test_aggregation/test_argmin_argmax[non-null-unfiltered-argmax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_argmin_argmax[non-null-unfiltered-argmin]": {
+  "file": "test_aggregation/test_argmin_argmax[non-null-unfiltered-argmin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_argmin_argmax[null-filtered-argmax]": {
+  "file": "test_aggregation/test_argmin_argmax[null-filtered-argmax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_argmin_argmax[null-filtered-argmin]": {
+  "file": "test_aggregation/test_argmin_argmax[null-filtered-argmin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_argmin_argmax[null-unfiltered-argmax]": {
+  "file": "test_aggregation/test_argmin_argmax[null-unfiltered-argmax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_argmin_argmax[null-unfiltered-argmin]": {
+  "file": "test_aggregation/test_argmin_argmax[null-unfiltered-argmin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
   }
  },
  "test_array_agg_bool[no-nulls-alls]": {
@@ -2602,6 +2798,166 @@
   "rows": 1,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[cond-corr_pop]": {
+  "file": "test_aggregation/test_corr_cov[cond-corr_pop].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[cond-corr_pop_bool]": {
+  "file": "test_aggregation/test_corr_cov[cond-corr_pop_bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[cond-covar_pop]": {
+  "file": "test_aggregation/test_corr_cov[cond-covar_pop].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[cond-covar_pop_bool]": {
+  "file": "test_aggregation/test_corr_cov[cond-covar_pop_bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[cond-covar_samp]": {
+  "file": "test_aggregation/test_corr_cov[cond-covar_samp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[no_cond-corr_pop]": {
+  "file": "test_aggregation/test_corr_cov[no_cond-corr_pop].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[no_cond-corr_pop_bool]": {
+  "file": "test_aggregation/test_corr_cov[no_cond-corr_pop_bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[no_cond-covar_pop]": {
+  "file": "test_aggregation/test_corr_cov[no_cond-covar_pop].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[no_cond-covar_pop_bool]": {
+  "file": "test_aggregation/test_corr_cov[no_cond-covar_pop_bool].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_corr_cov[no_cond-covar_samp]": {
+  "file": "test_aggregation/test_corr_cov[no_cond-covar_samp].parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
    "postgres": "same"
   }
  },
@@ -11851,6 +12207,38 @@
    "postgres": "same"
   }
  },
+ "test_reduction_ops[is_in-argmax]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-argmax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_reduction_ops[is_in-argmin]": {
+  "file": "test_aggregation/test_reduction_ops[is_in-argmin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_reduction_ops[is_in-bit_and]": {
   "file": "test_aggregation/test_reduction_ops[is_in-bit_and].parquet",
   "kind": "table",
@@ -12228,6 +12616,38 @@
   ],
   "dtypes": [
    "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_reduction_ops[no_cond-argmax]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-argmax].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_reduction_ops[no_cond-argmin]": {
+  "file": "test_aggregation/test_reduction_ops[no_cond-argmin].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "float64"
   ],
   "rows": 1,
   "ibis": {

@@ -417,8 +417,8 @@ impl Table {
                 }
                 Ok(Expr::Field { rel, name }) // correlated
             }
-            Expr::Agg { func, arg, filter } => {
-                let agg = Expr::Agg { func, arg, filter };
+            Expr::Agg { func, arg, filter, options } => {
+                let agg = Expr::Agg { func, arg, filter, options };
                 let foreign: Vec<Arc<Rel>> = agg
                     .field_rels()
                     .into_iter()
@@ -427,7 +427,7 @@ impl Table {
                 if ctx == Ctx::Value && foreign.is_empty() {
                     return agg.map_children(&mut |c| self.bind_with(c, ctx, d));
                 }
-                let Expr::Agg { func, arg, filter } = agg else { unreachable!() };
+                let Expr::Agg { func, arg, filter, options } = agg else { unreachable!() };
                 let src = match foreign.as_slice() {
                     [] => self.clone(),
                     [f] => Table::from_arc(f.clone()),
@@ -437,7 +437,7 @@ impl Table {
                     let pred = *arg.expect("any() has an argument");
                     return Ok(Expr::Exists(src.filter([pred])?.rel));
                 }
-                let agg = Expr::Agg { func, arg, filter };
+                let agg = Expr::Agg { func, arg, filter, options };
                 Ok(Expr::ScalarSubquery(src.aggregate([agg.name("_")])?.rel))
             }
             Expr::InColumn { arg, column } => {

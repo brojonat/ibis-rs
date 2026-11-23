@@ -15,7 +15,9 @@ use std::sync::Mutex;
 use arrow_array::RecordBatch;
 use chrono::{NaiveDate, NaiveDateTime};
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, rows_to_batch};
-use ibis_core::{AggFunc, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Lambda, Result, Schema, Table, Value};
+use ibis_core::{
+    AggFunc, AggOptions, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Lambda, Result, Schema, Table, Value,
+};
 use ibis_sql::json::{decode_nested, value_to_json};
 use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile, quote_str};
 use postgres::types::{FromSql, Kind, Type};
@@ -181,6 +183,22 @@ impl Dialect for PostgresDialect {
             }
             _ => None,
         })
+    }
+    fn reduction(
+        &self,
+        c: &ExprCompiler,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        match f {
+            AggFunc::ArgMin | AggFunc::ArgMax => {
+                let ordered = c.by_key(arg, &options.args[0], f == AggFunc::ArgMin)?;
+                Ok(Some(format!("(ARRAY_AGG({ordered}){tail})[1]")))
+            }
+            _ => c.standard_reduction(f, arg, options, tail),
+        }
     }
 }
 

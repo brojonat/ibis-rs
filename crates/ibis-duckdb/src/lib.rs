@@ -10,7 +10,7 @@ use arrow_array::RecordBatch;
 use duckdb::Connection;
 use duckdb::arrow::datatypes::SchemaRef;
 use ibis_core::convert::conform_batch;
-use ibis_core::{AggFunc, Backend, Error, Expr, Result, Schema, Table};
+use ibis_core::{AggFunc, AggOptions, Backend, Error, Expr, Result, Schema, Table};
 use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile};
 
 pub struct DuckDbDialect;
@@ -39,6 +39,22 @@ impl Dialect for DuckDbDialect {
             First => c.call_agg("FIRST", x, tail),
             Last => c.call_agg("LAST", x, tail),
             _ => Ok(None),
+        }
+    }
+    fn reduction(
+        &self,
+        c: &ExprCompiler,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        match f {
+            AggFunc::ArgMin | AggFunc::ArgMax => {
+                let ordered = c.by_key(arg, &options.args[0], f == AggFunc::ArgMin)?;
+                Ok(Some(format!("FIRST({ordered}){tail}")))
+            }
+            _ => c.standard_reduction(f, arg, options, tail),
         }
     }
 }

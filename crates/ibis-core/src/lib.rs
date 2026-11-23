@@ -15,7 +15,8 @@ pub use backend::{Backend, CreateOptions, scratch_name};
 pub use datatypes::{DataType, Field, Schema};
 pub use error::{Error, Result};
 pub use expr::{
-    AggFunc, Analytic, BinaryOp, Bound, Expr, Frame, Func, IntoOperand, Lambda, SortKey, UnaryOp, WindowSpec,
+    AggFunc, AggOptions, Analytic, BinaryOp, Bound, Expr, Frame, Func, IntoOperand, Lambda, SortKey, UnaryOp,
+    WindowSpec,
 };
 pub use table::{DerefMap, GroupedTable, How, JoinKind, JoinPred, Rel, RelOp, SetKind, Side, Table};
 pub use value::Value;
@@ -196,6 +197,12 @@ mod tests {
         assert_eq!(dtype(col("string_col").approx_nunique()), "int64");
         assert_eq!(dtype(col("int_col").kurtosis()), "float64");
         assert!(t.aggregate([col("double_col").bit_and().name("x")]).is_err());
+        assert_eq!(dtype(col("string_col").argmin("id")), "string");
+        assert_eq!(dtype(col("int_col").gt(1).corr(col("double_col"))), "float64");
+        assert!(t.aggregate([col("string_col").cov("id").name("x")]).is_err());
+        // the key of `argmin` is bound like any column, and is in the default name
+        let by_key = t.aggregate([col("int_col").argmin(t.col("id"))]).unwrap();
+        assert_eq!(by_key.schema().to_string(), "ArgMin(int_col, id): int32");
         // the condition of `notany` is the condition of the `any` it negates
         let filtered = col("int_col").gt(0).notany().filter_where(col("id").lt(5));
         assert!(format!("{filtered:?}").contains("filter: Some"), "{filtered:?}");

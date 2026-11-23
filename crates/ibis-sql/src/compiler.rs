@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use ibis_core::{
-    AggFunc, Analytic, BinaryOp, Bound, DataType, DerefMap, Error, Expr, Func, JoinKind, Rel, RelOp, Result, Schema,
-    SetKind, Side, SortKey, Table, UnaryOp, Value, WindowSpec,
+    AggFunc, AggOptions, Analytic, BinaryOp, Bound, DataType, DerefMap, Error, Expr, Func, JoinKind, Rel, RelOp,
+    Result, Schema, SetKind, Side, SortKey, Table, UnaryOp, Value, WindowSpec,
 };
 
 use crate::dialect::Dialect;
@@ -30,6 +30,18 @@ pub fn compile(d: &dyn Dialect, t: &Table) -> Result<String> {
 pub fn sql_query(d: &dyn Dialect, query: &str, views: &[(String, Arc<Rel>)]) -> Result<String> {
     let c = RelCompiler { d, aliases: Cell::new(0), scopes: RefCell::new(vec![]) };
     c.sql_query(query, views)
+}
+
+/// `KurtosisSamp` -> `kurtosis_samp`.
+fn snake(name: &str) -> String {
+    let mut out = String::new();
+    for ch in name.chars() {
+        if ch.is_uppercase() && !out.is_empty() {
+            out.push('_');
+        }
+        out.extend(ch.to_lowercase());
+    }
+    out
 }
 
 /// `CREATE TABLE` DDL for `schema` (no `OR REPLACE`: not portable).
@@ -638,10 +650,10 @@ impl ExprCompiler<'_> {
                     None => self.default_func(f, args)?,
                 }
             }
-            Expr::Agg { func, arg, filter } => {
+            Expr::Agg { func, arg, filter, options } => {
                 // in a projection a bare reduction is broadcast over all rows
                 let over = if self.in_project { Some("OVER ()") } else { None };
-                self.agg(*func, arg.as_deref(), filter.as_deref(), over)?
+                self.agg(*func, arg.as_deref(), filter.as_deref(), options, over)?
             }
             Expr::Analytic(..) => return unsupported(d, format!("{e} without a window (use .over(...))")),
             Expr::Window(f, spec) => self.window(f, spec)?,
@@ -674,7 +686,17 @@ impl ExprCompiler<'_> {
 
     /// An aggregate call with its FILTER and OVER clauses. Both must follow
     /// the call itself, inside anything a dialect wraps around it.
-    fn agg(&self, func: AggFunc, arg: Option<&Expr>, filter: Option<&Expr>, over: Option<&str>) -> Result<String> {
+    fn agg(
+        &self,
+        func: AggFunc,
+        arg: Option<&Expr>,
+        filter: Option<&Expr>,
+        options: &AggOptions,
+        over: Option<&str>,
+    ) -> Result<String> {
+        if let (false, Some(a)) = (options.is_plain(), arg) {
+            return self.reduction(func, a, filter, options, over);
+        }
         // `collect`, `first` and `last` leave NULLs out: one more condition
         // on the rows they see
         if let (AggFunc::Collect | AggFunc::First | AggFunc::Last, Some(a)) = (func, arg) {
@@ -686,6 +708,49 @@ impl ExprCompiler<'_> {
             return self.filtered_agg(func, arg, Some(&filter), over);
         }
         self.filtered_agg(func, arg, filter, over)
+    }
+
+    /// A reduction with more than an argument (`Dialect::reduction`).
+    fn reduction(
+        &self,
+        func: AggFunc,
+        arg: &Expr,
+        filter: Option<&Expr>,
+        options: &AggOptions,
+        over: Option<&str>,
+    ) -> Result<String> {
+        use AggFunc::*;
+        let (mut arg, mut options) = (arg.clone(), options.clone());
+        let pair = matches!(func, CovSamp | CovPop | CorrSamp | CorrPop);
+        if pair {
+            // the covariance of booleans is that of 0 and 1
+            for e in [&mut arg, &mut options.args[0]] {
+                if self.dtype(e)? == DataType::Boolean {
+                    *e = e.clone().cast(DataType::Int32);
+                }
+            }
+        }
+        let mut tail = String::new();
+        if let Some(f) = filter {
+            if self.d.supports_agg_filter(over.is_some()) {
+                tail = format!(" FILTER (WHERE {})", self.sql(f)?);
+            } else {
+                // rows failing the condition become NULL in what the reduction reads
+                let when = |then: Expr| Expr::Case { branches: vec![(f.clone(), then)], default: None };
+                arg = when(arg);
+                if pair || matches!(func, ArgMin | ArgMax) {
+                    options.args[0] = when(options.args[0].clone());
+                }
+            }
+        }
+        if let Some(o) = over {
+            tail.push(' ');
+            tail.push_str(o);
+        }
+        match self.d.reduction(self, func, &arg, &options, &tail)? {
+            Some(s) => Ok(s),
+            None => unsupported(self.d, snake(&format!("{func:?}"))),
+        }
     }
 
     fn filtered_agg(
@@ -974,19 +1039,37 @@ impl ExprCompiler<'_> {
             Collect => format!("ARRAY_AGG({x})"),
             // each engine names these its own way, or has none
             Mode | KurtosisSamp | KurtosisPop | ApproxCountDistinct | BitAnd | BitOr | BitXor | Arbitrary | Median
-            | ApproxMedian | First | Last => {
-                // `KurtosisSamp` -> `kurtosis_samp`
-                let mut name = String::new();
-                for ch in format!("{f:?}").chars() {
-                    if ch.is_uppercase() && !name.is_empty() {
-                        name.push('_');
-                    }
-                    name.extend(ch.to_lowercase());
-                }
-                return unsupported(self.d, name);
+            | ApproxMedian | First | Last | ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop => {
+                return unsupported(self.d, snake(&format!("{f:?}")));
             }
         };
         Ok(format!("{call}{filter}"))
+    }
+
+    /// The reductions of two columns under their SQL-standard names
+    /// (`COVAR_SAMP`, `COVAR_POP`, `CORR`), for a dialect's `reduction`.
+    /// The standard's `CORR` is the population's.
+    pub fn standard_reduction(
+        &self,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        let name = match f {
+            AggFunc::CovSamp => "COVAR_SAMP",
+            AggFunc::CovPop => "COVAR_POP",
+            AggFunc::CorrPop => "CORR",
+            _ => return Ok(None),
+        };
+        Ok(Some(format!("{name}({}, {}){tail}", self.sql(arg)?, self.sql(&options.args[0])?)))
+    }
+
+    /// `arg ORDER BY key`, smallest key first (or largest), NULL keys last:
+    /// what an ordered aggregate reads to find `argmin` or `argmax`.
+    pub fn by_key(&self, arg: &Expr, key: &Expr, smallest: bool) -> Result<String> {
+        let key = SortKey { expr: key.clone(), ascending: smallest, nulls_first: false };
+        Ok(format!("{} ORDER BY {}", self.sql(arg)?, self.sort_key(&key)?))
     }
 
     /// `NAME(arg)` and what follows the call: for a dialect's `agg`.
@@ -1013,7 +1096,9 @@ impl ExprCompiler<'_> {
         let inner =
             ExprCompiler { d: self.d, schema: self.schema, in_project: false, qual: self.qual.clone(), rc: self.rc };
         Ok(match f {
-            Expr::Agg { func, arg, filter } => inner.agg(*func, arg.as_deref(), filter.as_deref(), Some(&over))?,
+            Expr::Agg { func, arg, filter, options } => {
+                inner.agg(*func, arg.as_deref(), filter.as_deref(), options, Some(&over))?
+            }
             Expr::Analytic(a, args) => {
                 let a_sql = args.iter().map(|x| inner.sql(x)).collect::<Result<Vec<_>>>()?;
                 if let Some(s) = self.d.analytic(*a, &a_sql, &over)? {

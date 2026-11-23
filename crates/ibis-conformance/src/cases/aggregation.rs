@@ -17,6 +17,8 @@ pub fn register(v: &mut Vec<Case>) {
         ("timestamp_max", || c("timestamp_col").max()),
         // int_col % 3 so there are no ties for most common value
         ("mode", || (c("int_col") % 3).mode()),
+        ("argmin", || c("timestamp_col").argmin("id")),
+        ("argmax", || c("double_col").argmax("id")),
     ];
     for (id, f) in &aggs {
         let f = *f;
@@ -54,6 +56,8 @@ pub fn register(v: &mut Vec<Case>) {
         ("bit_and", || c("bigint_col").bit_and()),
         ("bit_or", || c("bigint_col").bit_or()),
         ("bit_xor", || c("bigint_col").bit_xor()),
+        ("argmin", || c("double_col").argmin("int_col")),
+        ("argmax", || c("double_col").argmax("int_col")),
     ];
     let conds: Vec<(&str, fn() -> Option<Expr>)> =
         vec![("no_cond", || None), ("is_in", || Some(c("string_col").isin([lit("1"), lit("7")])))];
@@ -85,6 +89,64 @@ pub fn register(v: &mut Vec<Case>) {
         // Ibis marks ClickHouse, PySpark and Polars too: no median of strings there
         .notimpl(&["impala", "mysql", "sqlite", "trino", "clickhouse", "spark", "polars"]),
     );
+
+    // ids are "<null>-<filtered>-<method>": the key is NULL where int_col is 0
+    // or 9, and with "null" the value at the answer's row is NULL too
+    for (null_id, null_result) in [("null", true), ("non-null", false)] {
+        for (filtered_id, filtered) in [("filtered", true), ("unfiltered", false)] {
+            for method in ["argmin", "argmax"] {
+                let id = format!("test_argmin_argmax[{null_id}-{filtered_id}-{method}]");
+                let case = table(&id, move |t| {
+                    let smallest = method == "argmin";
+                    let by_col = c("int_col").nullif(0).nullif(9).name("by_col");
+                    let mut t = t.mutate([by_col, (lit(10) * c("int_col")).name("val_col")])?;
+                    let (filter, sol) = match (filtered, smallest) {
+                        (true, true) => (Some(c("int_col").ne(1)), 20),
+                        (true, false) => (Some(c("int_col").ne(8)), 70),
+                        (false, true) => (None, 10),
+                        (false, false) => (None, 80),
+                    };
+                    if null_result {
+                        t = t.mutate([c("val_col").nullif(sol).name("val_col")])?;
+                    }
+                    let mut e = if smallest { c("val_col").argmin("by_col") } else { c("val_col").argmax("by_col") };
+                    if let Some(filter) = filter {
+                        e = e.filter_where(filter);
+                    }
+                    t.aggregate([e.name("tmp")])
+                });
+                v.push(case.notimpl(missing(method)));
+            }
+        }
+    }
+
+    // on batting; ids are "<cond>-<fn>". "corr_samp" has no golden: DuckDB,
+    // which the goldens come from, has no sample correlation.
+    let corr_cov: Vec<(&str, fn() -> Expr)> = vec![
+        ("covar_pop", || c("G").cov_pop("RBI")),
+        ("covar_samp", || c("G").cov("RBI")),
+        ("corr_pop", || c("G").corr_pop("RBI")),
+        ("covar_pop_bool", || c("G").gt(34.0).cov_pop(c("G").le(34.0))),
+        ("corr_pop_bool", || c("G").gt(34.0).corr_pop(c("G").le(34.0))),
+    ];
+    for (cid, cond) in [("no_cond", false), ("cond", true)] {
+        for (fid, f) in &corr_cov {
+            let f = *f;
+            let case = tables(&format!("test_corr_cov[{cid}-{fid}]"), move |fx| {
+                let mut e = f();
+                if cond {
+                    e = e.filter_where(c("yearID").isin([lit(2009), lit(2015)]));
+                }
+                fx.batting.aggregate([e.name("tmp")])
+            });
+            // Ibis marks ClickHouse for the population's correlation: it names only the sample's
+            let none: &[&str] = match fid.starts_with("corr") {
+                true => &["impala", "mysql", "sqlite", "clickhouse"],
+                false => &["impala", "mysql", "sqlite"],
+            };
+            v.push(case.notimpl(none));
+        }
+    }
 
     v.push(table("test_binds_are_cast", |t| {
         let urgent = c("string_col").cases([(lit("1-URGENT"), lit(1))], Some(lit(0)));
@@ -136,6 +198,7 @@ fn missing(reduction: &str) -> &'static [&'static str] {
         "mode" => &["clickhouse", "impala", "mysql", "spark", "trino"],
         "kurtosis_samp" => &["clickhouse", "impala", "mysql", "postgres", "spark", "sqlite"],
         "bit_and" | "bit_or" | "bit_xor" => &["impala", "spark"],
+        "argmin" | "argmax" => &["impala", "mysql"],
         _ => &[],
     }
 }

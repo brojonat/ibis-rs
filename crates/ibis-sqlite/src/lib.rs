@@ -18,7 +18,9 @@ use std::sync::Mutex;
 
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, format_date, format_timestamp, rows_to_batch};
-use ibis_core::{AggFunc, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Result, Schema, Table, Value};
+use ibis_core::{
+    AggFunc, AggOptions, Backend, BinaryOp, DataType, Error, Expr, Field, Func, Result, Schema, Table, Value,
+};
 use ibis_sql::{Dialect, ExprCompiler, SqlClient, compile, quote_str};
 use rusqlite::Connection;
 use rusqlite::types::Value as SqlValue;
@@ -247,6 +249,23 @@ impl Dialect for SqliteDialect {
             _ => None,
         })
     }
+
+    fn reduction(
+        &self,
+        c: &ExprCompiler,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        // aggregates this crate registers on the connection (polyfill.rs)
+        let name = match f {
+            AggFunc::ArgMin => "ibis_argmin",
+            AggFunc::ArgMax => "ibis_argmax",
+            _ => return Ok(None),
+        };
+        Ok(Some(format!("{name}({}, {}){tail}", c.sql(arg)?, c.sql(&options.args[0])?)))
+    }
 }
 
 pub struct Sqlite {
@@ -446,14 +465,16 @@ mod tests {
         let rows: Vec<_> = rows.into_iter().chain([row(1, None), row(2, None)]).collect();
         con.create_table("t", &[rows_to_batch(&schema, &rows).unwrap()]).unwrap();
         let x = || col("x");
+        // argmin by -x is the largest x; of the two 3s, argmax by -x is either
         let reductions = [x().first(), x().last(), x().mode(), x().bit_and(), x().bit_or(), x().bit_xor()];
+        let reductions = reductions.into_iter().chain([x().argmin(-x()), (x() * 10).argmax(-x())]);
         let named = reductions.into_iter().enumerate().map(|(i, e)| e.name(&format!("c{i}")));
         let q = con.table("t").unwrap().group_by(["g"]).agg(named).unwrap().order_by(["g"]).unwrap();
         let got = batch_to_rows(&con.execute(&q).unwrap()[0]).unwrap();
-        let ints = |v: [i64; 7]| v.map(Value::Int).to_vec();
+        let ints = |v: [i64; 9]| v.map(Value::Int).to_vec();
         // of 5, 3, 3, 5, 6: AND 0, OR 7, XOR 6
-        assert_eq!(got[0], ints([1, 5, 6, 5, 0, 7, 6]));
-        assert_eq!(got[1][1..], vec![Value::Null; 6]);
+        assert_eq!(got[0], ints([1, 5, 6, 5, 0, 7, 6, 6, 30]));
+        assert_eq!(got[1][1..], vec![Value::Null; 8]);
     }
 
     #[test]
