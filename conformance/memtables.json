@@ -232,5 +232,13 @@
  "xs_ys": {
   "columns": [["xs", "int64"], ["ys", "int64"]],
   "rows": [[1, 2], [2, 3], [3, 4]]
+ },
+ "grouped_case": {
+  "columns": [["key", "int64"], ["value", "int64"]],
+  "rows": [[1, 10], [1, 30], [2, 20], [2, 40]]
+ },
+ "project_names": {
+  "columns": [["project_name", "string"]],
+  "rows": [["duckdb"], ["ibis-framework"], ["ibis"], ["numpy"], ["pandas"]]
  }
 }

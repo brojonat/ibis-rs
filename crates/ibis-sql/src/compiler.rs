@@ -373,10 +373,14 @@ impl RelCompiler<'_> {
                 let c = self.exprs(&input.schema, false, &s.alias);
                 let (items, group_by) = self.in_scope(input, &s.alias, || {
                     let (mut items, mut group_by) = (vec![], vec![]);
-                    for (n, e) in groups {
+                    for (i, (n, e)) in groups.iter().enumerate() {
                         let sql = c.sql(e)?;
                         items.push(format!("{sql} AS {}", q(n)));
-                        group_by.push(sql);
+                        // A key that reads no column is named by its place in
+                        // the select list: Postgres takes a constant in GROUP
+                        // BY for such a place, and refuses a string there.
+                        let constant = !e.has(&|e| !matches!(e, Expr::Literal(..) | Expr::Cast(..)));
+                        group_by.push(if constant { (i + 1).to_string() } else { sql });
                     }
                     for (n, e) in metrics {
                         items.push(format!("{} AS {}", c.sql(e)?, q(n)));

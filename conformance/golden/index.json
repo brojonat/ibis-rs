@@ -2041,6 +2041,22 @@
    "postgres": "same"
   }
  },
+ "test_binds_are_cast": {
+  "file": "test_aggregation/test_binds_are_cast.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "high_line_count"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_case_where": {
   "file": "test_generic/test_case_where.parquet",
   "kind": "table",
@@ -3683,6 +3699,38 @@
    "postgres": "same"
   }
  },
+ "test_empty_sum#1": {
+  "file": "test_aggregation/test_empty_sum#1.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_empty_sum#2": {
+  "file": "test_aggregation/test_empty_sum#2.parquet",
+  "kind": "tables",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_exists[any]": {
   "file": "test_generic/test_exists[any].parquet",
   "kind": "tables",
@@ -3893,6 +3941,24 @@
   "ibis": {
    "sqlite": "error: TableNotFound",
    "postgres": "error: TableNotFound"
+  }
+ },
+ "test_filter": {
+  "file": "test_aggregation/test_filter.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "x",
+   "sum"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
   }
  },
  "test_filter[and]": {
@@ -4281,6 +4347,60 @@
    "tmp"
   ],
   "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_by_expr": {
+  "file": "test_aggregation/test_group_by_expr.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "n",
+   "c"
+  ],
+  "dtypes": [
+   "int32",
+   "int64"
+  ],
+  "rows": 4,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_by_scalar[null]": {
+  "file": "test_aggregation/test_group_by_scalar[null].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "key",
+   "n"
+  ],
+  "dtypes": [
+   "string",
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_by_scalar[string]": {
+  "file": "test_aggregation/test_group_by_scalar[string].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "key",
+   "n"
+  ],
+  "dtypes": [
+   "string",
    "int64"
   ],
   "rows": 1,
@@ -4842,6 +4962,24 @@
    "float64"
   ],
   "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_grouped_case": {
+  "file": "test_aggregation/test_grouped_case.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "k",
+   "mx"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 2,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -15842,6 +15980,24 @@
    "string"
   ],
   "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_value_counts_on_expr": {
+  "file": "test_aggregation/test_value_counts_on_expr.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "Add(bigint_col, 1)",
+   "Add(bigint_col, 1)_count"
+  ],
+  "dtypes": [
+   "int64",
+   "int64"
+  ],
+  "rows": 10,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"

@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import ibis
 
-from cases import Registry, table
+from ibis import _
+
+from cases import Registry, table, tables
 
 r = Registry("test_aggregation")
 register = r.params
@@ -71,3 +73,49 @@ r.add(
     "test_string_quantile[median]",
     table(lambda t: (lambda s: s.aggregate(tmp=s.col.median()))(t.select(col=ibis.literal("a")).limit(5))),
 )
+
+r.add(
+    "test_binds_are_cast",
+    table(lambda t: t.aggregate(high_line_count=t.string_col.cases(("1-URGENT", 1), else_=0).sum())),
+)
+r.add(
+    "test_filter",
+    table(
+        lambda t: (
+            t.filter(_.string_col == "1")
+            .mutate(x=ibis.literal(1, "int64"))
+            .group_by(_.x)
+            .aggregate(sum=_.double_col.sum())
+        )
+    ),
+)
+
+
+def grouped_case(c):
+    t = c.mem("grouped_case")
+    case_expr = ibis.cases((t.value < 25, t.value), else_=ibis.null())
+    return t.group_by(k="key").aggregate(mx=case_expr.max()).drop_null("k").order_by("k")
+
+
+r.add("test_grouped_case", tables(grouped_case, ordered=True))
+r.add("test_value_counts_on_expr", table(lambda t: t.bigint_col.add(1).value_counts()))
+r.add(
+    "test_group_by_expr",
+    tables(
+        lambda c: (
+            c.mem("project_names")
+            .group_by(n=_.project_name.length())
+            .aggregate(c=_.project_name.nunique())
+            .order_by(_.n.desc())
+        ),
+        ordered=True,
+    ),
+)
+for vid, value in {"string": lambda: ibis.literal("a"), "null": lambda: ibis.null("str")}.items():
+    r.add(
+        f"test_group_by_scalar[{vid}]",
+        table(lambda t, value=value: t.group_by(key=value()).agg(n=lambda t: t.count())),
+    )
+# the test's two results: a count, and the sum of no rows
+r.add("test_empty_sum#1", tables(lambda c: c.mem("x_one").aggregate(tmp=_.count())))
+r.add("test_empty_sum#2", tables(lambda c: (lambda t: t.aggregate(tmp=t.x.sum(where=t.x > 1)))(c.mem("x_one"))))

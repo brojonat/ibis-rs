@@ -6,7 +6,7 @@
 
 use ibis_core::prelude::*;
 
-use super::{Case, c, table};
+use super::{Case, c, table, tables};
 
 pub fn register(v: &mut Vec<Case>) {
     let aggs: Vec<(&str, fn() -> Expr)> = vec![
@@ -85,6 +85,49 @@ pub fn register(v: &mut Vec<Case>) {
         // Ibis marks ClickHouse, PySpark and Polars too: no median of strings there
         .notimpl(&["impala", "mysql", "sqlite", "trino", "clickhouse", "spark", "polars"]),
     );
+
+    v.push(table("test_binds_are_cast", |t| {
+        let urgent = c("string_col").cases([(lit("1-URGENT"), lit(1))], Some(lit(0)));
+        t.aggregate([urgent.sum().name("high_line_count")])
+    }));
+    v.push(table("test_filter", |t| {
+        t.filter([c("string_col").eq(lit("1"))])?
+            .mutate([lit_as(1, DataType::Int64).name("x")])?
+            .group_by(["x"])
+            .agg([c("double_col").sum().name("sum")])
+    }));
+    v.push(
+        tables("test_grouped_case", |fx| {
+            let case = cases([(c("value").lt(25), c("value"))], None);
+            fx.mem("grouped_case")?
+                .group_by([c("key").name("k")])
+                .agg([case.max().name("mx")])?
+                .drop_null(Some(&["k"]), How::Any)?
+                .order_by(["k"])
+        })
+        .ordered(),
+    );
+    v.push(table("test_value_counts_on_expr", |t| t.value_counts(c("bigint_col") + 1)));
+    v.push(
+        tables("test_group_by_expr", |fx| {
+            fx.mem("project_names")?
+                .group_by([c("project_name").length().name("n")])
+                .agg([c("project_name").nunique().name("c")])?
+                .order_by([desc(c("n"))])
+        })
+        .ordered(),
+    );
+    let scalars: [(&str, fn() -> Expr); 2] = [("string", || lit("a")), ("null", || null(DataType::String))];
+    for (id, value) in scalars {
+        v.push(table(&format!("test_group_by_scalar[{id}]"), move |t| {
+            t.group_by([value().name("key")]).agg([count().name("n")])
+        }));
+    }
+    // the test's two results: a count, and the sum of no rows
+    v.push(tables("test_empty_sum#1", |fx| fx.mem("x_one")?.aggregate([count().name("tmp")])));
+    v.push(tables("test_empty_sum#2", |fx| {
+        fx.mem("x_one")?.aggregate([c("x").sum().filter_where(c("x").gt(1)).name("tmp")])
+    }));
 }
 
 /// The backends Ibis marks as having no such reduction.

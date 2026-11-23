@@ -295,6 +295,13 @@ mod tests {
     }
 
     #[test]
+    fn a_constant_group_key_is_named_by_its_place() {
+        let q = t().group_by([lit("a").name("key"), col("a")]).agg([count().name("n")]).unwrap();
+        let sql = sql(&q);
+        assert!(sql.ends_with(r#"GROUP BY 1, t0."a""#), "{sql}");
+    }
+
+    #[test]
     fn create_table_says_what_is_temporary_and_what_is_not_null() {
         let mut schema = Schema::of(&[("a", DataType::Int64), ("s", DataType::String)]);
         schema.fields[0].nullable = false;

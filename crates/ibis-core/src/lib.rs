@@ -205,6 +205,21 @@ mod tests {
     }
 
     #[test]
+    fn value_counts_and_order_by_follow_ibis() {
+        let t = alltypes();
+        let counts = t.value_counts(col("int_col") + 1).unwrap();
+        assert_eq!(counts.schema().to_string(), "Add(int_col, 1): int64, Add(int_col, 1)_count: int64");
+        assert_eq!(
+            t.topk(col("string_col"), 3).unwrap().schema().to_string(),
+            "string_col: string, string_col_count: int64"
+        );
+        // an aggregate has no `id` to sort by, though the table it reads does
+        let n = t.aggregate([count().name("n")]).unwrap();
+        assert!(n.order_by([t.col("id")]).is_err());
+        assert!(t.filter([col("id").gt(1)]).unwrap().order_by([t.col("id")]).is_ok());
+    }
+
+    #[test]
     fn join_renames_collisions() {
         let t = alltypes();
         let j = t.join(&t, [("id", "id")], JoinKind::Inner).unwrap();

@@ -287,6 +287,14 @@ fn named(exprs: impl IntoIterator<Item = impl Into<Expr>>) -> Vec<(String, Expr)
         .collect()
 }
 
+/// A column still bound to another table after binding, if there is one.
+fn foreign_column(e: &Expr) -> Option<&str> {
+    match e {
+        Expr::Field { name, .. } => Some(name),
+        e => e.children().into_iter().find_map(foreign_column),
+    }
+}
+
 fn check_unique(fields: &[Field]) -> Result<()> {
     for (i, f) in fields.iter().enumerate() {
         if fields[..i].iter().any(|g| g.name == f.name) {
@@ -602,6 +610,23 @@ impl Table {
         self.group_by(Vec::<Expr>::new()).agg(metrics)
     }
 
+    /// How often each value of `expr` occurs (Ibis `col.value_counts()`):
+    /// the value, then its count in a column named `<name>_count`.
+    pub fn value_counts(&self, expr: impl Into<Expr>) -> Result<Table> {
+        let expr = expr.into();
+        let count = format!("{}_count", expr.output_name());
+        self.group_by([expr]).agg([crate::expr::count().name(&count)])
+    }
+
+    /// The `k` most frequent values of `expr` with their counts, most
+    /// frequent first (Ibis `col.topk(k)`). Which of equally frequent
+    /// values make it is up to the engine.
+    pub fn topk(&self, expr: impl Into<Expr>, k: u64) -> Result<Table> {
+        let counts = self.value_counts(expr)?;
+        let count = counts.schema().fields[1].name.clone();
+        Ok(counts.order_by([crate::expr::desc(crate::expr::col(&count))])?.limit(k, 0))
+    }
+
     pub fn group_by(&self, keys: impl IntoIterator<Item = impl Into<Expr>>) -> GroupedTable {
         GroupedTable { table: self.clone(), keys: named(keys) }
     }
@@ -616,6 +641,10 @@ impl Table {
             })
             .collect::<Result<Vec<_>>>()?;
         for k in &keys {
+            // a column of some other table: an aggregate has no `year` to sort by
+            if let Some(name) = foreign_column(&k.expr) {
+                return invalid(format!("order_by: {name:?} is not a column of this table ({})", self.schema()));
+            }
             k.expr.dtype(self.schema())?;
         }
         Ok(self.wrap(RelOp::Sort { input: self.rel.clone(), keys }, self.schema().clone()))

@@ -75,5 +75,43 @@ pub(crate) fn cases() -> Vec<ClientCase> {
         .notimpl(&["mysql", "sqlite"]),
     );
 
+    // Every value of string_col occurs as often as every other, so which
+    // three are on top is the engine's choice: Ibis checks the counts.
+    v.push(test("test_topk_op", |b, target| {
+        let t = target.fx.alltypes.order_by(["string_col"])?;
+        let top = t.topk(col("string_col"), 3)?;
+        let each = value(b, &target.fx.alltypes.filter([col("string_col").eq(lit("0"))])?.aggregate([count()])?)?;
+        let got = rows(b, &top)?;
+        let counts: Vec<&Value> = got.iter().map(|row| &row[1]).collect();
+        check(counts == [&each; 3], || format!("want three counts of {each:?}, got {got:?}"))
+    }));
+    v.push(test("test_topk_filter_op[string_col_filter_top3]", |b, target| {
+        let t = target.fx.alltypes.order_by(["string_col"])?;
+        let top = t.topk(col("string_col"), 3)?;
+        let kept = t.join(&top, [("string_col", "string_col")], JoinKind::Semi)?;
+        let got = value(b, &kept.aggregate([count()])?)?;
+        let each = value(b, &target.fx.alltypes.filter([col("string_col").eq(lit("0"))])?.aggregate([count()])?)?;
+        let want = match each {
+            Value::Int(n) => Value::Int(3 * n),
+            other => other,
+        };
+        check(got == want, || format!("want {want:?} rows, got {got:?}"))
+    }));
+
+    v.push(test("test_agg_sort", |_, target| {
+        let t = &target.fx.alltypes;
+        let query = t.aggregate([count().name("count")])?;
+        // `year` is a column of the table, not of its one-row aggregate
+        let sorted = query.order_by([t.col("year")]);
+        check(sorted.is_err(), || "ordering an aggregate by a column it does not have is not an error".to_string())
+    }));
+
+    v.push(test("test_agg_name_in_output_column", |b, target| {
+        let query = target.fx.alltypes.aggregate([col("int_col").min(), col("int_col").max()])?;
+        let names: Vec<String> = query.schema().names().map(str::to_lowercase).collect();
+        check(names.len() == 2 && names[0].contains("min") && names[1].contains("max"), || format!("{names:?}"))?;
+        check(rows(b, &query)?.len() == 1, || "want one row".to_string())
+    }));
+
     v
 }
