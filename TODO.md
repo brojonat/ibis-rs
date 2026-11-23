@@ -33,7 +33,12 @@ Coverage of the Ibis suite: 908 of 1,778 applicable test ids (51%); per module a
 
 ## Next: parity
 - [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
-- [ ] Rest of test_aggregation: grouped reductions, mode, argmin/argmax, approx, collect
+- [ ] Rest of test_aggregation (93 ids left of 162 applicable)
+  - [x] Reductions of one argument: mode, median, approx_median, approx_nunique, kurtosis, bit_and/or/xor, arbitrary, first/last, notany/notall (27 ids; the Python-UDF ids are not applicable)
+  - [ ] Reductions that need more than `Expr::Agg { func, arg, filter }` holds: argmin/argmax (a key), corr/cov (a second column), quantile and approx_quantile (the quantiles), group_concat (a separator, an order), first/last with `order_by` and `include_null`, collect with `order_by`, `distinct`, `include_null` (about 70 ids). Extend `Expr::Agg` once, for all of them
+  - [ ] The rest: test_count_distinct_star (`Table::nunique`), topk, value_counts, test_filter, test_grouped_case, test_group_by_expr, test_group_by_scalar, test_binds_are_cast, test_empty_sum, test_agg_sort, test_agg_name_in_output_column (default names for unnamed reductions), test_date_quantile
+  - [ ] Engines that have a reduction Ibis does not use there (Spark `mode`, `bit_and`, kurtosis; ClickHouse `kurtSamp`): today `Unsupported`, as in Ibis
+  - [ ] MySQL `BIT_AND` of no rows is all ones, not NULL
 - [ ] Rest of test_string: translate, split, join, find_in_set, capitalize, slices
 - [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
 - [ ] Nested types, loose ends: `collect` options (`order_by`, `distinct`, `include_null`, `where`), several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB

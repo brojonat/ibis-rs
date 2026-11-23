@@ -17,23 +17,24 @@ The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
 test, whether it is ported, and how each backend does on it: 908 of 1,778
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 920 ported Ibis tests (862 expression
-cases with a result from Python Ibis, 58 tests of the connection API) and
-Ibis's 22 TPC-H queries:
+Status: pre-alpha. Nine backends, 947 ported Ibis tests (882 expression
+cases with a result from Python Ibis, 65 tests that are procedures: the
+connection API, SQL as text, reductions whose answer is the engine's to
+choose) and Ibis's 22 TPC-H queries:
 
-| backend | Ibis tests (920) | TPC-H (22) |
+| backend | Ibis tests (947) | TPC-H (22) |
 |---|---|---|
-| DuckDB | 920 | 22 |
-| Polars (default) | 910 (10 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns, no SQL text for an expression) | 22 |
-| Trino | 907 (13 expected failures: no temporary tables, no `MERGE` in the test catalog, no function for the most frequent element of an array) | 22 |
-| Spark SQL | 906 (14 expected failures: the same, and no `NOT NULL` columns) | 22 |
-| Postgres | 894 (26 expected failures, as in Ibis: no arrays of arrays) | 22 |
-| ClickHouse | 867 (53 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`; and no temporary tables over HTTP) | 22 |
-| Impala | 591 (329 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`) | 22 |
-| MySQL | 578 (342 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`) | 22 |
-| SQLite | 577 (343 expected failures: no arrays, structs or maps, no NaN, no `MERGE`) | 22 |
+| DuckDB | 947 | 22 |
+| Polars (default) | 936 (11 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median of strings) | 22 |
+| Trino | 928 (19 expected failures: no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median) | 22 |
+| Spark SQL | 920 (27 expected failures: no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median of strings) | 22 |
+| Postgres | 919 (28 expected failures, as in Ibis: no arrays of arrays, no kurtosis) | 22 |
+| ClickHouse | 887 (60 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median of strings; and no temporary tables over HTTP) | 22 |
+| SQLite | 599 (348 expected failures: no arrays, structs or maps, no NaN, no `MERGE`, no median or kurtosis) | 22 |
+| Impala | 598 (349 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians, kurtosis, the bitwise reductions, `first`/`last` and `arbitrary` only the approximate median) | 22 |
+| MySQL | 590 (357 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`, no `mode`, median, kurtosis, `first`/`last` or `arbitrary`) | 22 |
 
-Output column names and types match Ibis's on all 862. Ported so far:
+Output column names and types match Ibis's on all 882. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal` (first tier), `test_join`, `test_window`, `test_set_ops`,
 `test_conditionals`, `test_array`, `test_struct`, `test_map`,

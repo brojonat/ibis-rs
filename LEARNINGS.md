@@ -557,3 +557,32 @@ Two more things that looked harmless:
   tables cannot be prepended as `WITH a AS (...) ` to it. They go around it:
   `WITH a AS (...) SELECT * FROM (query) AS ibis_sql`. Every engine here
   accepts a `WITH` inside a derived table.
+
+## Reductions: one name, a different function in every engine
+
+Adding `mode`, `median`, `first`/`last` and friends, what was not obvious:
+
+- `default_agg` in ibis-sql refuses these instead of guessing a name: each
+  dialect lists the ones it has (`Dialect::agg`). A guessed `MEDIAN(x)`
+  would have reached the engine and failed there with its error, not ours.
+- Postgres and Trino have no `FIRST`/`LAST` aggregate. `(ARRAY_AGG(x))[1]`
+  and `ELEMENT_AT(ARRAY_AGG(x), -1)` do it; Trino's `ELEMENT_AT` returns
+  NULL past the end, where `[n]` raises.
+- ClickHouse's `any` and `anyLast` skip NULLs; DuckDB's `FIRST` does not, so
+  `first`, `last` (and `collect`) add `x IS NOT NULL` to the aggregate's
+  filter in the compiler, for every dialect.
+- The median of an even count interpolates in DuckDB, Postgres
+  (`PERCENTILE_CONT`), Spark (`PERCENTILE`) and Polars. ClickHouse's
+  `median` is approximate and `quantileExact` picks one of the two middle
+  values: `quantileExactInclusive(0.5)` is the one that interpolates.
+- MySQL's `BIT_AND`/`BIT_OR`/`BIT_XOR` return `BIGINT UNSIGNED`: cast to
+  `SIGNED`, or the value comes back as a type the column never had.
+- SQLite has none of mode, bitwise reductions, first or last. Ibis registers
+  Python functions there; ibis-sqlite registers Rust ones
+  (`polyfill.rs`, `ibis_mode`, `ibis_bit_and`, ...).
+- `Expr::first()` used to build `FIRST_VALUE` and needed `.over(w)`. It is a
+  reduction now, and `over` turns it back into `FIRST_VALUE`: the first
+  value of a window frame may be NULL, the first value of a group may not.
+- A test whose right answer depends on the engine (which value is first in
+  rows with no order, an approximate median) cannot have a golden: those
+  are procedures with Ibis's own assertion (`reductions.rs`).

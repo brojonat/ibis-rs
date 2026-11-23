@@ -31,6 +31,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `Table::as_scalar()` (Ibis `t.as_scalar()`): a one-column table as a value.
 - `SqlClient::query_schema`: how a backend reads the columns of a query's result. The default is the short-lived view `sql` already used; ibis-trino runs the query for no rows instead, so a query with an unnamed column works there.
 - `ibis_sql::sql_query`: the text of a SQL query after the common table expressions it reads.
+- Reductions: `mode`, `median`, `approx_median`, `approx_nunique`, `kurtosis` and `kurtosis_pop`, `bit_and`, `bit_or`, `bit_xor`, `arbitrary`, and `first`/`last` as reductions (the first and last value that is not NULL). Each backend has the ones its engine has, as in Ibis; the rest are `Unsupported`. `approx_nunique` counts exactly on Postgres, SQLite and MySQL, which have no approximate count, and on Polars. ibis-sqlite registers aggregates for `mode`, the bitwise three, `first` and `last`. ibis-polars enables the `mode`, `moment` and `bitwise` features of `polars`.
+- `ExprCompiler::call_agg`, for a dialect's `agg`.
+- Conformance: 27 more ids of `test_aggregation`: 20 cases with goldens (`mode`, `notany`, `notall`, kurtosis, `approx_nunique`, the bitwise reductions, the medians) and 7 procedures for the reductions whose answer the engine chooses (`first`, `last`, `arbitrary`, `approx_median`; `crates/ibis-conformance/src/reductions.rs`). The Python-UDF ids are marked not applicable; `conformance/not_applicable.json` now also takes the id of one parameter (`module::test[param]`).
 - Conformance: `test_dot_sql` ported, 15 tests as procedures (`crates/ibis-conformance/src/dot_sql.rs`), passing on all nine backends (one expected failure on Polars, as in Ibis). Its 44 `transpile` ids and the repr test are marked not applicable: ibis-rs passes SQL on as written and has no translator between dialects.
 
 ### Changed
@@ -42,6 +45,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `Dialect::default_type_name` returns `Unsupported` for nested types; `Dialect::type_name` is where an engine names them.
 - Conformance: backends run side by side, one thread each, for loading fixtures, the Ibis cases and TPC-H. Outcomes are reported in the same order as before. The runner does the Ibis cases and TPC-H at the same time.
 - A `Table` that is only a SQL query (`con.sql(q)` with nothing built on it) compiles to the query itself, not `SELECT * FROM (q)`: its `ORDER BY` holds on engines that drop the order of a subquery.
+- **Breaking:** `Expr::first()` and `Expr::last()` are reductions (`AggFunc::First`, `AggFunc::Last`), as in Ibis. `first().over(w)` is still `FIRST_VALUE` over the window, so windowed uses are unchanged. `AggFunc` has twelve new variants, which a `match` on it outside this repository must cover.
+- `filter_where` on `notany()` and `notall()` restricts the reduction they negate (it did nothing before).
 - **Breaking:** `RelOp::Sql` has a `views` field. `ibis_sql::ddl::sql` takes the table the query is run over (`None` for `Backend::sql`).
 - ibis-sqlite: a view column that is an expression has no declared type; `table` (and so `sql`) now gives it the type of its value in the first row, as Ibis does, instead of string.
 - CI runs the suite once instead of twice: `mise run unit` (new: unit tests and doctests, no containers) and then `mise run site`, whose conformance run fails the job on any failing case. Images are pulled while the code compiles.
