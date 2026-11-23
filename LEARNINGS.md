@@ -617,3 +617,22 @@ DuckDB, Postgres and Trino say theirs is the population's and ClickHouse
 that its is the sample's; Ibis refuses the other on each, and so does
 ibis-rs. The consequence for the suite: `corr_samp` has no golden (DuckDB
 cannot compute one), so those two ids need a procedure.
+
+## Quantiles: which of two middle values, and what the function accepts
+
+- An exact quantile of numbers interpolates (`PERCENTILE_CONT`); of text or
+  dates it must be one of the values (`PERCENTILE_DISC`), and of two middle
+  values that is the lower. ClickHouse's `quantileExact` picks the higher:
+  `quantileExactLow` matches. Its numeric `quantileExactInclusive`
+  interpolates like the others.
+- ClickHouse's quantile functions take no `Date32` (which is what a date is
+  there, for its range): the quantile is taken of `toInt32(date)`, days
+  since 1970, and turned back with `toDate32`.
+- ClickHouse writes the fractions as parameters, `quantiles(0.25, 0.75)(x)`,
+  so they must be literals (`ExprCompiler::fractions`).
+- DuckDB's `APPROX_QUANTILE(x, [0.25, 0.75])` finds no overload: the list is
+  of decimals and it wants `FLOAT[]`; a single decimal fraction is cast for
+  it. It also answers in the column's type, where Ibis says float.
+- Ids of stacked `parametrize` decorators read bottom-up: for
+  `@parametrize("filtered") @parametrize("multi") def test_approx_quantile`
+  the id `[True-False]` is multi=True, filtered=False.
