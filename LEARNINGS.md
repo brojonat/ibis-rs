@@ -586,3 +586,12 @@ Adding `mode`, `median`, `first`/`last` and friends, what was not obvious:
 - A test whose right answer depends on the engine (which value is first in
   rows with no order, an approximate median) cannot have a golden: those
   are procedures with Ibis's own assertion (`reductions.rs`).
+
+## `GROUP BY 'a'`: a constant key needs its position, not its text
+
+`t.group_by([lit("a").name("key")])` compiled to `GROUP BY 'a'`, which every
+engine here takes except Postgres ("non-integer constant in GROUP BY"). An
+integer there is a position in the select list, so a key that reads no
+column is now written as its position (`GROUP BY 1`), which all nine accept.
+Dropping the key from `GROUP BY` instead would be wrong: with no `GROUP BY`
+an aggregate of no rows returns one row, not none.
