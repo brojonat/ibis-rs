@@ -1,6 +1,6 @@
 //! What MySQL spells or means differently from the defaults in `ibis-sql`.
 
-use ibis_core::{AggFunc, BinaryOp, DataType, Error, Expr, Func, Result, Value};
+use ibis_core::{AggFunc, AggOptions, BinaryOp, DataType, Error, Expr, Func, Result, Value};
 use ibis_sql::{Dialect, ExprCompiler, strftime_to_date_format};
 
 pub struct MySqlDialect;
@@ -195,6 +195,28 @@ impl Dialect for MySqlDialect {
             AggFunc::BitXor => Some(format!("CAST(BIT_XOR({}){tail} AS SIGNED)", c.sql(x)?)),
             _ => None,
         })
+    }
+
+    fn reduction(
+        &self,
+        c: &ExprCompiler,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        if f != AggFunc::GroupConcat {
+            return Ok(None);
+        }
+        // SEPARATOR takes a string literal and nothing else
+        let Some(sep) = ExprCompiler::lit_str(&options.args[0]) else {
+            return Err(Error::Unsupported {
+                backend: "mysql".into(),
+                op: "group_concat with a separator that is not a literal".into(),
+            });
+        };
+        let ordered = format!("{}{}", c.sql(arg)?, c.agg_order(options)?);
+        Ok(Some(format!("GROUP_CONCAT({ordered} SEPARATOR {}){tail}", ibis_sql::quote_str(sep))))
     }
 
     /// No `NULLS FIRST` / `NULLS LAST`. NULL sorts as the smallest value, so

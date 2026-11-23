@@ -1040,7 +1040,7 @@ impl ExprCompiler<'_> {
             // each engine names these its own way, or has none
             Mode | KurtosisSamp | KurtosisPop | ApproxCountDistinct | BitAnd | BitOr | BitXor | Arbitrary | Median
             | ApproxMedian | First | Last | ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop | Quantile
-            | ApproxQuantile => {
+            | ApproxQuantile | GroupConcat => {
                 return unsupported(self.d, snake(&format!("{f:?}")));
             }
         };
@@ -1072,6 +1072,30 @@ impl ExprCompiler<'_> {
     pub fn percentile(&self, arg: &Expr, options: &AggOptions, tail: &str) -> Result<String> {
         let name = if self.dtype(arg)?.is_numeric() { "PERCENTILE_CONT" } else { "PERCENTILE_DISC" };
         Ok(format!("{name}({}) WITHIN GROUP (ORDER BY {}){tail}", self.sql(&options.args[0])?, self.sql(arg)?))
+    }
+
+    /// ` ORDER BY ...` inside an aggregate's parentheses, for the order a
+    /// reduction reads its rows in; empty when it has none.
+    pub fn agg_order(&self, options: &AggOptions) -> Result<String> {
+        if options.order_by.is_empty() {
+            return Ok(String::new());
+        }
+        let keys = options.order_by.iter().map(|k| self.sort_key(k)).collect::<Result<Vec<_>>>()?;
+        Ok(format!(" ORDER BY {}", keys.join(", ")))
+    }
+
+    /// `STRING_AGG(arg, separator ORDER BY ...)`, for a dialect's `reduction`.
+    pub fn string_agg(&self, arg: &Expr, options: &AggOptions, tail: &str) -> Result<String> {
+        let (x, sep) = (self.sql(arg)?, self.sql(&options.args[0])?);
+        Ok(format!("STRING_AGG({x}, {sep}{}){tail}", self.agg_order(options)?))
+    }
+
+    /// Refuse an order the engine's form of a reduction cannot take.
+    pub fn unordered(&self, options: &AggOptions, what: &str) -> Result<()> {
+        match options.order_by.is_empty() {
+            true => Ok(()),
+            false => unsupported(self.d, format!("{what} with an order")),
+        }
     }
 
     /// The fractions of a quantile, where the engine wants them as numbers

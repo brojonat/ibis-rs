@@ -4781,6 +4781,170 @@
    "postgres": "same"
   }
  },
+ "test_group_concat[is_in-const]": {
+  "file": "test_aggregation/test_group_concat[is_in-const].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_concat[is_in-expr]": {
+  "file": "test_aggregation/test_group_concat[is_in-expr].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_concat[no_cond-const]": {
+  "file": "test_aggregation/test_group_concat[no_cond-const].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_concat[no_cond-expr]": {
+  "file": "test_aggregation/test_group_concat[no_cond-expr].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_concat[not_in-const]": {
+  "file": "test_aggregation/test_group_concat[not_in-const].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_concat[not_in-expr]": {
+  "file": "test_aggregation/test_group_concat[not_in-expr].parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "bigint_col",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "string"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_group_concat_ordered[False]": {
+  "file": "test_aggregation/test_group_concat_ordered[False].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_group_concat_ordered[True]": {
+  "file": "test_aggregation/test_group_concat_ordered[True].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_group_concat_over_window": {
+  "file": "test_aggregation/test_group_concat_over_window.parquet",
+  "kind": "tables",
+  "ordered": true,
+  "columns": [
+   "s",
+   "token",
+   "pk",
+   "id",
+   "test"
+  ],
+  "dtypes": [
+   "string",
+   "string",
+   "int64",
+   "int64",
+   "string"
+  ],
+  "rows": 3,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_grouped_bounded_expanding_window[count]": {
   "file": "test_window/test_grouped_bounded_expanding_window[count].parquet",
   "kind": "table",

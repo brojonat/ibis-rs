@@ -198,6 +198,7 @@ impl Dialect for PostgresDialect {
                 Ok(Some(format!("(ARRAY_AGG({ordered}){tail})[1]")))
             }
             AggFunc::Quantile => Ok(Some(c.percentile(arg, options, tail)?)),
+            AggFunc::GroupConcat => Ok(Some(c.string_agg(arg, options, tail)?)),
             // exact: Postgres has no approximate quantile
             AggFunc::ApproxQuantile => Ok(Some(c.percentile(arg, options, tail)?)),
             _ => c.standard_reduction(f, arg, options, tail),

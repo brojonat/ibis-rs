@@ -258,6 +258,10 @@ impl Dialect for SqliteDialect {
         options: &AggOptions,
         tail: &str,
     ) -> Result<Option<String>> {
+        if f == AggFunc::GroupConcat {
+            c.unordered(options, "group_concat")?;
+            return Ok(Some(format!("GROUP_CONCAT({}, {}){tail}", c.sql(arg)?, c.sql(&options.args[0])?)));
+        }
         // aggregates this crate registers on the connection (polyfill.rs)
         let name = match f {
             AggFunc::ArgMin => "ibis_argmin",

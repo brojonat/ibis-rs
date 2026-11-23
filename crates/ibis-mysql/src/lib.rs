@@ -142,6 +142,8 @@ impl MySql {
             "SET NAMES utf8mb4 COLLATE utf8mb4_bin",
             // TIMESTAMP columns are read and written in the session's zone
             "SET time_zone = '+00:00'",
+            // GROUP_CONCAT cuts its result at 1024 bytes by default, with a warning and no error
+            "SET SESSION group_concat_max_len = 4294967295",
         ] {
             conn.query_drop(setup).map_err(|e| exec_err(setup, e))?;
         }

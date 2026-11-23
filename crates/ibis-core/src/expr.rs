@@ -389,6 +389,9 @@ pub enum AggFunc {
     /// an array of fractions, the array of those values.
     Quantile,
     ApproxQuantile,
+    /// The strings joined into one, with the separator `options.args[0]`
+    /// between them; NULLs are left out.
+    GroupConcat,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1247,6 +1250,22 @@ impl Expr {
     pub fn corr_pop(self, other: impl Into<Expr>) -> Expr {
         agg_with(AggFunc::CorrPop, self, vec![other.into()])
     }
+    /// The strings of a group joined into one, `sep` between them (Ibis
+    /// `group_concat`); NULL for no strings. `order_by` fixes their order.
+    pub fn group_concat(self, sep: impl IntoOperand) -> Expr {
+        agg_with(AggFunc::GroupConcat, self, vec![sep.into_operand()])
+    }
+    /// The order a reduction reads the rows in (Ibis `order_by=`), where
+    /// its result depends on it: `group_concat`, `first`, `last`, `collect`.
+    pub fn order_by(self, keys: impl IntoIterator<Item = impl Into<SortKey>>) -> Expr {
+        match self {
+            Expr::Agg { func, arg, filter, mut options } => {
+                options.order_by = keys.into_iter().map(Into::into).collect();
+                Expr::Agg { func, arg, filter, options }
+            }
+            other => other,
+        }
+    }
     /// The value below which the fraction `q` of the values lie (0.5: the
     /// median). Between two numbers it is interpolated.
     pub fn quantile(self, q: f64) -> Expr {
@@ -1730,7 +1749,8 @@ impl Expr {
                 }
                 use AggFunc::*;
                 let wants = match func {
-                    ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop | Quantile | ApproxQuantile => 1,
+                    ArgMin | ArgMax | CovSamp | CovPop | CorrSamp | CorrPop | Quantile | ApproxQuantile
+                    | GroupConcat => 1,
                     _ => 0,
                 };
                 if more.len() != wants {
@@ -1738,6 +1758,15 @@ impl Expr {
                 }
                 match (func, t) {
                     (ArgMin | ArgMax, Some(t)) => t,
+                    (GroupConcat, Some(t)) => match (&t, &more[0]) {
+                        (T::String | T::Null, T::String) => T::String,
+                        _ => {
+                            return invalid(format!(
+                                "group_concat joins strings with a string, got {t} and {}",
+                                more[0]
+                            ));
+                        }
+                    },
                     (Quantile | ApproxQuantile, Some(t)) => {
                         let one = if t.is_numeric() { T::Float64 } else { t };
                         match &more[0] {

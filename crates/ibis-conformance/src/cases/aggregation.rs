@@ -178,6 +178,52 @@ pub fn register(v: &mut Vec<Case>) {
             .notimpl(&["impala", "mysql", "sqlite", "trino", "spark"]),
     );
 
+    // ids are "<cond>-<sep>". Every string of a group is the same one, so the
+    // result does not depend on the order they are joined in.
+    let concat_conds: [(&str, fn() -> Option<Expr>); 3] = [
+        ("no_cond", || None),
+        ("is_in", || Some(c("string_col").isin([lit("1"), lit("7")]))),
+        ("not_in", || Some(c("string_col").notin([lit("1"), lit("7")]))),
+    ];
+    for (cid, cond) in concat_conds {
+        for sid in ["const", "expr"] {
+            let case = table(&format!("test_group_concat[{cid}-{sid}]"), move |t| {
+                let mut e = match sid {
+                    "const" => c("string_col").group_concat(":"),
+                    _ => c("string_col").group_concat(lit(":") + lit(":")),
+                };
+                if let Some(w) = cond() {
+                    e = e.filter_where(w);
+                }
+                t.group_by(["bigint_col"]).agg([e.name("tmp")])?.order_by(["bigint_col"])
+            })
+            .ordered();
+            // a separator that is an expression: not in MySQL's syntax, nor Polars's
+            v.push(if sid == "expr" { case.notimpl(&["mysql", "polars"]) } else { case });
+        }
+    }
+    for (id, filtered) in [("False", false), ("True", true)] {
+        let case = table(&format!("test_group_concat_ordered[{id}]"), move |t| {
+            let mut e = c("id").cast(DataType::String).group_concat(":").order_by([desc(c("id"))]);
+            if filtered {
+                e = e.filter_where((c("id") % 13).eq(0));
+            }
+            t.filter([c("bigint_col").eq(10)])?.aggregate([e.name("tmp")])
+        });
+        // as in Ibis: these have no order inside the aggregate (or none we write)
+        v.push(case.notimpl(&["clickhouse", "impala", "spark", "sqlite"]));
+    }
+    v.push(
+        tables("test_group_concat_over_window", |fx| {
+            let w = WindowSpec::new().partition_by(["pk"]).order_by(["id"]).rows(Some(0), None);
+            fx.mem("group_concat_window")?.mutate([c("s").group_concat("|").over(w).name("test")])?.order_by(["id"])
+        })
+        .ordered()
+        // No such aggregate over a window on these. Ibis marks ClickHouse,
+        // Trino and PySpark too; the array forms written here work there.
+        .notimpl(&["polars", "impala", "mysql"]),
+    );
+
     v.push(table("test_binds_are_cast", |t| {
         let urgent = c("string_col").cases([(lit("1-URGENT"), lit(1))], Some(lit(0)));
         t.aggregate([urgent.sum().name("high_line_count")])

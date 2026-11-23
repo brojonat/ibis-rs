@@ -130,6 +130,10 @@ impl Dialect for TrinoDialect {
         match f {
             AggFunc::ArgMin => Ok(Some(format!("MIN_BY({}, {}){tail}", c.sql(arg)?, other()?))),
             AggFunc::ArgMax => Ok(Some(format!("MAX_BY({}, {}){tail}", c.sql(arg)?, other()?))),
+            AggFunc::GroupConcat => {
+                let ordered = format!("{}{}", c.sql(arg)?, c.agg_order(options)?);
+                Ok(Some(format!("ARRAY_JOIN(ARRAY_AGG({ordered}){tail}, {})", other()?)))
+            }
             // approximate only (Ibis: "backend implements approximate quantiles")
             AggFunc::ApproxQuantile => {
                 let x = arg.clone().cast(DataType::Float64);

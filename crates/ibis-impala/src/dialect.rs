@@ -1,7 +1,7 @@
 //! What Impala spells or means differently from the defaults in `ibis-sql`.
 
 use ibis_core::convert::format_timestamp;
-use ibis_core::{AggFunc, Analytic, DataType, Error, Expr, Func, Result, Value};
+use ibis_core::{AggFunc, AggOptions, Analytic, DataType, Error, Expr, Func, Result, Value};
 use ibis_sql::{Dialect, ExprCompiler};
 
 pub struct ImpalaDialect;
@@ -183,6 +183,21 @@ impl Dialect for ImpalaDialect {
             AggFunc::ApproxMedian => c.call_agg("APPX_MEDIAN", x, tail)?,
             _ => None,
         })
+    }
+
+    fn reduction(
+        &self,
+        c: &ExprCompiler,
+        f: AggFunc,
+        arg: &Expr,
+        options: &AggOptions,
+        tail: &str,
+    ) -> Result<Option<String>> {
+        if f != AggFunc::GroupConcat {
+            return Ok(None);
+        }
+        c.unordered(options, "group_concat")?;
+        Ok(Some(format!("GROUP_CONCAT({}, {}){tail}", c.sql(arg)?, c.sql(&options.args[0])?)))
     }
 
     fn analytic(&self, f: Analytic, args: &[String], over: &str) -> Result<Option<String>> {

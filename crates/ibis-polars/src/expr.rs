@@ -548,6 +548,32 @@ impl Tx<'_> {
                     pl::SortMultipleOptions::default().with_order_descending(func == ArgMax).with_maintain_order(true);
                 x.filter(keyed.clone()).sort_by([key.filter(keyed)], order).first()
             }
+            GroupConcat => {
+                let Some(sep) = lit_str(&options.args[0]) else {
+                    return unsupported("group_concat with a separator that is not a literal");
+                };
+                let mut strings = x.clone();
+                if !options.order_by.is_empty() {
+                    let keys = options
+                        .order_by
+                        .iter()
+                        .map(|k| {
+                            let key = self.expr(&k.expr)?;
+                            Ok(match &pred {
+                                Some(p) => key.filter(p.clone()),
+                                None => key,
+                            })
+                        })
+                        .collect::<Result<Vec<_>>>()?;
+                    let order = pl::SortMultipleOptions::default()
+                        .with_order_descending_multi(options.order_by.iter().map(|k| !k.ascending).collect::<Vec<_>>())
+                        .with_nulls_last_multi(options.order_by.iter().map(|k| !k.nulls_first).collect::<Vec<_>>())
+                        .with_maintain_order(true);
+                    strings = strings.sort_by(keys, order);
+                }
+                // no strings: NULL, where joining nothing gives ''
+                some(&x, strings.str().join(sep, true))
+            }
             Quantile | ApproxQuantile => match &options.args[0] {
                 Expr::Literal(Value::Float(q), _) => x.quantile(pl::lit(*q), pl::QuantileMethod::Linear),
                 _ => return unsupported("an array of quantiles"),

@@ -162,6 +162,12 @@ impl Dialect for SparkDialect {
             // one number for the sample and for the population
             AggFunc::CorrSamp => Ok(Some(format!("CORR({}, {}){tail}", c.sql(arg)?, other()?))),
             AggFunc::Quantile => Ok(Some(format!("PERCENTILE({}, {}){tail}", c.sql(arg)?, other()?))),
+            AggFunc::GroupConcat => {
+                c.unordered(options, "group_concat")?;
+                // no strings: NULL, where joining an empty array gives ''
+                let list = format!("COLLECT_LIST({}){tail}", c.sql(arg)?);
+                Ok(Some(format!("ARRAY_JOIN(CASE WHEN SIZE({list}) = 0 THEN NULL ELSE {list} END, {})", other()?)))
+            }
             AggFunc::ApproxQuantile => {
                 let x = arg.clone().cast(DataType::Float64);
                 Ok(Some(format!("PERCENTILE_APPROX({}, {}){tail}", c.sql(&x)?, other()?)))

@@ -173,3 +173,42 @@ r.add(
     table(lambda t: (lambda s: s.aggregate(tmp=s.col.quantile(0.5)))(t.select(col=ibis.literal("a")).limit(5))),
 )
 r.add("test_date_quantile", table(lambda t: t.aggregate(tmp=t.timestamp_col.date().quantile(0.5))))
+
+# ids are "<cond>-<sep>". Every string of a group is the same one, so the
+# result does not depend on the order they are joined in.
+SEPS = {"const": lambda: ":", "expr": lambda: ibis.literal(":") + ":"}
+GROUP_CONCAT_CONDS = {
+    "no_cond": lambda t: None,
+    "is_in": lambda t: t.string_col.isin(["1", "7"]),
+    "not_in": lambda t: t.string_col.notin(["1", "7"]),
+}
+for cid, cond in GROUP_CONCAT_CONDS.items():
+    for sid, sep in SEPS.items():
+        r.add(
+            f"test_group_concat[{cid}-{sid}]",
+            table(
+                lambda t, cond=cond, sep=sep: (
+                    t.group_by("bigint_col")
+                    .aggregate(tmp=lambda s: s.string_col.group_concat(sep(), where=cond(s)))
+                    .order_by("bigint_col")
+                ),
+                ordered=True,
+            ),
+        )
+for filtered in (False, True):
+
+    def ordered_concat(t, filtered=filtered):
+        cond = (_.id % 13 == 0) if filtered else None
+        t = t.filter(_.bigint_col == 10)
+        return t.aggregate(tmp=t.id.cast("str").group_concat(":", where=cond, order_by=_.id.desc()))
+
+    r.add(f"test_group_concat_ordered[{filtered}]", table(ordered_concat))
+
+
+def group_concat_over_window(c):
+    t = c.mem("group_concat_window")
+    w = dict(group_by="pk", order_by="id", rows=(0, None))
+    return t.mutate(test=t.s.group_concat(sep="|").over(**w)).order_by("id")
+
+
+r.add("test_group_concat_over_window", tables(group_concat_over_window, ordered=True))

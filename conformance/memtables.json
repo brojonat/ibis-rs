@@ -244,5 +244,9 @@
  "approx_quantile_x": {
   "columns": [["x", "int64"]],
   "rows": [[0], [25], [25], [50], [75], [75], [100], [125], [125], [150], [175], [175], [200]]
+ },
+ "group_concat_window": {
+  "columns": [["s", "string"], ["token", "string"], ["pk", "int64"], ["id", "int64"]],
+  "rows": [["a|b|c", "a", 1, 1], ["b|a|c", "b", 1, 2], ["b|b|b|c|a", "c", 2, 3]]
  }
 }

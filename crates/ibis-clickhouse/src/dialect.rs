@@ -275,6 +275,12 @@ impl Dialect for ClickHouseDialect {
             return Ok(Some(format!("{name}({fractions})({}){tail}", c.sql(arg)?)));
         }
         let (x, other) = (c.sql(arg)?, c.sql(&options.args[0])?);
+        if f == AggFunc::GroupConcat {
+            c.unordered(options, "group_concat")?;
+            // no strings: NULL, where joining an empty array gives ''
+            let list = format!("groupArray({x}){tail}");
+            return Ok(Some(format!("if(empty({list}), NULL, arrayStringConcat({list}, {other}))")));
+        }
         Ok(Some(match f {
             // `argMin` passes over a NULL argument; inside a tuple it is a value
             AggFunc::ArgMin => format!("tupleElement(argMin(tuple({x}), {other}){tail}, 1)"),
