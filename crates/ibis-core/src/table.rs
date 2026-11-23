@@ -111,9 +111,17 @@ pub enum RelOp {
         offset: Option<String>,
         keep_empty: bool,
     },
-    /// A query in the backend's own SQL (`Backend::sql`).
+    /// The same rows, given a name that the SQL of a later `Sql` can read
+    /// them by (Ibis `t.alias(name)`).
+    Alias {
+        input: Arc<Rel>,
+        name: String,
+    },
+    /// A query in the backend's own SQL (`Backend::sql`, `Backend::sql_over`).
+    /// It may read each of `views` as a table of that name.
     Sql {
         query: String,
+        views: Vec<(String, Arc<Rel>)>,
     },
 }
 
@@ -159,8 +167,10 @@ impl Rel {
 
     pub fn inputs(&self) -> Vec<&Arc<Rel>> {
         match &self.op {
-            RelOp::Table { .. } | RelOp::Sql { .. } => vec![],
+            RelOp::Table { .. } => vec![],
+            RelOp::Sql { views, .. } => views.iter().map(|(_, view)| view).collect(),
             RelOp::View { input }
+            | RelOp::Alias { input, .. }
             | RelOp::Project { input, .. }
             | RelOp::Filter { input, .. }
             | RelOp::Aggregate { input, .. }
@@ -190,6 +200,7 @@ impl Rel {
         match &self.op {
             RelOp::Table { .. } | RelOp::Sql { .. } | RelOp::View { .. } | RelOp::SetOp { .. } => {}
             RelOp::Filter { input, .. }
+            | RelOp::Alias { input, .. }
             | RelOp::Sort { input, .. }
             | RelOp::Limit { input, .. }
             | RelOp::Distinct { input } => inherit(input, &mut input.schema.names().map(|n| (n, n))),
@@ -303,7 +314,43 @@ impl Table {
     /// build this in `Backend::sql`, which reads the schema from the engine.
     pub fn sql(query: &str, mut schema: Schema) -> Table {
         schema.fields.iter_mut().for_each(|f| f.nullable = true);
-        Table::from_rel(Rel::new(RelOp::Sql { query: query.to_string() }, schema))
+        Table::from_rel(Rel::new(RelOp::Sql { query: query.to_string(), views: vec![] }, schema))
+    }
+
+    /// `Table::sql` for a query that reads the tables this expression names
+    /// with [`Table::alias`]. Backends build this in `Backend::sql_over`.
+    pub fn sql_over(&self, query: &str, schema: Schema) -> Result<Table> {
+        Ok(self.wrap(RelOp::Sql { query: query.to_string(), views: self.aliases()? }, schema))
+    }
+
+    /// The same rows under a name: the SQL given to `Backend::sql_over` for
+    /// this table, or for one built on it, reads them as a table of that
+    /// name (Ibis `t.alias(name)`).
+    pub fn alias(&self, name: &str) -> Table {
+        self.wrap(RelOp::Alias { input: self.rel.clone(), name: name.to_string() }, self.schema().clone())
+    }
+
+    /// Every table named with [`Table::alias`] in this expression, the ones
+    /// it is built on first. One name for two different tables is an error.
+    pub fn aliases(&self) -> Result<Vec<(String, Arc<Rel>)>> {
+        fn walk(rel: &Arc<Rel>, out: &mut Vec<(String, Arc<Rel>)>) -> Result<()> {
+            for input in rel.inputs() {
+                walk(input, out)?;
+            }
+            if let RelOp::Alias { name, .. } = &rel.op {
+                match out.iter().find(|(seen, _)| seen == name) {
+                    Some((_, other)) if other.id != rel.id => {
+                        return invalid(format!("two tables in this expression have the alias {name:?}"));
+                    }
+                    Some(_) => {}
+                    None => out.push((name.clone(), rel.clone())),
+                }
+            }
+            Ok(())
+        }
+        let mut out = vec![];
+        walk(&self.rel, &mut out)?;
+        Ok(out)
     }
 
     fn wrap(&self, op: RelOp, mut schema: Schema) -> Table {
@@ -329,6 +376,15 @@ impl Table {
     /// An unknown name is reported when the expression is used.
     pub fn col(&self, name: &str) -> Expr {
         Expr::Field { rel: self.rel.clone(), name: name.to_string() }
+    }
+
+    /// This table as a value, where it has one column and one row (Ibis
+    /// `t.as_scalar()`).
+    pub fn as_scalar(&self) -> Result<Expr> {
+        match self.schema().len() {
+            1 => Ok(Expr::ScalarSubquery(self.rel.clone())),
+            n => invalid(format!("as_scalar needs a table of one column; this one has {n} ({})", self.schema())),
+        }
     }
 
     /// The same rows under a new identity, for self-joins (Ibis `t.view()`).

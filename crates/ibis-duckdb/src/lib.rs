@@ -192,6 +192,12 @@ mod tests {
         let q = big.filter([col("double").gt(20)]).unwrap().select([col("k")]).unwrap();
         assert_eq!(ints(&con, &q), [vec![Value::Int(2)]]);
         assert!(con.list_tables().unwrap().iter().all(|name| !name.starts_with("ibis_sql")));
+        // SQL over an expression reads the tables the expression names
+        let wide = big.filter([col("double").gt(20)]).unwrap().alias("wide");
+        let over = con.sql_over(&wide, "WITH x AS (SELECT k + 1 AS k1 FROM wide) SELECT k1 FROM x").unwrap();
+        assert_eq!(over.schema().to_string(), "k1: int64");
+        assert_eq!(ints(&con, &over.order_by(["k1"]).unwrap()), [vec![Value::Int(3)]]);
+        assert!(con.sql("SELECT * FROM wide").is_err());
 
         // only `k` and `v` are given: `w` stays where a row matches, and is NULL in a new row
         let update = Schema::of(&[("v", DataType::String), ("k", DataType::Int64)]);

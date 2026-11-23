@@ -19,6 +19,18 @@ pub trait SqlClient: Backend {
     /// Append `data`, already shaped like `schema`, to the table `name`.
     fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()>;
 
+    /// The columns of the result of a query in the engine's SQL. They are
+    /// read the way a table's are, from a view that exists for just that
+    /// long.
+    fn query_schema(&self, query: &str) -> Result<Schema> {
+        let view = scratch_name("sql");
+        let q = self.dialect().quote_ident(&view);
+        self.statement(&format!("CREATE VIEW {q} AS {query}"))?;
+        let described = self.table(&view);
+        self.statement(&format!("DROP VIEW {q}"))?;
+        Ok(described?.schema().clone())
+    }
+
     /// Statements to run on a table just created, before its data is loaded.
     fn after_create(&self, name: &str, schema: &Schema) -> Vec<String> {
         let _ = (name, schema);
@@ -165,16 +177,16 @@ pub fn upsert_from(c: &dyn SqlClient, name: &str, source: &Table, on: &str) -> R
     ))
 }
 
-/// A query in the engine's SQL as a table expression. Its columns are read
-/// the way a table's are, from a view that exists for just that long.
-pub fn sql(c: &dyn SqlClient, query: &str) -> Result<Table> {
+/// A query in the engine's SQL as a table expression; it may read the
+/// tables `over` names with `Table::alias`.
+pub fn sql(c: &dyn SqlClient, over: Option<&Table>, query: &str) -> Result<Table> {
     let query = query.trim().trim_end_matches(';').trim_end();
-    let view = scratch_name("sql");
-    let q = c.dialect().quote_ident(&view);
-    c.statement(&format!("CREATE VIEW {q} AS {query}"))?;
-    let described = c.table(&view);
-    c.statement(&format!("DROP VIEW {q}"))?;
-    Ok(Table::sql(query, described?.schema().clone()))
+    let views = over.map_or(Ok(vec![]), Table::aliases)?;
+    let schema = c.query_schema(&crate::compiler::sql_query(c.dialect(), query, &views)?)?;
+    match over {
+        Some(table) => table.sql_over(query, schema),
+        None => Ok(Table::sql(query, schema)),
+    }
 }
 
 fn truncate(c: &dyn SqlClient, name: &str) -> Result<()> {
@@ -200,7 +212,10 @@ macro_rules! sql_client_methods {
             $crate::ddl::upsert_from(self, name, source, on)
         }
         fn sql(&self, query: &str) -> ::ibis_core::Result<::ibis_core::Table> {
-            $crate::ddl::sql(self, query)
+            $crate::ddl::sql(self, None, query)
+        }
+        fn sql_over(&self, table: &::ibis_core::Table, query: &str) -> ::ibis_core::Result<::ibis_core::Table> {
+            $crate::ddl::sql(self, Some(table), query)
         }
         fn drop_table(&self, name: &str, force: bool) -> ::ibis_core::Result<()> {
             $crate::ddl::drop_table(self, name, force)

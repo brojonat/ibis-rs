@@ -373,17 +373,35 @@ impl Backend for Sqlite {
         if rows.is_empty() {
             return Err(Error::Other(format!("sqlite: no table {name:?}")));
         }
-        let fields = rows
+        let mut fields = rows
             .into_iter()
             .map(|r| match (&r[0], &r[1]) {
                 (Value::String(n), Value::String(t)) => {
                     let mut field = Field::new(n, parse_declared(t));
                     field.nullable = r[2] != Value::Int(1);
-                    Ok(field)
+                    Ok((field, t.is_empty()))
                 }
                 other => Err(Error::Other(format!("unexpected table_info row {other:?}"))),
             })
             .collect::<Result<Vec<_>>>()?;
+        // A column of a view that is an expression has no declared type:
+        // it gets the type of its value in the first row (as in Ibis).
+        let q = |n: &str| self.dialect.quote_ident(n);
+        let untyped: Vec<String> =
+            fields.iter().filter(|(_, untyped)| *untyped).map(|(f, _)| format!("typeof({})", q(&f.name))).collect();
+        if !untyped.is_empty() {
+            let first = self.raw_sql(&format!("SELECT {} FROM {} LIMIT 1", untyped.join(", "), q(name)))?;
+            let mut types = first.into_iter().next().unwrap_or_default().into_iter();
+            for (field, _) in fields.iter_mut().filter(|(_, untyped)| *untyped) {
+                field.dtype = match types.next() {
+                    Some(Value::String(t)) if t == "integer" => DataType::Int64,
+                    Some(Value::String(t)) if t == "real" => DataType::Float64,
+                    Some(Value::String(t)) if t == "blob" => DataType::Binary,
+                    _ => DataType::String,
+                };
+            }
+        }
+        let fields = fields.into_iter().map(|(field, _)| field).collect();
         Ok(Table::named(name, Schema::new(fields)))
     }
 

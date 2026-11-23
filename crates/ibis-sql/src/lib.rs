@@ -9,7 +9,7 @@ pub mod dialect;
 pub mod json;
 mod nested;
 
-pub use compiler::{ExprCompiler, compile, create_table_sql, quote_str};
+pub use compiler::{ExprCompiler, compile, create_table_sql, quote_str, sql_query};
 pub use ddl::SqlClient;
 pub use dialect::{
     Dialect, GenericDialect, Unnest, default_type_name, strftime_to_date_format, strftime_to_java_format,
@@ -276,6 +276,22 @@ mod tests {
         assert_eq!(sql(&q), r#"SELECT * FROM (SELECT a FROM t WHERE a > 0) AS t0 WHERE (t0."a" < 9)"#);
         let joined = q.join(&t(), [("a", "a")], JoinKind::Inner).unwrap();
         assert!(sql(&joined).contains("(SELECT a FROM t WHERE a > 0) AS"), "{}", sql(&joined));
+    }
+
+    #[test]
+    fn sql_reads_aliased_tables_as_common_table_expressions() {
+        let t = Table::named("t", Schema::of(&[("a", DataType::Int64)]));
+        let small = t.filter([col("a").lt(9)]).unwrap().alias("small");
+        let q = small.sql_over("SELECT a FROM small", Schema::of(&[("a", DataType::Int64)])).unwrap();
+        // on its own, the query is run as written, after the tables it reads
+        let with = r#"WITH "small" AS (SELECT * FROM "t" AS t0 WHERE (t0."a" < 9)) SELECT * FROM (SELECT a FROM small) AS ibis_sql"#;
+        assert_eq!(compile(&GenericDialect, &q).unwrap(), with);
+        // with an operation on it, it is a derived table
+        let sql = compile(&GenericDialect, &q.limit(1, 0)).unwrap();
+        let inner = with.replace("t0", "t1");
+        assert_eq!(sql, format!("SELECT * FROM ({inner}) AS t0 LIMIT 1"));
+        // an alias with no SQL over it changes nothing
+        assert_eq!(compile(&GenericDialect, &small).unwrap(), r#"SELECT * FROM "t" AS t0 WHERE (t0."a" < 9)"#);
     }
 
     #[test]

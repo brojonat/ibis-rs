@@ -146,6 +146,14 @@ pub trait Backend: Send + Sync {
         Err(Error::Unsupported { backend: self.name().to_string(), op: "sql".into() })
     }
 
+    /// `sql` for a query that also reads the tables `table` names with
+    /// [`Table::alias`], each as a table of that name (Ibis
+    /// `table.sql(query)`).
+    fn sql_over(&self, table: &Table, query: &str) -> Result<Table> {
+        let _ = (table, query);
+        Err(Error::Unsupported { backend: self.name().to_string(), op: "sql over a table expression".into() })
+    }
+
     #[doc(hidden)]
     fn unsupported(&self, op: &str) -> Result<()> {
         Err(Error::Unsupported { backend: self.name().to_string(), op: op.to_string() })

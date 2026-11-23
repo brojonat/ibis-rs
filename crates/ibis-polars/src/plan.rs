@@ -119,8 +119,8 @@ impl Planner<'_> {
     pub(crate) fn rel(&self, rel: &Rel) -> Result<pl::LazyFrame> {
         Ok(match &rel.op {
             RelOp::Table { name } => self.be.frame(name)?,
-            RelOp::View { input } => self.rel(input)?,
-            RelOp::Sql { query } => self.be.sql_frame(query)?,
+            RelOp::View { input } | RelOp::Alias { input, .. } => self.rel(input)?,
+            RelOp::Sql { query, views } => self.be.sql_frame(query, views)?,
             RelOp::Project { input, exprs } => self.project(self.rel(input)?, &input.schema, exprs, &[])?,
             RelOp::Filter { input, predicates } => self.filter(input, predicates)?,
             RelOp::Aggregate { input, groups, metrics } => {

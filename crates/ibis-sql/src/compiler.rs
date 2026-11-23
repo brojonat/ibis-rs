@@ -6,6 +6,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use ibis_core::{
     AggFunc, Analytic, BinaryOp, Bound, DataType, DerefMap, Error, Expr, Func, JoinKind, Rel, RelOp, Result, Schema,
@@ -17,7 +18,18 @@ use crate::dialect::Dialect;
 /// Compile a table expression to a SQL query string.
 pub fn compile(d: &dyn Dialect, t: &Table) -> Result<String> {
     let c = RelCompiler { d, aliases: Cell::new(0), scopes: RefCell::new(vec![]) };
+    // SQL with nothing built on it is run as it was written
+    if let RelOp::Sql { query, views } = &t.rel().op {
+        return c.sql_query(query, views);
+    }
     Ok(c.rel(t.rel())?.render(d))
+}
+
+/// The text of a query in the engine's SQL that reads each of `views` as a
+/// table of that name: the views are its common table expressions.
+pub fn sql_query(d: &dyn Dialect, query: &str, views: &[(String, Arc<Rel>)]) -> Result<String> {
+    let c = RelCompiler { d, aliases: Cell::new(0), scopes: RefCell::new(vec![]) };
+    c.sql_query(query, views)
 }
 
 /// `CREATE TABLE` DDL for `schema` (no `OR REPLACE`: not portable).
@@ -254,12 +266,25 @@ impl RelCompiler<'_> {
         Err(Error::Invalid(format!("column {name:?} belongs to a table that isn't part of this query")))
     }
 
+    /// `query` after the views it reads. The query goes in a derived table
+    /// because it may open with a `WITH` of its own.
+    fn sql_query(&self, query: &str, views: &[(String, Arc<Rel>)]) -> Result<String> {
+        if views.is_empty() {
+            return Ok(query.to_string());
+        }
+        let ctes = views
+            .iter()
+            .map(|(name, view)| Ok(format!("{} AS ({})", self.d.quote_ident(name), self.rel(view)?.render(self.d))))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(format!("WITH {} SELECT * FROM ({query}) AS ibis_sql", ctes.join(", ")))
+    }
+
     /// A relation usable in a FROM clause under `alias`.
     fn source(&self, r: &Rel, alias: &str) -> Result<String> {
         match &r.op {
             RelOp::Table { name } => return Ok(format!("{} AS {alias}", self.d.quote_ident(name))),
-            RelOp::Sql { query } => return Ok(format!("({query}) AS {alias}")),
-            RelOp::View { input } => return self.source(input, alias),
+            RelOp::Sql { query, views } => return Ok(format!("({}) AS {alias}", self.sql_query(query, views)?)),
+            RelOp::View { input } | RelOp::Alias { input, .. } => return self.source(input, alias),
             _ => {}
         }
         Ok(format!("({}) AS {alias}", self.rel(r)?.render(self.d)))
@@ -272,11 +297,11 @@ impl RelCompiler<'_> {
                 let a = self.alias();
                 Ok(Select::aliased(format!("{} AS {a}", q(name)), a))
             }
-            RelOp::Sql { query } => {
+            RelOp::Sql { query, views } => {
                 let a = self.alias();
-                Ok(Select::aliased(format!("({query}) AS {a}"), a))
+                Ok(Select::aliased(format!("({}) AS {a}", self.sql_query(query, views)?), a))
             }
-            RelOp::View { input } => self.rel(input),
+            RelOp::View { input } | RelOp::Alias { input, .. } => self.rel(input),
 
             RelOp::Filter { input, predicates } => {
                 let mut s = self.rel(input)?;

@@ -141,14 +141,16 @@ def ported(repo: str) -> dict[str, dict[str, list[dict]]]:
 
 
 def client_cases(repo: str, ids: list[str], mine: dict[str, dict[str, list[dict]]]) -> None:
-    """Add the tests of the connection API (crates/ibis-conformance/src/client.rs)
-    to `mine`. They have no Python side: results ids are `client::<module>::<pytest id>`."""
-    rel = "crates/ibis-conformance/src/client.rs"
-    lines = (ROOT / rel).read_text().splitlines()
+    """Add the tests of the connection API (crates/ibis-conformance/src/client.rs,
+    and dot_sql.rs for test_dot_sql) to `mine`. They have no Python side:
+    results ids are `client::<module>::<pytest id>`."""
+    src = "crates/ibis-conformance/src"
+    files = {name: (ROOT / src / name).read_text().splitlines() for name in ("client.rs", "dot_sql.rs")}
     for case_id in ids:
         _, module, test_id = case_id.split("::", 2)
-        line = rust_line(lines, test_id)
-        rs = f"{repo}/blob/main/{rel}" + (f"#L{line}" if line else "")
+        name = "dot_sql.rs" if module == "test_dot_sql" else "client.rs"
+        line = rust_line(files[name], test_id)
+        rs = f"{repo}/blob/main/{src}/{name}" + (f"#L{line}" if line else "")
         mine.setdefault(module, {}).setdefault(test_id, []).append(
             {"id": case_id, "python": None, "rust": rs, "results": {}}
         )

@@ -10,7 +10,8 @@
 //! `int32 + int32` in `int32`; Ibis widens to `int64`).
 //!
 //! `Backend::sql` hands a query to Polars's own SQL (`polars-sql`), with the
-//! connection's tables and views registered.
+//! connection's tables and views registered; `Backend::sql_over` also
+//! registers the aliased tables of the expression it is run over.
 //!
 //! Polars has no subqueries, so correlated ones (`EXISTS`, a scalar subquery
 //! that refers to the outer table) are rewritten as joins.
@@ -31,11 +32,11 @@ mod plan;
 mod tests;
 
 use std::collections::BTreeMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use arrow_array::RecordBatch;
 use ibis_core::convert::{batch_to_rows, conform_to, rows_to_batch};
-use ibis_core::{Backend, CreateOptions, DataType, Error, Field, Result, Schema, Table, Value};
+use ibis_core::{Backend, CreateOptions, DataType, Error, Field, Rel, Result, Schema, Table, Value};
 use polars::prelude as pl;
 use polars::prelude::{IntoLazy, IntoSeries, NamedFrom};
 
@@ -317,8 +318,9 @@ impl Polars {
         }
     }
 
-    /// A query in Polars's SQL (`polars-sql`), over every table and view.
-    pub(crate) fn sql_frame(&self, query: &str) -> Result<pl::LazyFrame> {
+    /// A query in Polars's SQL (`polars-sql`), over every table and view,
+    /// and over `named`: the aliased tables of the expression it is run on.
+    pub(crate) fn sql_frame(&self, query: &str, named: &[(String, Arc<Rel>)]) -> Result<pl::LazyFrame> {
         let mut context = polars::sql::SQLContext::new();
         let tables: Vec<(String, pl::LazyFrame)> =
             self.tables.lock().unwrap().iter().map(|(name, (df, _))| (name.clone(), df.clone().lazy())).collect();
@@ -331,7 +333,17 @@ impl Polars {
         for (name, view) in views {
             context.register(&name, self.lazy(&view)?);
         }
+        for (name, rel) in named {
+            context.register(name, plan::Planner { be: self }.rel(rel)?);
+        }
         context.execute(query).map_err(pl_err)
+    }
+
+    /// The columns of the result of a SQL query.
+    fn sql_schema(&self, query: &str, named: &[(String, Arc<Rel>)]) -> Result<Schema> {
+        let schema = self.sql_frame(query, named)?.collect_schema().map_err(pl_err)?;
+        let fields = schema.iter().map(|(name, dtype)| Ok(Field::new(name.as_str(), from_pl(dtype)?)));
+        Ok(Schema::new(fields.collect::<Result<Vec<_>>>()?))
     }
 
     /// The Polars query for an expression, for callers who want to keep
@@ -439,12 +451,12 @@ impl Backend for Polars {
 
     fn sql(&self, query: &str) -> Result<Table> {
         let query = query.trim().trim_end_matches(';').trim_end();
-        let schema = self.sql_frame(query)?.collect_schema().map_err(pl_err)?;
-        let fields = schema
-            .iter()
-            .map(|(name, dtype)| Ok(Field::new(name.as_str(), from_pl(dtype)?)))
-            .collect::<Result<Vec<_>>>()?;
-        Ok(Table::sql(query, Schema::new(fields)))
+        Ok(Table::sql(query, self.sql_schema(query, &[])?))
+    }
+
+    fn sql_over(&self, table: &Table, query: &str) -> Result<Table> {
+        let query = query.trim().trim_end_matches(';').trim_end();
+        table.sql_over(query, self.sql_schema(query, &table.aliases()?)?)
     }
 
     fn create_view(&self, name: &str, source: &Table, overwrite: bool) -> Result<()> {

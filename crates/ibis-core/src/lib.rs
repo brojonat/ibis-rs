@@ -170,6 +170,22 @@ mod tests {
     }
 
     #[test]
+    fn aliases_are_found_through_the_expression() {
+        let t = Table::named("t", Schema::of(&[("a", DataType::Int64)]));
+        let inner = t.alias("inner");
+        let outer = inner.filter([col("a").gt(1)]).unwrap().alias("outer");
+        let names = |t: &Table| t.aliases().unwrap().into_iter().map(|(name, _)| name).collect::<Vec<_>>();
+        assert_eq!(names(&outer), ["inner", "outer"]);
+        // the same table on both sides of a join is one alias; two tables under one name are an error
+        assert_eq!(names(&inner.join(&inner.view(), [("a", "a")], JoinKind::Inner).unwrap()), ["inner"]);
+        assert!(inner.join(&t.limit(1, 0).alias("inner"), [("a", "a")], JoinKind::Inner).unwrap().aliases().is_err());
+        // a column of the table is still a column of its alias
+        assert!(inner.select([t.col("a")]).is_ok());
+        assert!(t.as_scalar().is_ok());
+        assert!(t.mutate([col("a").name("b")]).unwrap().as_scalar().is_err());
+    }
+
+    #[test]
     fn join_renames_collisions() {
         let t = alltypes();
         let j = t.join(&t, [("id", "id")], JoinKind::Inner).unwrap();

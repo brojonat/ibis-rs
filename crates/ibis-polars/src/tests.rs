@@ -271,5 +271,10 @@ fn sql_is_a_table_other_operations_run_on() -> Result<()> {
     assert_eq!(rows(&con, &con.sql("SELECT amount FROM big")?)?.len(), 3);
     assert!(con.sql("SELECT nope FROM orders").is_err());
     assert!(con.sql("not sql").is_err());
+    // an aliased expression is a table to the query run over it
+    let eu = t.filter([col("region").eq(lit("eu"))])?.alias("eu");
+    let n = con.sql_over(&eu, "SELECT COUNT(*) AS n FROM eu")?;
+    assert_eq!(rows(&con, &n)?, rows(&con, &eu.aggregate([count().name("n")])?)?);
+    assert!(con.sql("SELECT * FROM eu").is_err());
     Ok(())
 }

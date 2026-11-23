@@ -36,13 +36,13 @@ impl ClientCase {
         format!("client::{}::{}", self.module, self.id)
     }
 
-    fn notimpl(mut self, backends: &[&'static str]) -> Self {
+    pub(crate) fn notimpl(mut self, backends: &[&'static str]) -> Self {
         self.notimpl.extend(backends);
         self
     }
 }
 
-fn case(id: &str, run: impl Fn(&dyn Backend, &Target) -> Result<()> + Send + Sync + 'static) -> ClientCase {
+pub(crate) fn case(id: &str, run: impl Fn(&dyn Backend, &Target) -> Result<()> + Send + Sync + 'static) -> ClientCase {
     ClientCase { module: "test_client", id: id.into(), run: Box::new(run), notimpl: vec![] }
 }
 
@@ -51,7 +51,7 @@ fn failed(what: impl Into<String>) -> Error {
     Error::Other(format!("check failed: {}", what.into()))
 }
 
-fn check(holds: bool, what: impl FnOnce() -> String) -> Result<()> {
+pub(crate) fn check(holds: bool, what: impl FnOnce() -> String) -> Result<()> {
     if holds { Ok(()) } else { Err(failed(what())) }
 }
 
@@ -452,6 +452,7 @@ pub fn all() -> Vec<ClientCase> {
     .notimpl(&NO_NESTED);
     c.module = "test_map";
     v.push(c);
+    v.extend(crate::dot_sql::cases());
     v
 }
 

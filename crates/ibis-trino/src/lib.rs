@@ -249,26 +249,34 @@ impl Trino {
 
     /// Run one statement to completion: rows typed by what Trino says each column is.
     fn run(&self, sql: &str) -> Result<Vec<Vec<Value>>> {
+        self.fetch(sql).map(|(_, rows)| rows)
+    }
+
+    /// `run`, with the columns Trino says the result has.
+    fn fetch(&self, sql: &str) -> Result<(Vec<Field>, Vec<Vec<Value>>)> {
         let mut page = self.request(sql, None)?;
-        let mut types: Vec<DataType> = vec![];
+        let mut fields: Vec<Field> = vec![];
         let mut rows = vec![];
         loop {
             if let Some(error) = page.get("error") {
                 let name = error["errorName"].as_str().unwrap_or("ERROR");
                 return Err(exec_err(sql, format!("{name}: {}", error["message"].as_str().unwrap_or("no message"))));
             }
-            if types.is_empty()
+            if fields.is_empty()
                 && let Some(columns) = page["columns"].as_array()
             {
-                types = columns.iter().map(|c| parse_type(c["type"].as_str().unwrap_or(""))).collect();
+                let field = |c: &Json| {
+                    Field::new(c["name"].as_str().unwrap_or(""), parse_type(c["type"].as_str().unwrap_or("")))
+                };
+                fields = columns.iter().map(field).collect();
             }
             for row in page["data"].as_array().into_iter().flatten() {
-                rows.push(row.as_array().into_iter().flatten().zip(&types).map(|(j, t)| cell(j, t)).collect());
+                rows.push(row.as_array().into_iter().flatten().zip(&fields).map(|(j, f)| cell(j, &f.dtype)).collect());
             }
             let Some(next) = page["nextUri"].as_str().map(String::from) else { break };
             page = self.request(sql, Some(&next))?;
         }
-        Ok(rows)
+        Ok((fields, rows))
     }
 
     /// Run one statement that returns no rows.
@@ -357,6 +365,13 @@ impl SqlClient for Trino {
 
     fn statement(&self, sql: &str) -> Result<()> {
         self.execute_statement(sql)
+    }
+
+    /// Trino reports a result's columns with the result, and a view cannot
+    /// have a column without a name: the query is run for no rows.
+    fn query_schema(&self, query: &str) -> Result<Schema> {
+        let (fields, _) = self.fetch(&format!("SELECT * FROM ({query}) AS ibis_sql LIMIT 0"))?;
+        Ok(Schema::new(fields))
     }
 
     fn load(&self, name: &str, schema: &Schema, data: &[RecordBatch]) -> Result<()> {
