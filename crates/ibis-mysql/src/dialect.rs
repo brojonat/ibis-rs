@@ -94,6 +94,9 @@ impl Dialect for MySqlDialect {
         // without a NaN or an infinity, no value is one; NULL stays NULL
         let never = |x: String| format!("({x} IS NULL AND NULL)");
         Ok(match f {
+            // in UTC, whatever zone the session is in
+            Func::Now => Some("UTC_TIMESTAMP(6)".into()),
+            Func::Today => Some("UTC_DATE()".into()),
             Func::StringToTimestamp | Func::StringToDate => {
                 let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
                     return unsupported("a string parsed by a non-literal format");

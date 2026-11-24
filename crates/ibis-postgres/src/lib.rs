@@ -99,6 +99,9 @@ impl Dialect for PostgresDialect {
         let a = |i: usize| c.sql(&args[i]);
         let float_arg = args.first().is_some_and(|x| c.dtype(x).map(|t| !t.is_integer()).unwrap_or(false));
         Ok(match f {
+            // in UTC, whatever zone the session is in
+            Func::Now => Some("(NOW() AT TIME ZONE 'UTC')".into()),
+            Func::Today => Some("CAST(NOW() AT TIME ZONE 'UTC' AS DATE)".into()),
             Func::StringToTimestamp | Func::StringToDate => {
                 let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
                     return Err(Error::Unsupported {

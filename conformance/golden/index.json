@@ -16385,6 +16385,486 @@
    "postgres": "same"
   }
  },
+ "test_timestamp_comparison_filter[eq]": {
+  "file": "test_temporal/test_timestamp_comparison_filter[eq].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter[ge]": {
+  "file": "test_temporal/test_timestamp_comparison_filter[ge].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 3050,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter[gt]": {
+  "file": "test_temporal/test_timestamp_comparison_filter[gt].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 3050,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter[le]": {
+  "file": "test_temporal/test_timestamp_comparison_filter[le].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 4250,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter[lt]": {
+  "file": "test_temporal/test_timestamp_comparison_filter[lt].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 4250,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter[ne]": {
+  "file": "test_temporal/test_timestamp_comparison_filter[ne].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter_numpy[eq]": {
+  "file": "test_temporal/test_timestamp_comparison_filter_numpy[eq].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter_numpy[ge]": {
+  "file": "test_temporal/test_timestamp_comparison_filter_numpy[ge].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 3050,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter_numpy[gt]": {
+  "file": "test_temporal/test_timestamp_comparison_filter_numpy[gt].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 3050,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter_numpy[le]": {
+  "file": "test_temporal/test_timestamp_comparison_filter_numpy[le].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 4250,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter_numpy[lt]": {
+  "file": "test_temporal/test_timestamp_comparison_filter_numpy[lt].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 4250,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_comparison_filter_numpy[ne]": {
+  "file": "test_temporal/test_timestamp_comparison_filter_numpy[ne].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "bool_col",
+   "tinyint_col",
+   "smallint_col",
+   "int_col",
+   "bigint_col",
+   "float_col",
+   "double_col",
+   "date_string_col",
+   "string_col",
+   "timestamp_col",
+   "year",
+   "month"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean",
+   "int8",
+   "int16",
+   "int32",
+   "int64",
+   "float32",
+   "float64",
+   "string",
+   "string",
+   "timestamp(6)",
+   "int64",
+   "int64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_timestamp_date_comparison[column_date]": {
   "file": "test_temporal/test_timestamp_date_comparison[column_date].parquet",
   "kind": "column",
@@ -17004,6 +17484,38 @@
   "rows": 7300,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_with_timezone_literal[iso]": {
+  "file": "test_temporal/test_timestamp_with_timezone_literal[iso].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp('PST8PDT')"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_with_timezone_literal[name]": {
+  "file": "test_temporal/test_timestamp_with_timezone_literal[name].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp('Europe/London')"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
    "postgres": "same"
   }
  },

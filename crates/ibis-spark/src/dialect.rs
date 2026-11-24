@@ -221,6 +221,9 @@ impl Dialect for SparkDialect {
         };
         let int = |s: String| format!("CAST({s} AS INT)");
         Ok(match f {
+            // in UTC, whatever zone the session is in
+            Func::Now => Some("CONVERT_TIMEZONE(CURRENT_TIMEZONE(), 'UTC', LOCALTIMESTAMP())".into()),
+            Func::Today => Some("CAST(CONVERT_TIMEZONE(CURRENT_TIMEZONE(), 'UTC', LOCALTIMESTAMP()) AS DATE)".into()),
             Func::StringToTimestamp | Func::StringToDate => {
                 let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
                     return unsupported("a string parsed by a non-literal format");

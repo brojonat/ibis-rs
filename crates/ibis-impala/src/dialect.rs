@@ -105,6 +105,9 @@ impl Dialect for ImpalaDialect {
         let a = |i: usize| c.sql(&args[i]);
         let int = |s: String| format!("CAST({s} AS INT)");
         Ok(match f {
+            // in UTC, whatever zone the session is in
+            Func::Now => Some("UTC_TIMESTAMP()".into()),
+            Func::Today => Some("CAST(UTC_TIMESTAMP() AS DATE)".into()),
             Func::StringToTimestamp | Func::StringToDate => {
                 let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
                     return unsupported("a string parsed by a non-literal format");

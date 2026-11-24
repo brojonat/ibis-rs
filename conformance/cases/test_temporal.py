@@ -7,8 +7,10 @@
 Ported so far: field extraction, truncation, literals and constructors,
 strftime with a literal format, timestamps and dates moved by intervals, ISO
 years, numbers as timestamps, deltas of dates and timestamps, buckets,
-strings read by a format. Not yet: time zones, the `time` type, and the two
-differences of test_temporal_binop (their result is an interval). No golden, because Python
+strings read by a format, timestamps given a time zone. Not yet: the `time`
+type, and the two differences of test_temporal_binop (their result is an
+interval). test_now and test_today (and their _from_projection twins) have
+no one right answer and are procedures too. No golden, because Python
 Ibis on DuckDB can't produce one: test_timestamp_extract_epoch_seconds (its
 result doesn't fit the int32 Ibis declares) and test_integer_to_timestamp
 (DuckDB has two of its four units); those are procedures on the Rust side
@@ -21,9 +23,11 @@ Tests with several assertions become `name#1`, `name#2`.
 from __future__ import annotations
 
 import datetime
+import operator
 
 import ibis
 import ibis.expr.datatypes as dt
+import numpy as np
 import pandas as pd
 
 from cases import Registry, column, scalar, table
@@ -272,3 +276,33 @@ for pid, minutes in {"pos": 2, "neg": -2}.items():
 # through to the engine and are not applicable: patterns here are C's.
 r.add("test_string_as_timestamp[mysql_format]", column(lambda t: t.date_string_col.as_timestamp("%m/%d/%y")))
 r.add("test_string_as_date[mysql_format]", column(lambda t: t.date_string_col.as_date("%m/%d/%y")))
+
+# A column given the zone UTC, against a moment with that zone and against
+# one without (numpy's has none).
+for op in ["gt", "ge", "lt", "le", "eq", "ne"]:
+    r.add(
+        f"test_timestamp_comparison_filter[{op}]",
+        table(
+            lambda t, op=op: t.filter(
+                getattr(operator, op)(
+                    t.timestamp_col.cast("timestamp('UTC')"), pd.Timestamp("20100302", tz="UTC").to_pydatetime()
+                )
+            )
+        ),
+    )
+    r.add(
+        f"test_timestamp_comparison_filter_numpy[{op}]",
+        table(
+            lambda t, op=op: t.filter(
+                getattr(operator, op)(
+                    t.timestamp_col.cast("timestamp('UTC')"), np.datetime64("2010-03-02 00:00:00.000123")
+                )
+            )
+        ),
+    )
+
+for pid, zone in {"name": "Europe/London", "iso": "PST8PDT"}.items():
+    r.add(
+        f"test_timestamp_with_timezone_literal[{pid}]",
+        scalar(lambda zone=zone: ibis.timestamp(2022, 2, 4, 16, 20, 0).cast(dt.Timestamp(timezone=zone))),
+    )

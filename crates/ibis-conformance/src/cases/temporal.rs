@@ -129,6 +129,40 @@ pub fn register(v: &mut Vec<Case>) {
     intervals(v);
     epochs_and_edges(v);
     buckets_and_formats(v);
+    zones(v);
+}
+
+/// A timestamp given a time zone: the same moment, with the zone in its type.
+fn zones(v: &mut Vec<Case>) {
+    let utc = || DataType::Timestamp { tz: Some("UTC".into()) };
+    let midnight = ibis_core::convert::parse_timestamp("2010-03-02 00:00:00").expect("a timestamp");
+
+    type Compare = fn(Expr, Expr) -> Expr;
+    let compare: [(&str, Compare); 6] = [
+        ("gt", |a, b| a.gt(b)),
+        ("ge", |a, b| a.ge(b)),
+        ("lt", |a, b| a.lt(b)),
+        ("le", |a, b| a.le(b)),
+        ("eq", |a, b| a.eq(b)),
+        ("ne", |a, b| a.ne(b)),
+    ];
+    for (id, op) in compare {
+        // against a moment in UTC ...
+        v.push(table(&format!("test_timestamp_comparison_filter[{id}]"), move |t| {
+            t.filter([op(c("timestamp_col").cast(utc()), lit_as(Value::Timestamp(midnight), utc()))])
+        }));
+        // ... and against one with no zone (numpy's datetime64 has none)
+        v.push(table(&format!("test_timestamp_comparison_filter_numpy[{id}]"), move |t| {
+            t.filter([op(c("timestamp_col").cast(utc()), timestamp("2010-03-02 00:00:00.000123"))])
+        }));
+    }
+
+    for (id, zone) in [("name", "Europe/London"), ("iso", "PST8PDT")] {
+        v.push(scalar(&format!("test_timestamp_with_timezone_literal[{id}]"), move || {
+            let moment = timestamp_from_ymdhms([2022, 2, 4, 16, 20, 0].map(lit));
+            Ok(moment.cast(DataType::Timestamp { tz: Some(zone.into()) }))
+        }));
+    }
 }
 
 /// Timestamps cut into buckets of a fixed width; strings read by a format.

@@ -254,6 +254,17 @@ impl Tx<'_> {
 
     fn binary(&self, e: &Expr, op: BinaryOp, l: &Expr, r: &Expr) -> Result<pl::Expr> {
         let (a, b) = (self.expr(l)?, self.expr(r)?);
+        // Polars does not compare a timestamp in a zone with one that has
+        // none: the one without is the same moment read as UTC
+        let (a, b) = match (self.dtype(l)?, self.dtype(r)?) {
+            (zoned @ DataType::Timestamp { tz: Some(_) }, DataType::Timestamp { tz: None }) => {
+                (a, b.cast(to_pl(&zoned)))
+            }
+            (DataType::Timestamp { tz: None }, zoned @ DataType::Timestamp { tz: Some(_) }) => {
+                (a.cast(to_pl(&zoned)), b)
+            }
+            _ => (a, b),
+        };
         let out = self.dtype(e)?;
         let t = to_pl(&out);
         use BinaryOp::*;
@@ -468,12 +479,22 @@ impl Tx<'_> {
             Quarter => x.dt().quarter().cast(t),
             WeekOfYear => x.dt().week().cast(t),
             IsoYear => x.dt().iso_year().cast(t),
+            // one value for the whole query: the moment it is planned
+            Now | Today => {
+                let since_1970 = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
+                let micros = since_1970.map_or(0, |d| d.as_micros() as i64);
+                match f {
+                    Today => literal(&Value::Date(micros.div_euclid(86_400_000_000) as i32), &out)?,
+                    _ => literal(&Value::Timestamp(micros), &out)?,
+                }
+            }
             StringToTimestamp | StringToDate => {
                 let format = Some(str_arg(1, "format")?.into());
                 let options = pl::StrptimeOptions { format, strict: false, ..Default::default() };
                 match f {
                     StringToDate => x.str().to_date(options),
-                    _ => x.str().to_datetime(Some(pl::TimeUnit::Microseconds), None, options, pl::lit("raise")),
+                    // read with no zone, then given the type's (UTC)
+                    _ => x.str().to_datetime(Some(pl::TimeUnit::Microseconds), None, options, pl::lit("raise")).cast(t),
                 }
             }
             EpochSeconds => {

@@ -155,6 +155,9 @@ impl Dialect for ClickHouseDialect {
         };
         let int = |s: String| cast(s, DataType::Int32);
         Ok(match f {
+            // in UTC, whatever zone the server is in
+            Func::Now => Some("now64(6, 'UTC')".into()),
+            Func::Today => Some("toDate32(now('UTC'))".into()),
             Func::StringToTimestamp | Func::StringToDate => {
                 let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
                     return unsupported("a string parsed by a non-literal format");

@@ -142,6 +142,9 @@ impl Dialect for SqliteDialect {
             Ok(Some(format!("CAST(STRFTIME('{fmt}', {}) AS INTEGER)", a(0)?)))
         };
         Ok(match f {
+            // in UTC, whatever zone the session is in
+            Func::Now => Some("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')".into()),
+            Func::Today => Some("DATE('now')".into()),
             // a function this crate registers on the connection (polyfill.rs)
             Func::StringToTimestamp => Some(format!("ibis_strptime({}, {})", a(0)?, a(1)?)),
             Func::StringToDate => Some(format!("DATE(ibis_strptime({}, {}))", a(0)?, a(1)?)),

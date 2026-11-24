@@ -192,6 +192,9 @@ impl Dialect for TrinoDialect {
         let a = |i: usize| c.sql(&args[i]);
         let int = |s: String| format!("CAST({s} AS INTEGER)");
         Ok(match f {
+            // in UTC, whatever zone the session is in
+            Func::Now => Some("CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS TIMESTAMP(6))".into()),
+            Func::Today => Some("CAST(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS DATE)".into()),
             Func::StringToTimestamp | Func::StringToDate => {
                 let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
                     return unsupported("a string parsed by a non-literal format");

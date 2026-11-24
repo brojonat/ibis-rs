@@ -166,6 +166,17 @@ impl DataType {
     pub fn is_temporal(&self) -> bool {
         matches!(self, DataType::Date | DataType::Timestamp { .. })
     }
+    /// The zone of a timestamp whose wall clock is not UTC's: `None` for
+    /// every other type, for a timestamp without a zone, and for UTC under
+    /// any of its names.
+    pub fn foreign_zone(&self) -> Option<&str> {
+        match self {
+            DataType::Timestamp { tz: Some(tz) } if !matches!(tz.as_str(), "UTC" | "Etc/UTC" | "Z" | "+00:00") => {
+                Some(tz)
+            }
+            _ => None,
+        }
+    }
 
     fn int_width(&self) -> u8 {
         use DataType::*;

@@ -645,6 +645,26 @@ impl ExprCompiler<'_> {
             Expr::Cast(e, DataType::Timestamp { .. }) if self.dtype(e)?.is_numeric() => {
                 self.sql(&e.as_ref().clone().as_timestamp(IntervalUnit::Second))?
             }
+            // A timestamp with a zone is kept as its UTC wall clock, with
+            // the zone in the type: giving a timestamp a zone, or another
+            // one, changes the type and not the value. Taking the zone away
+            // would give the wall clock there, which only UTC's is.
+            Expr::Cast(e, DataType::Timestamp { tz }) if matches!(self.dtype(e)?, DataType::Timestamp { .. }) => {
+                match (self.dtype(e)?.foreign_zone(), tz) {
+                    (Some(zone), None) => {
+                        return unsupported(d, format!("the wall clock of a timestamp in {zone}: it is kept in UTC"));
+                    }
+                    _ => self.sql(e)?,
+                }
+            }
+            // ... and what reads the wall clock (a field, a format, a
+            // date) reads UTC's
+            Expr::Cast(e, _) if self.dtype(e)?.foreign_zone().is_some() => {
+                return unsupported(
+                    d,
+                    format!("a cast of a timestamp in {}", self.dtype(e)?.foreign_zone().unwrap_or("")),
+                );
+            }
             Expr::Cast(e, t) => match d.cast(self, e, t)? {
                 Some(s) => s,
                 None => format!("CAST({} AS {})", self.sql(e)?, d.cast_type_name(t)?),
@@ -683,6 +703,27 @@ impl ExprCompiler<'_> {
             Expr::Func(Func::Bucket, args) => self.sql(&ibis_core::expr::bucket_expr(args)?)?,
             Expr::Func(f, args) => {
                 let first = args.first().map(|a| self.dtype(a)).transpose()?;
+                // what reads the wall clock would read UTC's
+                let reads_clock = matches!(
+                    f,
+                    Func::Year
+                        | Func::Month
+                        | Func::Day
+                        | Func::Hour
+                        | Func::Minute
+                        | Func::DayOfWeekIndex
+                        | Func::DayOfWeekName
+                        | Func::DayOfYear
+                        | Func::Quarter
+                        | Func::WeekOfYear
+                        | Func::IsoYear
+                        | Func::Truncate
+                        | Func::Strftime
+                        | Func::Delta
+                );
+                if let (true, Some(zone)) = (reads_clock, first.as_ref().and_then(|t| t.foreign_zone())) {
+                    return unsupported(d, format!("{f:?} of a timestamp in {zone}: its wall clock is kept in UTC"));
+                }
                 let f = f.resolve(first.as_ref());
                 match d.func(self, f, args)? {
                     Some(s) => s,
@@ -1083,6 +1124,9 @@ impl ExprCompiler<'_> {
                     None => format!("MAKE_TIMESTAMP({micros})"),
                 }
             }
+            // the instant as a count, so no session zone comes into it
+            Now => "MAKE_TIMESTAMP(EPOCH_US(NOW()))".into(),
+            Today => "CAST(MAKE_TIMESTAMP(EPOCH_US(NOW())) AS DATE)".into(),
             StringToTimestamp => format!("STRPTIME({x}, {})", a[1]),
             StringToDate => format!("CAST(STRPTIME({x}, {}) AS DATE)", a[1]),
             DayOfWeekName => format!("DAYNAME({x})"),

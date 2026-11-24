@@ -364,6 +364,29 @@ mod tests {
     }
 
     #[test]
+    fn a_zone_is_part_of_a_timestamps_type_not_of_its_value() {
+        let t = Table::named("e", Schema::of(&[("ts", DataType::Timestamp { tz: None })]));
+        let zoned = |zone: &str| DataType::Timestamp { tz: Some(zone.into()) };
+        let one = |e: Expr| compile(&GenericDialect, &t.select([e.name("x")]).unwrap());
+        // given a zone, the column is the same column: its wall clock is UTC's
+        assert_eq!(one(col("ts").cast(zoned("UTC"))).unwrap(), r#"SELECT t0."ts" AS "x" FROM "e" AS t0"#);
+        assert_eq!(one(col("ts").cast(zoned("PST8PDT"))).unwrap(), r#"SELECT t0."ts" AS "x" FROM "e" AS t0"#);
+        // UTC's wall clock can be read; another zone's would need converting
+        assert!(one(col("ts").cast(zoned("UTC")).hour()).is_ok());
+        for wall_clock in [
+            col("ts").cast(zoned("PST8PDT")).hour(),
+            col("ts").cast(zoned("PST8PDT")).cast(DataType::Timestamp { tz: None }),
+            col("ts").cast(zoned("PST8PDT")).date(),
+        ] {
+            let err = one(wall_clock).unwrap_err().to_string();
+            assert!(err.contains("PST8PDT"), "{err}");
+        }
+        // the moment a query runs is in UTC
+        let now = t.select([now().name("x"), today().name("d")]).unwrap();
+        assert_eq!(now.schema().to_string(), "x: timestamp('UTC'), d: date");
+    }
+
+    #[test]
     fn a_constant_group_key_is_named_by_its_place() {
         let q = t().group_by([lit("a").name("key"), col("a")]).agg([count().name("n")]).unwrap();
         let sql = sql(&q);

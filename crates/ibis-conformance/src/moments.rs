@@ -55,5 +55,44 @@ pub(crate) fn cases() -> Vec<ClientCase> {
         check(wrong.is_none() && !got.is_empty(), || format!("{} rows, one of them {wrong:?}", got.len()))
     }));
 
+    // The clock is the engine's: what can be checked is that it is within
+    // ten minutes of this machine's (so UTC's, not a zone's wall clock),
+    // and one moment for the whole query.
+    let near = |got: &[Vec<Value>]| {
+        let since_1970 = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
+        let here = since_1970.map_or(0, |d| d.as_micros() as i64);
+        let day = 86_400_000_000;
+        match got {
+            [row, ..] => match row[..] {
+                [Value::Timestamp(there)] => (there - here).abs() < 600_000_000,
+                [Value::Date(there)] => (i64::from(there) - here.div_euclid(day)).abs() <= 1,
+                _ => false,
+            },
+            _ => false,
+        }
+    };
+    v.push(test("test_now", move |b, target| {
+        let t = target.fx.alltypes.select([now().name("tmp")])?;
+        let dtype = t.schema().fields[0].dtype.to_string();
+        check(dtype == "timestamp('UTC')", || format!("the type is {dtype}"))?;
+        let got = rows(b, &t.limit(1, 0))?;
+        check(got.len() == 1 && near(&got), || format!("want a moment near now, got {got:?}"))
+    }));
+    v.push(test("test_now_from_projection", move |b, target| {
+        let got = rows(b, &target.fx.alltypes.select([now().name("now")])?.limit(2, 0))?;
+        check(got.len() == 2 && got[0] == got[1] && near(&got), || format!("want one moment twice, got {got:?}"))
+    }));
+    v.push(test("test_today", move |b, target| {
+        let got = rows(b, &target.fx.alltypes.select([today().name("tmp")])?.limit(1, 0))?;
+        check(got.len() == 1 && near(&got), || format!("want today's date, got {got:?}"))
+    }));
+    v.push(test("test_today_from_projection", move |b, target| {
+        let t = target.fx.alltypes.select([today().name("today")])?.limit(2, 0);
+        let got = rows(b, &t)?;
+        check(got.len() == 2 && got[0] == got[1] && near(&got), || format!("want one date twice, got {got:?}"))?;
+        let years = rows(b, &t.select([col("today").year().name("year")])?)?;
+        check(years.len() == 2 && years[0] == years[1], || format!("want one year twice, got {years:?}"))
+    }));
+
     v
 }

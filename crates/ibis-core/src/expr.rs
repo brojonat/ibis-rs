@@ -224,6 +224,10 @@ pub enum Func {
     /// `start` to `end` (23:59 to 00:01 is one day). The unit is an
     /// `IntervalUnit`'s short name.
     Delta,
+    /// The moment the query runs, a `timestamp('UTC')`; no arguments.
+    Now,
+    /// The date of that moment in UTC; no arguments.
+    Today,
     /// `string_to_timestamp(x, format)` and `string_to_date(x, format)`:
     /// text read by a literal C `strptime` pattern; NULL where it does not
     /// match.
@@ -601,6 +605,18 @@ pub fn lit(v: impl Into<Value>) -> Expr {
 /// A typed NULL literal.
 pub fn null(dtype: DataType) -> Expr {
     Expr::Literal(Value::Null, dtype)
+}
+
+/// The moment the query runs (Ibis `ibis.now()`), a `timestamp('UTC')`: the
+/// same for every row of a query, and whatever zone the session is in.
+pub fn now() -> Expr {
+    func(Func::Now, vec![])
+}
+
+/// The date the query runs on (Ibis `ibis.today()`). It is the date in UTC,
+/// where Ibis asks the engine, which answers for its session's zone.
+pub fn today() -> Expr {
+    func(Func::Today, vec![])
 }
 
 /// `n` units of time (Ibis `ibis.interval(days=4)`): what a timestamp or a
@@ -1152,7 +1168,8 @@ impl Expr {
     /// with a unit (`IntervalUnit::Second` to `Nanosecond`), that many
     /// units since 1970-01-01 00:00:00; with a C `strptime` pattern
     /// (`"%m/%d/%y"`), the string parsed by it, NULL where it does not
-    /// match. A cast of a number to a timestamp counts seconds.
+    /// match; that one is a `timestamp('UTC')`, as in Ibis. A cast of a
+    /// number to a timestamp counts seconds.
     pub fn as_timestamp(self, how: impl Into<AsTimestamp>) -> Expr {
         match how.into() {
             AsTimestamp::Unit(unit) => func(Func::TimestampFromEpoch, vec![self, lit(unit.short())]),
@@ -2234,8 +2251,11 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
             (T::Date, Some(T::Date)) | (T::Timestamp { .. }, Some(T::Timestamp { .. })) => T::Int64,
             (a, b) => return invalid(format!("delta needs two dates or two timestamps, got {a} and {b:?}")),
         },
+        Now => T::Timestamp { tz: Some("UTC".into()) },
+        Today => T::Date,
         StringToTimestamp | StringToDate => match (&first, ts.get(1)) {
-            (T::String | T::Null, Some(T::String)) if f == StringToTimestamp => T::Timestamp { tz: None },
+            // as in Ibis: text names a moment, and a moment is in UTC
+            (T::String | T::Null, Some(T::String)) if f == StringToTimestamp => T::Timestamp { tz: Some("UTC".into()) },
             (T::String | T::Null, Some(T::String)) => T::Date,
             (a, b) => return invalid(format!("{f:?} reads a string by a format, got {a} and {b:?}")),
         },

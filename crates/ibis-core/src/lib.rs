@@ -27,7 +27,8 @@ pub mod prelude {
     pub use crate::datatypes::{DataType, IntervalUnit, Schema};
     pub use crate::expr::{
         Expr, WindowSpec, array, asc, cases, coalesce, col, count, date, date_from_ymd, desc, e, greatest, interval,
-        least, lit, lit_as, map, null, nunique, pi, range, row_number, struct_, timestamp, timestamp_from_ymdhms,
+        least, lit, lit_as, map, now, null, nunique, pi, range, row_number, struct_, timestamp, timestamp_from_ymdhms,
+        today,
     };
     pub use crate::table::{How, JoinKind, Table};
     pub use crate::value::Value;
@@ -285,7 +286,7 @@ mod tests {
         assert_eq!(dtype(ts().bucket(interval(5, Minute))).unwrap(), "timestamp");
         assert!(dtype(col("int_col").bucket(interval(5, Minute))).is_err());
         // one method, as in Ibis: a unit for a number, a pattern for a string
-        assert_eq!(dtype(col("string_col").as_timestamp("%m/%d/%y")).unwrap(), "timestamp");
+        assert_eq!(dtype(col("string_col").as_timestamp("%m/%d/%y")).unwrap(), "timestamp('UTC')");
         assert_eq!(dtype(col("string_col").as_date("%m/%d/%y")).unwrap(), "date");
         assert!(dtype(col("int_col").as_date("%m/%d/%y")).is_err());
 
