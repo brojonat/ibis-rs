@@ -1008,3 +1008,18 @@ Other things from the same batch:
 - Which slices need the count: only those where one bound is negative and
   the answer is not empty by arithmetic alone. `[-3:0]`, `[-3:-3]` and
   `[-3:-5]` are empty whatever the table holds (Ibis calls them static).
+
+## Parameters
+
+- Ibis's `test_param` runs `expr.execute(params={p: value})` and compares
+  with the same expression written with the value in it. That expectation is
+  the Python side of each case (so the golden needs no parameter support in
+  the generator), and the Rust side binds a parameter.
+- Binding rewrites the relation tree. Bound columns (`t.col("x")`) find their
+  relation by id, so `Rel::bind` rebuilds each node with the id it had; a
+  fresh id per rebuilt node would orphan every bound column above it.
+- `Expr::Param` already existed for the element of an array lambda. A query
+  parameter is the same node with a name no lambda uses (`_param_N`), and
+  `Expr::bind` only replaces the names it is given, so lambdas are untouched.
+- A value is cast to the parameter's type on binding: Ibis takes
+  `"2009-03-01"` for a date parameter and a date for a timestamp one.

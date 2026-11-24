@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 1,315 Ibis tests (1,182 expression cases, 133 procedures) + 22 TPC-H queries. DuckDB 1,313, Trino 1,285, Polars 1,281, Postgres 1,276, Spark 1,262, ClickHouse 1,221, SQLite 905, Impala 886, MySQL 866; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 1,312 of 1,719 applicable test ids (76%); per module at https://brojonat.github.io/ibis-rs/
+Current: 1,336 Ibis tests (1,203 expression cases, 133 procedures) + 22 TPC-H queries. DuckDB 1,334, Trino 1,306, Polars 1,302, Postgres 1,297, Spark 1,283, ClickHouse 1,242, SQLite 922, Impala 903, MySQL 883; everything else is an expected failure with its reason in the case file (README has the table).
+Coverage of the Ibis suite: 1,333 of 1,719 applicable test ids (78%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -80,6 +80,9 @@ Coverage of the Ibis suite: 1,312 of 1,719 applicable test ids (76%); per module
   - [ ] `hashbytes` (binary digests; no golden, DuckDB has none in Ibis), `hexdigest` and `hashbytes` with another algorithm than SHA-256, and on SQLite and Polars (needs a SHA-256 in Rust: a dependency)
   - [ ] `try_cast` on Postgres, MySQL and SQLite (a test of the text before the cast would do for numbers)
   - [ ] The error tests (`test_table_fill_null_invalid`, `test_drop_null_invalid`), `test_column_fill_null[nan_col]` (SQLite only), `test_literal_na[time]`, `test_interactive` (to mark not applicable)
+- [x] test_param: all 21 ids. `param(dtype)` and `Table::bind`
+  - [ ] An expression with a parameter left unbound compiles to SQL that names it (`_param_3`), and the engine reports an unknown column: the compiler should say which parameter has no value
+  - [ ] `Backend::execute_with(table, values)` as a shorthand for `execute(&table.bind(values)?)`; a statement prepared once and run with several values
 - [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
 - [ ] Nested types, loose ends: several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB
 - [ ] test_client (203 ids), in slices. These test the connection API, not expressions: they run as procedural tests per backend (`crates/ibis-conformance/src/client.rs`, ids `client::<module>::<pytest id>`, no goldens)

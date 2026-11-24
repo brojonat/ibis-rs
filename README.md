@@ -14,31 +14,31 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. The shape to grow into is
 Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
 The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
-test, whether it is ported, and how each backend does on it: 1,312 of 1,719
+test, whether it is ported, and how each backend does on it: 1,333 of 1,719
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 1,315 ported Ibis tests (1,182 expression
+Status: pre-alpha. Nine backends, 1,336 ported Ibis tests (1,203 expression
 cases with a result from Python Ibis, 133 tests that are procedures: the
 connection API, SQL as text, reductions whose answer is the engine's to
 choose, random numbers, hashes) and Ibis's 22 TPC-H queries:
 
-| backend | Ibis tests (1,315) | TPC-H (22) |
+| backend | Ibis tests (1,336) | TPC-H (22) |
 |---|---|---|
-| DuckDB | 1,313 (2 expected failures, as in Ibis: no sample correlation) | 22 |
-| Polars (default) | 1,281 (34 expected failures, as in Ibis: no `random()` (so no `sample`), `translate`, `levenshtein`, `typeof` or `hexdigest`, a regular expression to split by is one for the whole column, no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median or quantile of strings, one quantile at a time, `group_concat` with a literal separator only and not over a window) | 22 |
-| Trino | 1,285 (30 expected failures: a timestamp cannot be tried as a number, no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median or quantile, no sample correlation, no interval of microseconds) | 22 |
-| Postgres | 1,276 (39 expected failures, as in Ibis: no `try_cast`, no arrays of arrays, no kurtosis, no sample correlation) | 22 |
-| Spark SQL | 1,262 (53 expected failures: a timestamp cannot be tried as a number, no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median or quantile of strings or dates, no reduction that reads its rows in an order, no `collect` that keeps NULLs) | 22 |
-| ClickHouse | 1,221 (94 expected failures, as in Ibis: a timestamp tried as a number is its seconds, a regular expression to split by is one for the whole column, an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median or quantile of strings, no population correlation, no reduction that reads its rows in an order, no `first`, `last` or `collect` that keeps NULLs; and no temporary tables over HTTP) | 22 |
-| SQLite | 905 (410 expected failures: no `try_cast` or `hexdigest`, no arrays, structs or maps (so no `split`), no NaN, no `MERGE`, no median, quantile, kurtosis, covariance or correlation, no ordered `group_concat`, no count of distinct rows, no interval of microseconds) | 22 |
-| Impala | 886 (429 expected failures, as in Ibis: a timestamp tried as a number is its seconds, no array, struct or map support (so no `split`), no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians and quantiles, kurtosis, the bitwise reductions, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance and correlation only the approximate median; `group_concat` neither ordered nor over a window) | 22 |
-| MySQL | 866 (449 expected failures: no `try_cast` or `typeof`, no arrays, structs or maps (so no `split`), no `translate` or `levenshtein`, no NaN or infinity, no `MERGE`, no `mode`, median, quantile, kurtosis, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance or correlation; `group_concat` with a literal separator only and not over a window) | 22 |
+| DuckDB | 1,334 (2 expected failures, as in Ibis: no sample correlation) | 22 |
+| Polars (default) | 1,302 (34 expected failures, as in Ibis: no `random()` (so no `sample`), `translate`, `levenshtein`, `typeof` or `hexdigest`, a regular expression to split by is one for the whole column, no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median or quantile of strings, one quantile at a time, `group_concat` with a literal separator only and not over a window) | 22 |
+| Trino | 1,306 (30 expected failures: a timestamp cannot be tried as a number, no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median or quantile, no sample correlation, no interval of microseconds) | 22 |
+| Postgres | 1,297 (39 expected failures, as in Ibis: no `try_cast`, no arrays of arrays, no kurtosis, no sample correlation) | 22 |
+| Spark SQL | 1,283 (53 expected failures: a timestamp cannot be tried as a number, no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median or quantile of strings or dates, no reduction that reads its rows in an order, no `collect` that keeps NULLs) | 22 |
+| ClickHouse | 1,242 (94 expected failures, as in Ibis: a timestamp tried as a number is its seconds, a regular expression to split by is one for the whole column, an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median or quantile of strings, no population correlation, no reduction that reads its rows in an order, no `first`, `last` or `collect` that keeps NULLs; and no temporary tables over HTTP) | 22 |
+| SQLite | 922 (414 expected failures: no `try_cast` or `hexdigest`, no arrays, structs or maps (so no `split`), no NaN, no `MERGE`, no median, quantile, kurtosis, covariance or correlation, no ordered `group_concat`, no count of distinct rows, no interval of microseconds) | 22 |
+| Impala | 903 (433 expected failures, as in Ibis: a timestamp tried as a number is its seconds, no array, struct or map support (so no `split`), no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians and quantiles, kurtosis, the bitwise reductions, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance and correlation only the approximate median; `group_concat` neither ordered nor over a window) | 22 |
+| MySQL | 883 (453 expected failures: no `try_cast` or `typeof`, no arrays, structs or maps (so no `split`), no `translate` or `levenshtein`, no NaN or infinity, no `MERGE`, no `mode`, median, quantile, kurtosis, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance or correlation; `group_concat` with a literal separator only and not over a window) | 22 |
 
-Output column names and types match Ibis's on all 1,182 expression cases but
+Output column names and types match Ibis's on all 1,203 expression cases but
 one (Ibis's `decimal` without a precision; an ibis-rs decimal always has one).
 Ported so far: `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal`, `test_join`, `test_window`, `test_set_ops`,
-`test_conditionals`, `test_column`, `test_array`, `test_struct`, `test_map`,
+`test_conditionals`, `test_column`, `test_param`, `test_array`, `test_struct`, `test_map`,
 `test_dot_sql`, and about half of `test_client`. What's next is in [TODO.md](TODO.md).
 
 ## Usage
