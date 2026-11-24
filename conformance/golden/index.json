@@ -4791,6 +4791,70 @@
    "postgres": "same"
   }
  },
+ "test_distinct_column[date_string_col]": {
+  "file": "test_column/test_distinct_column[date_string_col].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "date_string_col"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 730,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_distinct_column[double_col]": {
+  "file": "test_column/test_distinct_column[double_col].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "double_col"
+  ],
+  "dtypes": [
+   "float64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_distinct_column[string_col]": {
+  "file": "test_column/test_distinct_column[string_col].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "string_col"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_distinct_column[timestamp_col]": {
+  "file": "test_column/test_distinct_column[timestamp_col].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "timestamp_col"
+  ],
+  "dtypes": [
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_divide_by_zero[bigint_col-0.0]": {
   "file": "test_numeric/test_divide_by_zero[bigint_col-0.0].parquet",
   "kind": "column",
@@ -6954,6 +7018,54 @@
   ],
   "dtypes": [
    "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ibis_case_still_works[method-false-value]": {
+  "file": "test_conditionals/test_ibis_case_still_works[method-false-value].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ibis_case_still_works[method-false]": {
+  "file": "test_conditionals/test_ibis_case_still_works[method-false].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_ibis_case_still_works[method-true]": {
+  "file": "test_conditionals/test_ibis_case_still_works[method-true].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
   ],
   "rows": 1,
   "ibis": {

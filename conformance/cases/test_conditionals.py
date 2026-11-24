@@ -59,3 +59,14 @@ r.add(
 )
 # CASE x WHEN NULL never gets hit
 r.add("test_value_cases_null", scalar(lambda: ibis.literal(5).nullif(5).cases((None, "oops"), else_="expected")))
+
+# test_ibis_case_still_works: Python's soft-deprecated builder, `x.case().when(a, b).else_(c).end()`.
+# What it builds is `x.cases((a, b), else_=c)`, which is the form ibis-rs has.
+r.params(
+    "test_ibis_case_still_works",
+    {
+        "method-true": scalar(lambda: ibis.literal("a").cases(("a", "yes"))),
+        "method-false": scalar(lambda: ibis.literal("a").cases(("b", "yes"))),
+        "method-false-value": scalar(lambda: ibis.literal("a").cases(("b", "yes"), else_="no")),
+    },
+)

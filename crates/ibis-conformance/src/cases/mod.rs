@@ -7,6 +7,7 @@
 
 mod aggregation;
 pub mod array;
+mod column;
 mod conditionals;
 mod generic;
 mod join;
@@ -143,5 +144,6 @@ pub fn all() -> Vec<Case> {
     array::register(&mut v);
     structs::register(&mut v);
     map::register(&mut v);
+    column::register(&mut v);
     v
 }

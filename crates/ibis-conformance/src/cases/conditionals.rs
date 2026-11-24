@@ -48,4 +48,9 @@ pub fn register(v: &mut Vec<Case>) {
     v.push(scalar("test_value_cases_null", || {
         Ok(lit(5).nullif(5).cases([(null(DataType::Null), lit("oops"))], Some(lit("expected"))))
     }));
+    // Python's deprecated builder (`x.case().when(a, b).else_(c).end()`) builds this
+    let still = |id: &str| format!("test_ibis_case_still_works[{id}]");
+    v.push(scalar(&still("method-true"), || Ok(lit("a").cases([(lit("a"), lit("yes"))], None))));
+    v.push(scalar(&still("method-false"), || Ok(lit("a").cases([(lit("b"), lit("yes"))], None))));
+    v.push(scalar(&still("method-false-value"), || Ok(lit("a").cases([(lit("b"), lit("yes"))], Some(lit("no"))))));
 }
