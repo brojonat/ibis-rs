@@ -94,6 +94,9 @@ impl Dialect for MySqlDialect {
         // without a NaN or an infinity, no value is one; NULL stays NULL
         let never = |x: String| format!("({x} IS NULL AND NULL)");
         Ok(match f {
+            Func::IsoYear => Some(format!("CAST(YEARWEEK({}, 3) DIV 100 AS SIGNED)", a(0)?)),
+            // UNIX_TIMESTAMP reads its argument in the session's zone
+            Func::EpochSeconds => Some(format!("TIMESTAMPDIFF(SECOND, '1970-01-01 00:00:00', {})", a(0)?)),
             // LENGTH counts bytes
             Func::Length => Some(format!("CAST(CHAR_LENGTH({}) AS SIGNED)", a(0)?)),
             Func::StartsWith => Some(format!("(LEFT({x}, CHAR_LENGTH({p})) = {p})", x = a(0)?, p = a(1)?)),
@@ -208,6 +211,18 @@ impl Dialect for MySqlDialect {
             None => columns.to_vec(),
         };
         Ok(Some(format!("COUNT(DISTINCT {}){tail}", columns.join(", "))))
+    }
+    fn date_diff(&self, unit: ibis_core::IntervalUnit, start: &str, end: &str) -> Result<Option<String>> {
+        use ibis_core::IntervalUnit::*;
+        Ok(Some(match unit {
+            Millisecond => format!("(TIMESTAMPDIFF(MICROSECOND, {start}, {end}) DIV 1000)"),
+            Nanosecond => return unsupported("a delta in nanoseconds"),
+            unit => format!("TIMESTAMPDIFF({}, {start}, {end})", ibis_sql::interval_unit_name(unit)),
+        }))
+    }
+    /// `FROM_UNIXTIME` gives a moment in the session's zone.
+    fn timestamp_from_micros(&self, micros: &str) -> Result<Option<String>> {
+        Ok(Some(format!("(TIMESTAMP('1970-01-01 00:00:00') + INTERVAL ({micros}) MICROSECOND)")))
     }
     /// `moment + INTERVAL count UNIT`. No unit names the millisecond, and
     /// none is finer than the microsecond.

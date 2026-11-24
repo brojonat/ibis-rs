@@ -248,6 +248,39 @@ mod tests {
     }
 
     #[test]
+    fn epochs_and_deltas_have_ibis_types() {
+        use IntervalUnit::*;
+        let t = alltypes();
+        let dtype = |e: Expr| t.select([e.name("x")]).map(|t| t.schema().fields[0].dtype.to_string());
+        let ts = || col("timestamp_col");
+        assert_eq!(dtype(ts().iso_year()).unwrap(), "int32");
+        assert_eq!(dtype(ts().epoch_seconds()).unwrap(), "int32");
+        assert_eq!(dtype(ts().date().epoch_days()).unwrap(), "int64");
+        assert_eq!(dtype(ts().delta(timestamp("2020-01-01 00:00:00"), Hour)).unwrap(), "int64");
+        // a date and a timestamp have no delta
+        assert!(dtype(ts().delta(date("2020-01-01"), Day)).is_err());
+        assert_eq!(dtype(col("int_col").as_timestamp(Millisecond)).unwrap(), "timestamp");
+        assert!(dtype(col("string_col").as_timestamp(Second)).is_err());
+
+        // a count of any unit becomes a count of microseconds; a float keeps its fraction
+        let micros = |unit, t: DataType| ibis_core_micros(&col("x"), &t, unit);
+        assert_eq!(micros(Second, DataType::Int32), "Mul(Cast(x, int64), 1000000)");
+        assert_eq!(micros(Nanosecond, DataType::Int64), "FloorDiv(Cast(x, int64), 1000)");
+        assert_eq!(micros(Second, DataType::Float64), "Floor(Mul(Cast(x, float64), 1000000))");
+        assert!(crate::expr::epoch_micros(&col("x"), &DataType::Int64, Day).is_err());
+        // the ends of a delta are cut back to the start of the unit
+        let (unit, start, end) = crate::expr::delta_ends(&[col("b"), col("a"), lit("h")]).unwrap();
+        assert_eq!(
+            (unit, start.to_string(), end.to_string()),
+            (Hour, r#"Truncate(a, "h")"#.into(), r#"Truncate(b, "h")"#.into())
+        );
+    }
+
+    fn ibis_core_micros(x: &Expr, t: &DataType, unit: IntervalUnit) -> String {
+        crate::expr::epoch_micros(x, t, unit).unwrap().to_string()
+    }
+
+    #[test]
     fn value_counts_and_order_by_follow_ibis() {
         let t = alltypes();
         let counts = t.value_counts(col("int_col") + 1).unwrap();

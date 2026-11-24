@@ -33,5 +33,7 @@
   "test_signatures": "Checks that every Python backend class has the same method signatures.",
   "test_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead.",
   "test_udf": "Tests UDFs written as Python functions.",
-  "test_vectorized_udf": "Tests UDFs written as Python functions over pandas or PyArrow data."
+  "test_vectorized_udf": "Tests UDFs written as Python functions over pandas or PyArrow data.",
+  "test_temporal::test_temporal_literal_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead.",
+  "test_temporal::test_time_literal_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead."
 }

@@ -2129,6 +2129,22 @@
    "postgres": "same"
   }
  },
+ "test_big_timestamp": {
+  "file": "test_temporal/test_big_timestamp.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_binary_arithmetic_operations[add]": {
   "file": "test_numeric/test_binary_arithmetic_operations[add].parquet",
   "kind": "column",
@@ -3153,6 +3169,134 @@
    "postgres": "same"
   }
  },
+ "test_date_scalar[fromstring-large]": {
+  "file": "test_temporal/test_date_scalar[fromstring-large].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar[fromstring-medium]": {
+  "file": "test_temporal/test_date_scalar[fromstring-medium].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar[fromstring-simple]": {
+  "file": "test_temporal/test_date_scalar[fromstring-simple].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar[fromstring-small]": {
+  "file": "test_temporal/test_date_scalar[fromstring-small].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar[identity-large]": {
+  "file": "test_temporal/test_date_scalar[identity-large].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar[identity-medium]": {
+  "file": "test_temporal/test_date_scalar[identity-medium].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar[identity-simple]": {
+  "file": "test_temporal/test_date_scalar[identity-simple].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar[identity-small]": {
+  "file": "test_temporal/test_date_scalar[identity-small].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "date"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_date_scalar_from_iso": {
   "file": "test_temporal/test_date_scalar_from_iso.parquet",
   "kind": "scalar",
@@ -3552,6 +3696,38 @@
   "rows": 1,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_delta[date]": {
+  "file": "test_temporal/test_delta[date].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_delta[timestamp]": {
+  "file": "test_temporal/test_delta[timestamp].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
    "postgres": "same"
   }
  },
@@ -4216,6 +4392,42 @@
   "rows": 115,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_extract_iso_year[date]": {
+  "file": "test_temporal/test_extract_iso_year[date].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_extract_iso_year[timestamp]": {
+  "file": "test_temporal/test_extract_iso_year[timestamp].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "int32"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
    "postgres": "same"
   }
  },
@@ -5625,6 +5837,40 @@
    "postgres": "same"
   }
  },
+ "test_integer_cast_to_timestamp_column": {
+  "file": "test_temporal/test_integer_cast_to_timestamp_column.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_cast_to_timestamp_scalar": {
+  "file": "test_temporal/test_integer_cast_to_timestamp_scalar.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_integer_to_interval_date[D]": {
   "file": "test_temporal/test_integer_to_interval_date[D].parquet",
   "kind": "column",
@@ -6775,6 +7021,22 @@
    "postgres": "same"
   }
  },
+ "test_iso_year_does_not_match_date_year": {
+  "file": "test_temporal/test_iso_year_does_not_match_date_year.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
  "test_join_conflicting_columns": {
   "file": "test_join/test_join_conflicting_columns.parquet",
   "kind": "tables",
@@ -7846,6 +8108,22 @@
   ],
   "dtypes": [
    "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_large_timestamp": {
+  "file": "test_temporal/test_large_timestamp.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp"
   ],
   "rows": 1,
   "ibis": {
@@ -14087,6 +14365,22 @@
    "postgres": "same"
   }
  },
+ "test_simple_unix_date_offset": {
+  "file": "test_temporal/test_simple_unix_date_offset.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_single_field[a]": {
   "file": "test_struct/test_single_field[a].parquet",
   "kind": "tables",
@@ -15135,6 +15429,70 @@
    "postgres": "error: ArrowInvalid"
   }
  },
+ "test_subsecond_cast_to_timestamp[timestamp(1)]": {
+  "file": "test_temporal/test_subsecond_cast_to_timestamp[timestamp(1)].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp(1)"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_subsecond_cast_to_timestamp[timestamp(3)]": {
+  "file": "test_temporal/test_subsecond_cast_to_timestamp[timestamp(3)].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp(3)"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_subsecond_cast_to_timestamp[timestamp(6)]": {
+  "file": "test_temporal/test_subsecond_cast_to_timestamp[timestamp(6)].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp(6)"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_subsecond_cast_to_timestamp[timestamp]": {
+  "file": "test_temporal/test_subsecond_cast_to_timestamp[timestamp].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_subsequent_overlapping_order_by#1": {
   "file": "test_generic/test_subsequent_overlapping_order_by#1.parquet",
   "kind": "table",
@@ -15865,6 +16223,42 @@
    "postgres": "same"
   }
  },
+ "test_timestamp_date_comparison[column_date]": {
+  "file": "test_temporal/test_timestamp_date_comparison[column_date].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_date_comparison[date_column]": {
+  "file": "test_temporal/test_timestamp_date_comparison[date_column].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_timestamp_extract[day]": {
   "file": "test_temporal/test_timestamp_extract[day].parquet",
   "kind": "column",
@@ -16189,6 +16583,22 @@
    "postgres": "same"
   }
  },
+ "test_timestamp_extract_milliseconds_with_big_value": {
+  "file": "test_temporal/test_timestamp_extract_milliseconds_with_big_value.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int32"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_timestamp_extract_week_of_year": {
   "file": "test_temporal/test_timestamp_extract_week_of_year.parquet",
   "kind": "column",
@@ -16220,6 +16630,38 @@
   "rows": 1,
   "ibis": {
    "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_precision_output[ms]": {
+  "file": "test_temporal/test_timestamp_precision_output[ms].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp(3)"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_precision_output[us]": {
+  "file": "test_temporal/test_timestamp_precision_output[us].parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "timestamp(6)"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "differs",
    "postgres": "same"
   }
  },

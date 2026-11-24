@@ -84,7 +84,17 @@ impl Dialect for SqliteDialect {
         let x = c.sql(e)?;
         Ok(match to {
             DataType::Date => Some(format!("DATE({x})")),
-            DataType::Timestamp { .. } => Some(format!("DATETIME({x})")),
+            DataType::Timestamp { .. } => match c.dtype(e)? {
+                DataType::Timestamp { .. } => Some(x),
+                // DATETIME drops what follows the seconds, and `subsec` keeps three
+                // digits of it: the seconds normalized, the fraction as written
+                DataType::String => Some(format!(
+                    "CASE WHEN INSTR({x}, '.') > 0 \
+                     THEN STRFTIME('%Y-%m-%d %H:%M:%S', {x}) || SUBSTR({x}, INSTR({x}, '.')) \
+                     ELSE DATETIME({x}) END"
+                )),
+                _ => Some(format!("DATETIME({x})")),
+            },
             DataType::Boolean => Some(format!("(CAST({x} AS INTEGER) <> 0)")),
             DataType::String => Some(format!("CAST({x} AS TEXT)")),
             DataType::Float32 | DataType::Float64 => Some(format!("CAST({x} AS REAL)")),
@@ -132,6 +142,8 @@ impl Dialect for SqliteDialect {
             Ok(Some(format!("CAST(STRFTIME('{fmt}', {}) AS INTEGER)", a(0)?)))
         };
         Ok(match f {
+            Func::IsoYear => extract("%G")?,
+            Func::EpochSeconds => extract("%s")?,
             Func::Like | Func::ILike => {
                 let Expr::Literal(Value::String(p), _) = &args[1] else {
                     return Err(Error::Unsupported {
@@ -256,6 +268,44 @@ impl Dialect for SqliteDialect {
         })
     }
 
+    /// Months from the calendar fields, the rest from the seconds between
+    /// the two (`UNIXEPOCH`, SQLite 3.38).
+    fn date_diff(&self, unit: ibis_core::IntervalUnit, start: &str, end: &str) -> Result<Option<String>> {
+        use ibis_core::IntervalUnit::*;
+        let field = |fmt: &str, x: &str| format!("CAST(STRFTIME('{fmt}', {x}) AS INTEGER)");
+        let months = format!(
+            "(({} - {}) * 12 + {} - {})",
+            field("%Y", end),
+            field("%Y", start),
+            field("%m", end),
+            field("%m", start)
+        );
+        let seconds = format!("(UNIXEPOCH({end}) - UNIXEPOCH({start}))");
+        Ok(Some(match unit {
+            Year => format!("({months} / 12)"),
+            Quarter => format!("({months} / 3)"),
+            Month => months,
+            Week => format!("({seconds} / 604800)"),
+            Day => format!("({seconds} / 86400)"),
+            Hour => format!("({seconds} / 3600)"),
+            Minute => format!("({seconds} / 60)"),
+            Second => seconds,
+            Millisecond => format!("CAST(ROUND((JULIANDAY({end}) - JULIANDAY({start})) * 86400000) AS INTEGER)"),
+            _ => {
+                return Err(Error::Unsupported {
+                    backend: "sqlite".into(),
+                    op: "a delta finer than milliseconds".into(),
+                });
+            }
+        }))
+    }
+    /// Timestamps are text: the seconds through `STRFTIME`, and the six
+    /// digits after them written out (`subsec` stops at three).
+    fn timestamp_from_micros(&self, micros: &str) -> Result<Option<String>> {
+        let within = format!("((({micros}) % 1000000 + 1000000) % 1000000)");
+        let seconds = format!("(({micros}) - {within}) / 1000000");
+        Ok(Some(format!("(STRFTIME('%Y-%m-%d %H:%M:%S', {seconds}, 'unixepoch') || '.' || PRINTF('%06d', {within}))")))
+    }
     /// No intervals: `DATETIME` and `DATE` take modifiers, `'+4 day'`.
     /// `floor` (SQLite 3.46) keeps January 31 plus a month in February;
     /// `subsec` keeps the milliseconds, which is as fine as SQLite reads.

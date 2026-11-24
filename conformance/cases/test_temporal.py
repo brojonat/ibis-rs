@@ -5,17 +5,22 @@
 """ibis/backends/tests/test_temporal.py
 
 Ported so far: field extraction, truncation, literals and constructors,
-strftime with a literal format, timestamps and dates moved by intervals. Not
-yet: time zones, the `time` type, deltas and buckets, and the two differences
-of test_temporal_binop (their result is an interval). Also left out, because
-Python Ibis on DuckDB can't produce a golden:
-test_timestamp_extract_epoch_seconds (its result doesn't fit the int32 Ibis
-declares) and truncation to "ns".
+strftime with a literal format, timestamps and dates moved by intervals, ISO
+years, numbers as timestamps, deltas of dates and timestamps. Not yet: time
+zones, the `time` type, buckets, and the two differences of
+test_temporal_binop (their result is an interval). No golden, because Python
+Ibis on DuckDB can't produce one: test_timestamp_extract_epoch_seconds (its
+result doesn't fit the int32 Ibis declares) and test_integer_to_timestamp
+(DuckDB has two of its four units); those are procedures on the Rust side
+(`crates/ibis-conformance/src/moments.rs`). Truncation to "ns" and
+test_timestamp_precision_output[ns] need a timestamp finer than a microsecond.
 
 Tests with several assertions become `name#1`, `name#2`.
 """
 
 from __future__ import annotations
+
+import datetime
 
 import ibis
 import ibis.expr.datatypes as dt
@@ -187,4 +192,66 @@ r.add(
 r.add(
     "test_interval_add_cast_column",
     table(lambda t: t.select("id", (t.timestamp_col.date() + t.bigint_col.cast("interval('D')")).name("tmp"))),
+)
+
+r.add("test_extract_iso_year[timestamp]", column(lambda t: t.timestamp_col.iso_year()))
+r.add("test_extract_iso_year[date]", column(lambda t: t.timestamp_col.date().iso_year()))
+r.add("test_iso_year_does_not_match_date_year", scalar(lambda: ibis.date("2022-01-01").iso_year()))
+r.add(
+    "test_timestamp_extract_milliseconds_with_big_value",
+    scalar(lambda: ibis.timestamp("2021-01-01 01:30:59.333456").millisecond()),
+)
+
+r.add("test_integer_cast_to_timestamp_column", column(lambda t: t.int_col.cast("timestamp")))
+r.add("test_integer_cast_to_timestamp_scalar", table(lambda t: t.aggregate(tmp=t.int_col.min().cast("timestamp"))))
+for dtype in ["timestamp", "timestamp(1)", "timestamp(3)", "timestamp(6)"]:
+    r.add(
+        f"test_subsecond_cast_to_timestamp[{dtype}]",
+        scalar(lambda dtype=dtype: ibis.literal("1699109238.5").cast(float).cast(dtype)),
+    )
+
+r.add("test_big_timestamp", scalar(lambda: ibis.timestamp("2419-10-11 10:10:25")))
+r.add("test_large_timestamp", scalar(lambda: ibis.timestamp("4567-01-01 00:00:00")))
+r.params(
+    "test_timestamp_precision_output",
+    {
+        "ms": scalar(lambda: ibis.literal("2023-01-07 13:20:05.561").cast(dt.Timestamp(scale=3))),
+        "us": scalar(lambda: ibis.literal("2023-01-07 13:20:05.561021").cast(dt.Timestamp(scale=6))),
+    },
+)
+
+DATES = {"simple": "2017-12-31", "large": "9999-01-02", "small": "0001-07-17", "medium": "2150-01-01"}
+for pid, value in DATES.items():
+    r.add(f"test_date_scalar[identity-{pid}]", scalar(lambda value=value: ibis.date(value)))
+    r.add(
+        f"test_date_scalar[fromstring-{pid}]",
+        scalar(lambda value=value: ibis.date(datetime.date.fromisoformat(value))),
+    )
+
+r.add("test_simple_unix_date_offset", scalar(lambda: ibis.date("2023-04-07").epoch_days()))
+r.params(
+    "test_delta",
+    {
+        "date": scalar(lambda: ibis.date("1992-10-01").delta(ibis.date("1992-09-30"), unit="day")),
+        "timestamp": scalar(
+            lambda: ibis.timestamp("1992-10-01 01:58:00").delta(ibis.timestamp("1992-09-30 23:59:59"), unit="hour")
+        ),
+    },
+)
+
+DATE = datetime.date(2010, 11, 1)
+
+
+def _built_date(t):
+    return (
+        t.year.cast("string") + "-" + t.month.cast("string").lpad(2, "0") + "-" + (t.int_col + 1).cast("string").lpad(2, "0")
+    ).cast("date")
+
+
+r.params(
+    "test_timestamp_date_comparison",
+    {
+        "column_date": column(lambda t: _built_date(t) == DATE),
+        "date_column": column(lambda t: ibis.literal(DATE) == _built_date(t)),
+    },
 )

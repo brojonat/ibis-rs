@@ -127,6 +127,59 @@ pub fn register(v: &mut Vec<Case>) {
     }));
 
     intervals(v);
+    epochs_and_edges(v);
+}
+
+/// ISO years, numbers as timestamps, literals far from now, deltas.
+fn epochs_and_edges(v: &mut Vec<Case>) {
+    let naive = || DataType::Timestamp { tz: None };
+
+    v.push(column("test_extract_iso_year[timestamp]", |_| Ok(c("timestamp_col").iso_year())));
+    v.push(column("test_extract_iso_year[date]", |_| Ok(c("timestamp_col").date().iso_year())));
+    v.push(scalar("test_iso_year_does_not_match_date_year", || Ok(date("2022-01-01").iso_year())));
+    v.push(scalar("test_timestamp_extract_milliseconds_with_big_value", || {
+        Ok(timestamp("2021-01-01 01:30:59.333456").millisecond())
+    }));
+
+    // a number cast to a timestamp counts seconds since 1970
+    v.push(column("test_integer_cast_to_timestamp_column", move |_| Ok(c("int_col").cast(naive()))));
+    v.push(table("test_integer_cast_to_timestamp_scalar", move |t| {
+        t.aggregate([c("int_col").min().cast(naive()).name("tmp")])
+    }));
+    // the ids are Ibis's types; a timestamp here has one precision, the microsecond
+    for dtype in ["timestamp", "timestamp(1)", "timestamp(3)", "timestamp(6)"] {
+        v.push(scalar(&format!("test_subsecond_cast_to_timestamp[{dtype}]"), move || {
+            Ok(lit("1699109238.5").cast(DataType::Float64).cast(dtype.parse()?))
+        }));
+    }
+
+    v.push(scalar("test_big_timestamp", || Ok(timestamp("2419-10-11 10:10:25"))));
+    v.push(scalar("test_large_timestamp", || Ok(timestamp("4567-01-01 00:00:00"))));
+    for (id, text) in [("ms", "2023-01-07 13:20:05.561"), ("us", "2023-01-07 13:20:05.561021")] {
+        v.push(scalar(&format!("test_timestamp_precision_output[{id}]"), move || Ok(lit(text).cast(naive()))));
+    }
+
+    // Ibis's test builds the literal from a string and from a Python date
+    let dates = [("simple", "2017-12-31"), ("large", "9999-01-02"), ("small", "0001-07-17"), ("medium", "2150-01-01")];
+    for (id, value) in dates {
+        for how in ["identity", "fromstring"] {
+            v.push(scalar(&format!("test_date_scalar[{how}-{id}]"), move || Ok(date(value))));
+        }
+    }
+
+    v.push(scalar("test_simple_unix_date_offset", || Ok(date("2023-04-07").epoch_days())));
+    v.push(scalar("test_delta[date]", || Ok(date("1992-10-01").delta(date("1992-09-30"), IntervalUnit::Day))));
+    v.push(scalar("test_delta[timestamp]", || {
+        Ok(timestamp("1992-10-01 01:58:00").delta(timestamp("1992-09-30 23:59:59"), IntervalUnit::Hour))
+    }));
+
+    let built = || {
+        let two = |e: Expr| e.cast(DataType::String).lpad(2, "0");
+        (c("year").cast(DataType::String) + lit("-") + two(c("month")) + lit("-") + two(c("int_col") + 1))
+            .cast(DataType::Date)
+    };
+    v.push(column("test_timestamp_date_comparison[column_date]", move |_| Ok(built().eq(date("2010-11-01")))));
+    v.push(column("test_timestamp_date_comparison[date_column]", move |_| Ok(date("2010-11-01").eq(built()))));
 }
 
 /// Timestamps and dates moved by intervals. The differences of

@@ -99,6 +99,8 @@ impl Dialect for PostgresDialect {
         let a = |i: usize| c.sql(&args[i]);
         let float_arg = args.first().is_some_and(|x| c.dtype(x).map(|t| !t.is_integer()).unwrap_or(false));
         Ok(match f {
+            Func::IsoYear => Some(format!("CAST(EXTRACT(ISOYEAR FROM {}) AS INTEGER)", a(0)?)),
+            Func::EpochSeconds => Some(format!("CAST(FLOOR(EXTRACT(EPOCH FROM {})) AS INTEGER)", a(0)?)),
             Func::RegexSearch => Some(format!("({} ~ {})", a(0)?, a(1)?)),
             // Wrap the whole pattern in a group so Ibis's index 0 (whole match)
             // is Postgres group 1. No match gives '' like DuckDB.
@@ -179,6 +181,40 @@ impl Dialect for PostgresDialect {
             AggFunc::First | AggFunc::Last => Some(ends(f, &format!("ARRAY_AGG({}){filter}", c.sql(x)?))),
             _ => None,
         })
+    }
+    /// No DATE_DIFF: months from the calendar fields, the rest from the
+    /// seconds between the two.
+    fn date_diff(&self, unit: ibis_core::IntervalUnit, start: &str, end: &str) -> Result<Option<String>> {
+        use ibis_core::IntervalUnit::*;
+        let field = |name: &str, x: &str| format!("EXTRACT({name} FROM {x})");
+        let months = format!(
+            "(({} - {}) * 12 + {} - {})",
+            field("YEAR", end),
+            field("YEAR", start),
+            field("MONTH", end),
+            field("MONTH", start)
+        );
+        let seconds = format!("EXTRACT(EPOCH FROM (CAST({end} AS TIMESTAMP) - CAST({start} AS TIMESTAMP)))");
+        let count = match unit {
+            Year => format!("{months} / 12"),
+            Quarter => format!("{months} / 3"),
+            Month => months,
+            Week => format!("{seconds} / 604800"),
+            Day => format!("{seconds} / 86400"),
+            Hour => format!("{seconds} / 3600"),
+            Minute => format!("{seconds} / 60"),
+            Second => seconds,
+            Millisecond => format!("{seconds} * 1000"),
+            Microsecond => format!("{seconds} * 1000000"),
+            Nanosecond => {
+                return Err(Error::Unsupported { backend: "postgres".into(), op: "a delta in nanoseconds".into() });
+            }
+        };
+        Ok(Some(format!("CAST(ROUND({count}) AS BIGINT)")))
+    }
+    /// `TO_TIMESTAMP` gives a moment in the session's zone.
+    fn timestamp_from_micros(&self, micros: &str) -> Result<Option<String>> {
+        Ok(Some(format!("(TIMESTAMP '1970-01-01 00:00:00' + {micros} * INTERVAL '1 microsecond')")))
     }
     /// The unit goes inside the quotes: `INTERVAL '1' MILLISECOND` is not
     /// Postgres. A date moved is a timestamp.

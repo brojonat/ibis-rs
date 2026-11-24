@@ -2,7 +2,9 @@
 //! spells differently; everything else falls through to the defaults in
 //! `compiler.rs` (DuckDB/Postgres-flavored ANSI SQL).
 
-use ibis_core::{AggFunc, AggOptions, Analytic, BinaryOp, DataType, Expr, Func, Lambda, Result, Shift, Value};
+use ibis_core::{
+    AggFunc, AggOptions, Analytic, BinaryOp, DataType, Expr, Func, IntervalUnit, Lambda, Result, Shift, Value,
+};
 
 use crate::compiler::ExprCompiler;
 
@@ -79,6 +81,19 @@ pub trait Dialect: Send + Sync {
     /// week or a quarter. The result has the type of `moment`. `None` for
     /// `ExprCompiler::default_date_shift`.
     fn date_shift(&self, _c: &ExprCompiler, _moment: &str, _t: &DataType, _step: &Shift) -> Result<Option<String>> {
+        Ok(None)
+    }
+    /// The whole `unit`s from `start` to `end` (compiled), a BIGINT. Both
+    /// are already cut back to the start of their unit, so a function that
+    /// counts elapsed units and one that counts boundaries agree. `None`
+    /// for `DATE_DIFF('unit', start, end)`.
+    fn date_diff(&self, _unit: IntervalUnit, _start: &str, _end: &str) -> Result<Option<String>> {
+        Ok(None)
+    }
+    /// The timestamp `micros` (compiled, a BIGINT) microseconds after
+    /// 1970-01-01 00:00:00, without a time zone and whatever the session's
+    /// is. `None` for `MAKE_TIMESTAMP(micros)`.
+    fn timestamp_from_micros(&self, _micros: &str) -> Result<Option<String>> {
         Ok(None)
     }
     /// The number of distinct rows, a row being `columns` (compiled).

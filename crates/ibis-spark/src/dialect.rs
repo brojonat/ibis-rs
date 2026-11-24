@@ -147,6 +147,16 @@ impl Dialect for SparkDialect {
         })
     }
 
+    fn date_diff(&self, unit: ibis_core::IntervalUnit, start: &str, end: &str) -> Result<Option<String>> {
+        if unit == ibis_core::IntervalUnit::Nanosecond {
+            return unsupported("a delta in nanoseconds");
+        }
+        Ok(Some(format!("TIMESTAMPDIFF({}, {start}, {end})", ibis_sql::interval_unit_name(unit))))
+    }
+    /// `TIMESTAMP_MICROS` gives a moment in the session's zone.
+    fn timestamp_from_micros(&self, micros: &str) -> Result<Option<String>> {
+        Ok(Some(format!("TIMESTAMPADD(MICROSECOND, {micros}, TIMESTAMP_NTZ'1970-01-01 00:00:00')")))
+    }
     /// A struct is a value even where a field of it is NULL.
     fn count_distinct_rows(&self, columns: &[String], condition: Option<&str>, tail: &str) -> Result<Option<String>> {
         Ok(match condition {
@@ -211,6 +221,11 @@ impl Dialect for SparkDialect {
         };
         let int = |s: String| format!("CAST({s} AS INT)");
         Ok(match f {
+            Func::IsoYear => Some(int(format!("EXTRACT(YEAROFWEEK FROM {})", a(0)?))),
+            // UNIX_TIMESTAMP reads its argument in the session's zone
+            Func::EpochSeconds => {
+                Some(int(format!("TIMESTAMPDIFF(SECOND, TIMESTAMP_NTZ'1970-01-01 00:00:00', {})", a(0)?)))
+            }
             Func::StartsWith => Some(format!("STARTSWITH({}, {})", a(0)?, a(1)?)),
             Func::EndsWith => Some(format!("ENDSWITH({}, {})", a(0)?, a(1)?)),
             Func::Contains => Some(format!("CONTAINS({}, {})", a(0)?, a(1)?)),

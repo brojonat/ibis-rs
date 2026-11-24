@@ -641,6 +641,10 @@ impl ExprCompiler<'_> {
             }
             Expr::Literal(v, t) => self.literal(v, t)?,
             Expr::Alias(e, _) => self.sql(e)?,
+            // a number as a timestamp is that many seconds since 1970
+            Expr::Cast(e, DataType::Timestamp { .. }) if self.dtype(e)?.is_numeric() => {
+                self.sql(&e.as_ref().clone().as_timestamp(IntervalUnit::Second))?
+            }
             Expr::Cast(e, t) => match d.cast(self, e, t)? {
                 Some(s) => s,
                 None => format!("CAST({} AS {})", self.sql(e)?, d.cast_type_name(t)?),
@@ -1059,6 +1063,24 @@ impl ExprCompiler<'_> {
             Millisecond => int(format!("{} % 1000", bigint(format!("FLOOR(EXTRACT(MILLISECOND FROM {x}))"))?))?,
             Microsecond => int(format!("{} % 1000000", bigint(format!("FLOOR(EXTRACT(MICROSECOND FROM {x}))"))?))?,
             WeekOfYear => int(format!("EXTRACT(WEEK FROM {x})"))?,
+            IsoYear => int(format!("ISOYEAR({x})"))?,
+            EpochSeconds => int(format!("FLOOR(EPOCH({x}))"))?,
+            Delta => {
+                let (unit, start, end) = ibis_core::expr::delta_ends(args)?;
+                let (start, end) = (self.sql(&start)?, self.sql(&end)?);
+                match self.d.date_diff(unit, &start, &end)? {
+                    Some(s) => s,
+                    None => format!("DATE_DIFF('{}', {start}, {end})", interval_unit_name(unit)),
+                }
+            }
+            TimestampFromEpoch => {
+                let unit = ibis_core::expr::unit_arg(&args[1])?;
+                let micros = self.sql(&ibis_core::expr::epoch_micros(&args[0], &self.dtype(&args[0])?, unit)?)?;
+                match self.d.timestamp_from_micros(&micros)? {
+                    Some(s) => s,
+                    None => format!("MAKE_TIMESTAMP({micros})"),
+                }
+            }
             DayOfWeekName => format!("DAYNAME({x})"),
             Truncate => {
                 let unit = match Self::lit_str(&args[1]) {

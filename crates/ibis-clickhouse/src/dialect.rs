@@ -155,6 +155,8 @@ impl Dialect for ClickHouseDialect {
         };
         let int = |s: String| cast(s, DataType::Int32);
         Ok(match f {
+            Func::IsoYear => return int(format!("toISOYear({})", a(0)?)),
+            Func::EpochSeconds => return int(format!("toRelativeSecondNum({})", a(0)?)),
             Func::Length => return int(format!("lengthUTF8({})", a(0)?)),
             Func::Reverse => Some(format!("reverseUTF8({})", a(0)?)),
             Func::StartsWith => Some(format!("startsWith({}, {})", a(0)?, a(1)?)),
@@ -242,6 +244,14 @@ impl Dialect for ClickHouseDialect {
         })
     }
 
+    fn date_diff(&self, unit: ibis_core::IntervalUnit, start: &str, end: &str) -> Result<Option<String>> {
+        let unit = ibis_sql::interval_unit_name(unit).to_lowercase();
+        Ok(Some(format!("dateDiff('{unit}', {start}, {end})")))
+    }
+    /// In UTC, whatever zone the server is in.
+    fn timestamp_from_micros(&self, micros: &str) -> Result<Option<String>> {
+        Ok(Some(format!("fromUnixTimestamp64Micro({micros}, 'UTC')")))
+    }
     /// `moment + toIntervalDay(count)`: the functions take a count that is
     /// not a literal, which `INTERVAL n DAY` does not everywhere.
     fn date_shift(

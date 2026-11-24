@@ -216,6 +216,18 @@ pub enum Func {
     Microsecond,
     /// ISO 8601 week number, 1-53.
     WeekOfYear,
+    /// The year the ISO 8601 week belongs to: 2021 for January 1, 2022.
+    IsoYear,
+    /// Whole seconds since 1970-01-01 00:00:00.
+    EpochSeconds,
+    /// `delta(end, start, unit)`: how many times the unit turns over from
+    /// `start` to `end` (23:59 to 00:01 is one day). The unit is an
+    /// `IntervalUnit`'s short name.
+    Delta,
+    /// `timestamp_from_epoch(x, unit)`: the moment `x` seconds (`s`),
+    /// milliseconds (`ms`), microseconds (`us`) or nanoseconds (`ns`)
+    /// after 1970-01-01 00:00:00.
+    TimestampFromEpoch,
     /// English day name, e.g. "Tuesday".
     DayOfWeekName,
     /// `truncate(x, unit)`: round down to the start of the unit. Units are
@@ -1088,6 +1100,30 @@ impl Expr {
     /// ISO 8601 week number.
     pub fn week_of_year(self) -> Expr {
         func(Func::WeekOfYear, vec![self])
+    }
+    /// The year of the ISO 8601 week: not the calendar year around New Year.
+    pub fn iso_year(self) -> Expr {
+        func(Func::IsoYear, vec![self])
+    }
+    /// Whole seconds since 1970-01-01 00:00:00.
+    pub fn epoch_seconds(self) -> Expr {
+        func(Func::EpochSeconds, vec![self])
+    }
+    /// Days since 1970-01-01 (Ibis `epoch_days`).
+    pub fn epoch_days(self) -> Expr {
+        self.delta(date("1970-01-01"), IntervalUnit::Day)
+    }
+    /// How many times `unit` turns over from `other` to this date or
+    /// timestamp (Ibis `delta`): from 23:59 to 00:01 the next day is one
+    /// day, and two minutes.
+    pub fn delta(self, other: impl Into<Expr>, unit: IntervalUnit) -> Expr {
+        func(Func::Delta, vec![self, other.into(), lit(unit.short())])
+    }
+    /// This number as a moment: `unit` (seconds to nanoseconds) since
+    /// 1970-01-01 00:00:00 (Ibis `as_timestamp(unit)`). A cast of a number
+    /// to a timestamp counts seconds.
+    pub fn as_timestamp(self, unit: IntervalUnit) -> Expr {
+        func(Func::TimestampFromEpoch, vec![self, lit(unit.short())])
     }
     /// The date part of a timestamp, or a string parsed as an ISO date.
     pub fn date(self) -> Expr {
@@ -1993,6 +2029,44 @@ impl Expr {
     }
 }
 
+/// The unit a temporal function carries as an argument (`delta`,
+/// `as_timestamp`): an `IntervalUnit`'s short name.
+pub fn unit_arg(e: &Expr) -> Result<IntervalUnit> {
+    match e {
+        Expr::Literal(Value::String(unit), _) => unit.parse(),
+        other => invalid(format!("{other} is not a unit of time")),
+    }
+}
+
+/// `x` (of type `t`), a count of `unit`s since 1970, as a count of
+/// microseconds: what `as_timestamp` compiles from on every backend.
+pub fn epoch_micros(x: &Expr, t: &DataType, unit: IntervalUnit) -> Result<Expr> {
+    let whole = || x.clone().cast(DataType::Int64);
+    let scaled = |by: i64| match t.is_integer() {
+        true => whole() * by,
+        false => (x.clone().cast(DataType::Float64) * by as f64).floor(),
+    };
+    Ok(match unit {
+        IntervalUnit::Second => scaled(1_000_000),
+        IntervalUnit::Millisecond => scaled(1_000),
+        IntervalUnit::Microsecond => whole(),
+        IntervalUnit::Nanosecond => whole().floordiv(1_000),
+        other => return invalid(format!("a timestamp counts seconds or finer since 1970, not {other:?}s")),
+    })
+}
+
+/// The arguments of a `delta` as its unit and its two ends, start first,
+/// each cut back to the start of the unit: the whole units between those
+/// are the times the unit turns over.
+pub fn delta_ends(args: &[Expr]) -> Result<(IntervalUnit, Expr, Expr)> {
+    let unit = unit_arg(&args[2])?;
+    let cut = |e: &Expr| match unit {
+        IntervalUnit::Microsecond | IntervalUnit::Nanosecond => e.clone(),
+        unit => e.clone().truncate(unit.short()),
+    };
+    Ok((unit, cut(&args[1]), cut(&args[0])))
+}
+
 /// What `+` and `*` mean on arrays and maps, as a function call: arrays
 /// concatenate and repeat, maps merge. `None` for every other operand type.
 pub fn nested_binary(op: BinaryOp, l: &Expr, r: &Expr, lt: &DataType, rt: &DataType) -> Option<Expr> {
@@ -2063,8 +2137,18 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
         Find => T::Int64,
         Coalesce => ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?,
         NullIf => first,
+        Delta => match (&first, ts.get(1)) {
+            (T::Date, Some(T::Date)) | (T::Timestamp { .. }, Some(T::Timestamp { .. })) => T::Int64,
+            (a, b) => return invalid(format!("delta needs two dates or two timestamps, got {a} and {b:?}")),
+        },
+        TimestampFromEpoch => {
+            if !first.is_numeric() && first != T::Null {
+                return invalid(format!("a timestamp is a number of seconds since 1970, got {first}"));
+            }
+            T::Timestamp { tz: None }
+        }
         Year | Month | Day | Hour | Minute | Second | DayOfWeekIndex | DayOfYear | Quarter | Millisecond
-        | Microsecond | WeekOfYear | DayOfWeekName | Truncate | Strftime => {
+        | Microsecond | WeekOfYear | IsoYear | EpochSeconds | DayOfWeekName | Truncate | Strftime => {
             if !first.is_temporal() && first != T::Null {
                 return invalid(format!("{f:?} needs a date or timestamp, got {first}"));
             }

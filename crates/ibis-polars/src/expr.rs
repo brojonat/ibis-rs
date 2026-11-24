@@ -180,6 +180,15 @@ impl Tx<'_> {
             }
             Expr::Literal(v, t) => literal(v, t)?,
             Expr::Alias(inner, _) => self.expr(inner)?,
+            // a number as a timestamp is that many seconds since 1970
+            Expr::Cast(inner, DataType::Timestamp { .. }) if self.dtype(inner)?.is_numeric() => {
+                self.expr(&inner.as_ref().clone().as_timestamp(ibis_core::IntervalUnit::Second))?
+            }
+            // a cast reads no fraction of a second; `to_datetime` works out the format
+            Expr::Cast(inner, DataType::Timestamp { tz: None }) if self.dtype(inner)? == DataType::String => {
+                let options = pl::StrptimeOptions { strict: false, ..Default::default() };
+                self.expr(inner)?.str().to_datetime(Some(pl::TimeUnit::Microseconds), None, options, pl::lit("raise"))
+            }
             Expr::Cast(inner, t) => self.expr(inner)?.cast(to_pl(t)),
             Expr::Unary(op, inner) => {
                 let a = self.expr(inner)?;
@@ -456,6 +465,43 @@ impl Tx<'_> {
             DayOfYear => x.dt().ordinal_day().cast(t),
             Quarter => x.dt().quarter().cast(t),
             WeekOfYear => x.dt().week().cast(t),
+            IsoYear => x.dt().iso_year().cast(t),
+            EpochSeconds => {
+                let micros = x.cast(pl::DataType::Datetime(pl::TimeUnit::Microseconds, None)).cast(pl::DataType::Int64);
+                micros.floor_div(pl::lit(1_000_000i64)).cast(t)
+            }
+            Delta => {
+                use ibis_core::IntervalUnit::*;
+                let (unit, start, end) = ibis_core::expr::delta_ends(args)?;
+                let (start, end) = (self.expr(&start)?, self.expr(&end)?);
+                let months = || {
+                    let part = |x: &pl::Expr| {
+                        x.clone().dt().year().cast(pl::DataType::Int64) * pl::lit(12)
+                            + x.clone().dt().month().cast(pl::DataType::Int64)
+                    };
+                    part(&end) - part(&start)
+                };
+                let between = || (end.clone() - start.clone()).dt();
+                match unit {
+                    Year => months().floor_div(pl::lit(12)),
+                    Quarter => months().floor_div(pl::lit(3)),
+                    Month => months(),
+                    Week => between().total_days(false).floor_div(pl::lit(7)),
+                    Day => between().total_days(false),
+                    Hour => between().total_hours(false),
+                    Minute => between().total_minutes(false),
+                    Second => between().total_seconds(false),
+                    Millisecond => between().total_milliseconds(false),
+                    Microsecond => between().total_microseconds(false),
+                    Nanosecond => between().total_nanoseconds(false),
+                }
+                .cast(t)
+            }
+            TimestampFromEpoch => {
+                let unit = ibis_core::expr::unit_arg(&args[1])?;
+                let micros = ibis_core::expr::epoch_micros(&args[0], &self.dtype(&args[0])?, unit)?;
+                self.expr(&micros)?.cast(t)
+            }
             Truncate => {
                 let every = match args.get(1).and_then(lit_str) {
                     Some("Y") => "1y",

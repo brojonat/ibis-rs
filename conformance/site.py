@@ -146,7 +146,7 @@ def client_cases(repo: str, ids: list[str], mine: dict[str, dict[str, list[dict]
     test_aggregation) to `mine`. They have no Python side: results ids are
     `client::<module>::<pytest id>`."""
     src = "crates/ibis-conformance/src"
-    by_module = {"test_dot_sql": "dot_sql.rs", "test_aggregation": "reductions.rs"}
+    by_module = {"test_dot_sql": "dot_sql.rs", "test_aggregation": "reductions.rs", "test_temporal": "moments.rs"}
     files = {name: (ROOT / src / name).read_text().splitlines() for name in ("client.rs", *by_module.values())}
     for case_id in ids:
         _, module, test_id = case_id.split("::", 2)

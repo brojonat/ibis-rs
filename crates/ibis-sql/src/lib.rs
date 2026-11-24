@@ -349,6 +349,21 @@ mod tests {
     }
 
     #[test]
+    fn a_number_cast_to_a_timestamp_counts_seconds_since_1970() {
+        use ibis_core::IntervalUnit::*;
+        let schema = Schema::of(&[("ts", DataType::Timestamp { tz: None }), ("n", DataType::Int32)]);
+        let t = Table::named("e", schema);
+        let one = |e: Expr| compile(&GenericDialect, &t.select([e.name("x")]).unwrap()).unwrap();
+        let cast = one(col("n").cast(DataType::Timestamp { tz: None }));
+        assert!(cast.contains(r#"MAKE_TIMESTAMP((CAST(t0."n" AS BIGINT) * 1000000))"#), "{cast}");
+        assert_eq!(cast, one(col("n").as_timestamp(Second)));
+        // a delta counts whole units between the two ends cut back to the unit's start
+        let delta = one(col("ts").delta(timestamp("2020-01-01 00:00:00"), Hour));
+        assert!(delta.contains(r#"DATE_DIFF('HOUR', DATE_TRUNC('hour', "#), "{delta}");
+        assert!(delta.contains(r#", DATE_TRUNC('hour', t0."ts"))"#), "{delta}");
+    }
+
+    #[test]
     fn a_constant_group_key_is_named_by_its_place() {
         let q = t().group_by([lit("a").name("key"), col("a")]).agg([count().name("n")]).unwrap();
         let sql = sql(&q);

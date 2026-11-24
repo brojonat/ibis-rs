@@ -124,6 +124,18 @@ impl Dialect for TrinoDialect {
             Some(_) => None,
         })
     }
+    fn date_diff(&self, unit: ibis_core::IntervalUnit, start: &str, end: &str) -> Result<Option<String>> {
+        use ibis_core::IntervalUnit::*;
+        if let Microsecond | Nanosecond = unit {
+            return unsupported("a delta finer than milliseconds");
+        }
+        let unit = ibis_sql::interval_unit_name(unit).to_lowercase();
+        Ok(Some(format!("DATE_DIFF('{unit}', {start}, {end})")))
+    }
+    /// `FROM_UNIXTIME_NANOS` gives a moment with a zone: its UTC wall clock.
+    fn timestamp_from_micros(&self, micros: &str) -> Result<Option<String>> {
+        Ok(Some(format!("CAST(FROM_UNIXTIME_NANOS(({micros}) * 1000) AT TIME ZONE 'UTC' AS TIMESTAMP(6))")))
+    }
     /// `DATE_ADD('day', count, moment)`: it takes any count, and a date
     /// stays a date. It has no unit finer than the millisecond.
     fn date_shift(
@@ -180,6 +192,9 @@ impl Dialect for TrinoDialect {
         let a = |i: usize| c.sql(&args[i]);
         let int = |s: String| format!("CAST({s} AS INTEGER)");
         Ok(match f {
+            Func::IsoYear => Some(int(format!("YEAR_OF_WEEK({})", a(0)?))),
+            // TO_UNIXTIME reads a timestamp in the session's zone
+            Func::EpochSeconds => Some(int(format!("DATE_DIFF('second', TIMESTAMP '1970-01-01 00:00:00', {})", a(0)?))),
             Func::Repeat => Some(format!("ARRAY_JOIN(REPEAT({}, {}), '')", a(0)?, a(1)?)),
             // no RIGHT; a negative SUBSTR start past the beginning gives ''
             Func::Right => {

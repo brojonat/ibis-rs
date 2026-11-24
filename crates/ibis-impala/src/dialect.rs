@@ -105,6 +105,12 @@ impl Dialect for ImpalaDialect {
         let a = |i: usize| c.sql(&args[i]);
         let int = |s: String| format!("CAST({s} AS INT)");
         Ok(match f {
+            // the year of the Thursday of the week (DAYOFWEEK: Sunday is 1)
+            Func::IsoYear => {
+                let x = a(0)?;
+                Some(int(format!("YEAR(DAYS_ADD({x}, 3 - PMOD(DAYOFWEEK({x}) + 5, 7)))")))
+            }
+            Func::EpochSeconds => Some(int(format!("UNIX_TIMESTAMP({})", a(0)?))),
             Func::StartsWith => Some(format!("(STRLEFT({x}, LENGTH({p})) = {p})", x = a(0)?, p = a(1)?)),
             Func::EndsWith => Some(format!("(STRRIGHT({x}, LENGTH({p})) = {p})", x = a(0)?, p = a(1)?)),
             Func::Contains => Some(format!("(LOCATE({}, {}) > 0)", a(1)?, a(0)?)),
@@ -195,6 +201,29 @@ impl Dialect for ImpalaDialect {
             None => columns.to_vec(),
         };
         Ok(Some(format!("COUNT(DISTINCT {}){tail}", columns.join(", "))))
+    }
+    /// `DATEDIFF` counts days and `INT_MONTHS_BETWEEN` months; shorter
+    /// units come from the seconds between the two.
+    fn date_diff(&self, unit: ibis_core::IntervalUnit, start: &str, end: &str) -> Result<Option<String>> {
+        use ibis_core::IntervalUnit::*;
+        let months = format!("INT_MONTHS_BETWEEN({end}, {start})");
+        let days = format!("DATEDIFF({end}, {start})");
+        let seconds = format!("(UNIX_TIMESTAMP({end}) - UNIX_TIMESTAMP({start}))");
+        let count = match unit {
+            Year => format!("{months} DIV 12"),
+            Quarter => format!("{months} DIV 3"),
+            Month => months,
+            Week => format!("{days} DIV 7"),
+            Day => days,
+            Hour => format!("{seconds} DIV 3600"),
+            Minute => format!("{seconds} DIV 60"),
+            Second => seconds,
+            _ => return unsupported("a delta finer than seconds"),
+        };
+        Ok(Some(format!("CAST({count} AS BIGINT)")))
+    }
+    fn timestamp_from_micros(&self, micros: &str) -> Result<Option<String>> {
+        Ok(Some(format!("MICROSECONDS_ADD(CAST('1970-01-01' AS TIMESTAMP), {micros})")))
     }
     /// `moment + INTERVAL count DAYS`; a date moved is a timestamp.
     fn date_shift(
