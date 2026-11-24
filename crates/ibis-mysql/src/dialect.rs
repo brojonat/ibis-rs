@@ -193,10 +193,22 @@ impl Dialect for MySqlDialect {
             AggFunc::BitAnd => Some(format!("CAST(BIT_AND({}){tail} AS SIGNED)", c.sql(x)?)),
             AggFunc::BitOr => Some(format!("CAST(BIT_OR({}){tail} AS SIGNED)", c.sql(x)?)),
             AggFunc::BitXor => Some(format!("CAST(BIT_XOR({}){tail} AS SIGNED)", c.sql(x)?)),
+            // no arrays to gather values into
+            AggFunc::Collect => return unsupported("collect"),
             _ => None,
         })
     }
 
+    /// Several arguments to one `COUNT(DISTINCT ...)`: a row with a NULL in
+    /// some column is not counted, so a row failing the condition is made
+    /// all NULLs.
+    fn count_distinct_rows(&self, columns: &[String], condition: Option<&str>, tail: &str) -> Result<Option<String>> {
+        let columns: Vec<String> = match condition {
+            Some(c) => columns.iter().map(|x| format!("CASE WHEN {c} THEN {x} END")).collect(),
+            None => columns.to_vec(),
+        };
+        Ok(Some(format!("COUNT(DISTINCT {}){tail}", columns.join(", "))))
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,

@@ -339,6 +339,8 @@ pub const TRUNCATE_UNITS: [&str; 10] = ["Y", "Q", "M", "W", "D", "h", "m", "s", 
 pub enum AggFunc {
     /// COUNT(*) over the relation (no argument).
     CountStar,
+    /// The number of distinct rows.
+    CountDistinctStar,
     /// Non-null count.
     Count,
     CountDistinct,
@@ -583,6 +585,12 @@ pub fn null(dtype: DataType) -> Expr {
 /// Number of rows (Ibis `t.count()`).
 pub fn count() -> Expr {
     Expr::Agg { func: AggFunc::CountStar, arg: None, filter: None, options: AggOptions::default() }
+}
+
+/// Number of distinct rows (Ibis `t.nunique()`): rows that differ in some
+/// column.
+pub fn nunique() -> Expr {
+    Expr::Agg { func: AggFunc::CountDistinctStar, arg: None, filter: None, options: AggOptions::default() }
 }
 
 /// 0-based row number; use with `.over(...)`.
@@ -1266,6 +1274,27 @@ impl Expr {
             other => other,
         }
     }
+    /// Keep NULLs as values (Ibis `include_null=True`): `first` and `last`
+    /// may then be NULL, and `collect` gathers the NULLs too.
+    pub fn include_null(self) -> Expr {
+        match self {
+            Expr::Agg { func, arg, filter, mut options } => {
+                options.include_null = true;
+                Expr::Agg { func, arg, filter, options }
+            }
+            other => other,
+        }
+    }
+    /// Each value once (Ibis `collect(distinct=True)`).
+    pub fn distinct(self) -> Expr {
+        match self {
+            Expr::Agg { func, arg, filter, mut options } => {
+                options.distinct = true;
+                Expr::Agg { func, arg, filter, options }
+            }
+            other => other,
+        }
+    }
     /// The value below which the fraction `q` of the values lie (0.5: the
     /// median). Between two numbers it is interpolated.
     pub fn quantile(self, q: f64) -> Expr {
@@ -1381,12 +1410,19 @@ impl Expr {
                     spec.frame = w.frame.clone().or(spec.frame);
                     Expr::Window(f, spec)
                 }
-                // the first value of a frame is the frame's, not the first that is not NULL
+                // The first value of a frame is the frame's, not the first
+                // that is not NULL. Its own order comes after the window's.
                 Expr::Agg { func: func @ (AggFunc::First | AggFunc::Last), arg: Some(arg), filter: None, options }
-                    if options.is_plain() =>
+                    if options.args.is_empty() && !options.distinct =>
                 {
                     let value = if func == AggFunc::First { Analytic::FirstValue } else { Analytic::LastValue };
-                    Expr::Window(Box::new(Expr::Analytic(value, vec![*arg])), w.clone())
+                    let mut w = w.clone();
+                    for k in options.order_by {
+                        if !w.order_by.iter().any(|o| o.expr == k.expr) {
+                            w.order_by.push(k);
+                        }
+                    }
+                    Expr::Window(Box::new(Expr::Analytic(value, vec![*arg])), w)
                 }
                 e @ (Expr::Agg { .. } | Expr::Analytic(..)) => Expr::Window(Box::new(e), w.clone()),
                 e if windowable(&e) => e.map_children(&mut |c| Ok(go(c, w))).expect("infallible"),
@@ -1783,7 +1819,7 @@ impl Expr {
                         }
                         T::Float64
                     }
-                    (CountStar | Count | CountDistinct, _) => T::Int64,
+                    (CountStar | CountDistinctStar | Count | CountDistinct, _) => T::Int64,
                     (Sum, Some(t)) if t.is_integer() || t == T::Boolean => T::Int64,
                     (Sum, Some(t)) if t.is_floating() => T::Float64,
                     (Sum, Some(T::Decimal { scale, .. })) => T::Decimal { precision: 38, scale },

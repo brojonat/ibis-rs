@@ -118,6 +118,12 @@ impl Dialect for TrinoDialect {
         }
     }
 
+    fn count_distinct_rows(&self, columns: &[String], condition: Option<&str>, tail: &str) -> Result<Option<String>> {
+        Ok(match condition {
+            None => Some(format!("COUNT(DISTINCT ROW({})){tail}", columns.join(", "))),
+            Some(_) => None,
+        })
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,
@@ -134,6 +140,10 @@ impl Dialect for TrinoDialect {
                 let ordered = format!("{}{}", c.sql(arg)?, c.agg_order(options)?);
                 Ok(Some(format!("ARRAY_JOIN(ARRAY_AGG({ordered}){tail}, {})", other()?)))
             }
+            // the ends of the values gathered, NULLs among them if they are kept
+            AggFunc::First => Ok(Some(format!("ELEMENT_AT(ARRAY_AGG({}){tail}, 1)", c.ordered(arg, options)?))),
+            AggFunc::Last => Ok(Some(format!("ELEMENT_AT(ARRAY_AGG({}){tail}, -1)", c.ordered(arg, options)?))),
+            AggFunc::Collect => Ok(Some(format!("ARRAY_AGG({}){tail}", c.ordered(arg, options)?))),
             // approximate only (Ibis: "backend implements approximate quantiles")
             AggFunc::ApproxQuantile => {
                 let x = arg.clone().cast(DataType::Float64);

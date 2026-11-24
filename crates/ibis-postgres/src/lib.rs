@@ -174,13 +174,9 @@ impl Dialect for PostgresDialect {
             AggFunc::BitAnd => Some(inner("BIT_AND")?),
             AggFunc::BitOr => Some(inner("BIT_OR")?),
             AggFunc::BitXor => Some(inner("BIT_XOR")?),
-            AggFunc::Arbitrary => Some(inner("ANY_VALUE")?),
+            AggFunc::Arbitrary => Some(format!("ANY_VALUE({}){filter}", c.sql(x)?)),
             // no FIRST or LAST: the ends of the values gathered
-            AggFunc::First => Some(format!("({})[1]", inner("ARRAY_AGG")?)),
-            AggFunc::Last => {
-                let values = inner("ARRAY_AGG")?;
-                Some(format!("({values})[ARRAY_LENGTH({values}, 1)]"))
-            }
+            AggFunc::First | AggFunc::Last => Some(ends(f, &format!("ARRAY_AGG({}){filter}", c.sql(x)?))),
             _ => None,
         })
     }
@@ -199,6 +195,10 @@ impl Dialect for PostgresDialect {
             }
             AggFunc::Quantile => Ok(Some(c.percentile(arg, options, tail)?)),
             AggFunc::GroupConcat => Ok(Some(c.string_agg(arg, options, tail)?)),
+            AggFunc::First | AggFunc::Last => {
+                Ok(Some(ends(f, &format!("ARRAY_AGG({}){tail}", c.ordered(arg, options)?))))
+            }
+            AggFunc::Collect => Ok(Some(format!("ARRAY_AGG({}){tail}", c.ordered(arg, options)?))),
             // exact: Postgres has no approximate quantile
             AggFunc::ApproxQuantile => Ok(Some(c.percentile(arg, options, tail)?)),
             _ => c.standard_reduction(f, arg, options, tail),
@@ -208,6 +208,15 @@ impl Dialect for PostgresDialect {
 
 /// A C `strftime` pattern as a Postgres `TO_CHAR` template. Literal text is
 /// double-quoted so letters in it aren't read as template patterns.
+/// The first or the last of `values`, an `ARRAY_AGG(...)` call: Postgres
+/// has no FIRST or LAST.
+fn ends(f: AggFunc, values: &str) -> String {
+    match f {
+        AggFunc::First => format!("({values})[1]"),
+        _ => format!("({values})[ARRAY_LENGTH({values}, 1)]"),
+    }
+}
+
 fn to_char_format(fmt: &str) -> Result<String> {
     let mut out = String::new();
     let mut text = String::new();

@@ -56,6 +56,10 @@ impl Dialect for DuckDbDialect {
             }
             AggFunc::Quantile => Ok(Some(c.percentile(arg, options, tail)?)),
             AggFunc::GroupConcat => Ok(Some(c.string_agg(arg, options, tail)?)),
+            // FIRST and LAST take a NULL for a value like any other
+            AggFunc::First => Ok(Some(format!("FIRST({}){tail}", c.ordered(arg, options)?))),
+            AggFunc::Last => Ok(Some(format!("LAST({}){tail}", c.ordered(arg, options)?))),
+            AggFunc::Collect => Ok(Some(format!("ARRAY_AGG({}){tail}", c.ordered(arg, options)?))),
             // a number of the column's type; Ibis's is a float
             AggFunc::ApproxQuantile => {
                 let (x, mut q) = (c.sql(arg)?, c.sql(&options.args[0])?);

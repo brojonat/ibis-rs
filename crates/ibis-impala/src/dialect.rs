@@ -181,10 +181,21 @@ impl Dialect for ImpalaDialect {
             AggFunc::All => Some(format!("MIN({}){tail}", c.sql(x)?)),
             AggFunc::ApproxCountDistinct => c.call_agg("NDV", x, tail)?,
             AggFunc::ApproxMedian => c.call_agg("APPX_MEDIAN", x, tail)?,
+            // no arrays to gather values into
+            AggFunc::Collect => return unsupported("collect"),
             _ => None,
         })
     }
 
+    /// Several arguments to one `COUNT(DISTINCT ...)`, as in Ibis; a row
+    /// failing the condition is made all NULLs.
+    fn count_distinct_rows(&self, columns: &[String], condition: Option<&str>, tail: &str) -> Result<Option<String>> {
+        let columns: Vec<String> = match condition {
+            Some(c) => columns.iter().map(|x| format!("CASE WHEN {c} THEN {x} END")).collect(),
+            None => columns.to_vec(),
+        };
+        Ok(Some(format!("COUNT(DISTINCT {}){tail}", columns.join(", "))))
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,

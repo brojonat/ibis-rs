@@ -526,8 +526,34 @@ impl Tx<'_> {
             // max/min of booleans: NULL for no rows, where any()/all() would say false/true
             Any => x.max(),
             All => x.min(),
-            // SQL's ARRAY_AGG of no rows is NULL
-            Collect => some(&x, x.clone().filter(x.clone().is_not_null()).implode(false)),
+            CountDistinctStar => {
+                let row = pl::as_struct(self.schema.names().map(pl::col).collect::<Vec<_>>());
+                match pred {
+                    Some(p) => row.filter(p).n_unique(),
+                    None => row.n_unique(),
+                }
+            }
+            First | Last | Collect => {
+                // the values that count, in the order they are read in
+                let present = x.clone().is_not_null();
+                let keep = |e: pl::Expr| if options.include_null { e } else { e.filter(present.clone()) };
+                let mut values = keep(x.clone());
+                let any = values.clone().len().gt(pl::lit(0));
+                if !options.order_by.is_empty() {
+                    let (keys, order) = self.agg_order(options, &pred, keep)?;
+                    values = values.sort_by(keys, order);
+                }
+                if options.distinct {
+                    values = values.unique_stable();
+                }
+                match func {
+                    First => values.first(),
+                    Last => values.last(),
+                    // SQL's ARRAY_AGG of no rows is NULL
+                    // Told the order does not matter, Polars drops the sort before it
+                    _ => pl::when(any).then(values.implode(!options.order_by.is_empty())).otherwise(null()),
+                }
+            }
             Mode => x.drop_nulls().mode(true).first(),
             // Fisher's definition (0 for a normal distribution), as pandas and DuckDB compute it
             KurtosisSamp => f64_of(x).kurtosis(true, false),
@@ -537,8 +563,7 @@ impl Tx<'_> {
             BitAnd => x.bitwise_and(),
             BitOr => x.bitwise_or(),
             BitXor => x.bitwise_xor(),
-            Arbitrary | First => x.drop_nulls().first(),
-            Last => x.drop_nulls().last(),
+            Arbitrary => x.drop_nulls().first(),
             Median | ApproxMedian => x.median(),
             ArgMin | ArgMax => {
                 // rows with a NULL key do not count; of equal keys the first
@@ -554,21 +579,7 @@ impl Tx<'_> {
                 };
                 let mut strings = x.clone();
                 if !options.order_by.is_empty() {
-                    let keys = options
-                        .order_by
-                        .iter()
-                        .map(|k| {
-                            let key = self.expr(&k.expr)?;
-                            Ok(match &pred {
-                                Some(p) => key.filter(p.clone()),
-                                None => key,
-                            })
-                        })
-                        .collect::<Result<Vec<_>>>()?;
-                    let order = pl::SortMultipleOptions::default()
-                        .with_order_descending_multi(options.order_by.iter().map(|k| !k.ascending).collect::<Vec<_>>())
-                        .with_nulls_last_multi(options.order_by.iter().map(|k| !k.nulls_first).collect::<Vec<_>>())
-                        .with_maintain_order(true);
+                    let (keys, order) = self.agg_order(options, &pred, |key| key)?;
                     strings = strings.sort_by(keys, order);
                 }
                 // no strings: NULL, where joining nothing gives ''
@@ -591,6 +602,29 @@ impl Tx<'_> {
             }
         }
         .cast(t))
+    }
+
+    /// The keys a reduction's rows are ordered by, and how: on the rows
+    /// that pass its condition, and of those the ones `keep` leaves.
+    fn agg_order(
+        &self,
+        options: &AggOptions,
+        pred: &Option<pl::Expr>,
+        keep: impl Fn(pl::Expr) -> pl::Expr,
+    ) -> Result<(Vec<pl::Expr>, pl::SortMultipleOptions)> {
+        let mut keys = vec![];
+        for k in &options.order_by {
+            let key = self.expr(&k.expr)?;
+            keys.push(keep(match pred {
+                Some(p) => key.filter(p.clone()),
+                None => key,
+            }));
+        }
+        let order = pl::SortMultipleOptions::default()
+            .with_order_descending_multi(options.order_by.iter().map(|k| !k.ascending).collect::<Vec<_>>())
+            .with_nulls_last_multi(options.order_by.iter().map(|k| !k.nulls_first).collect::<Vec<_>>())
+            .with_maintain_order(true);
+        Ok((keys, order))
     }
 
     fn window(&self, f: &Expr, spec: &WindowSpec) -> Result<pl::Expr> {

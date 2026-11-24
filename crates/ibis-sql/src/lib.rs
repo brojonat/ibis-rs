@@ -302,6 +302,35 @@ mod tests {
     }
 
     #[test]
+    fn distinct_rows_are_counted_as_tuples() {
+        let q = t().aggregate([nunique().filter_where(col("a").gt(1)).name("n")]).unwrap();
+        assert_eq!(
+            sql(&q),
+            r#"SELECT COUNT(DISTINCT (t0."a", t0."s")) FILTER (WHERE (t0."a" > 1)) AS "n" FROM "t" AS t0"#
+        );
+        // without FILTER the condition is the dialect's to place: a tuple
+        // of NULLs is a value, so the default has no way to leave a row out
+        let err = compile(&Bare, &q).unwrap_err().to_string();
+        assert!(err.contains("count_distinct_star"), "{err}");
+    }
+
+    #[test]
+    fn an_ordered_first_in_a_projection_is_the_first_value_of_a_window() {
+        let q = t().mutate([col("s").first().order_by([col("a").desc()]).name("f")]).unwrap();
+        let sql = sql(&q);
+        let window = r#"FIRST_VALUE(t0."s") OVER (ORDER BY t0."a" DESC NULLS LAST ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)"#;
+        assert!(sql.contains(window), "{sql}");
+        // as a reduction it is the dialect's to write, NULLs kept or not
+        let kept = t().aggregate([col("s").first().include_null().name("f")]).unwrap();
+        let err = compile(&GenericDialect, &kept).unwrap_err().to_string();
+        assert!(err.contains("first"), "{err}");
+        // ... and a condition cannot stand in for FILTER when NULLs count
+        let filtered = t().aggregate([col("s").first().include_null().filter_where(col("a").gt(1)).name("f")]).unwrap();
+        let err = compile(&Bare, &filtered).unwrap_err().to_string();
+        assert!(err.contains("first of NULLs with a condition"), "{err}");
+    }
+
+    #[test]
     fn a_constant_group_key_is_named_by_its_place() {
         let q = t().group_by([lit("a").name("key"), col("a")]).agg([count().name("n")]).unwrap();
         let sql = sql(&q);

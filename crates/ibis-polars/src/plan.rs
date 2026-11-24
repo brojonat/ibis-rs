@@ -403,7 +403,10 @@ impl Planner<'_> {
         let counts = projects.is_empty()
             && matches!(
                 &metrics[0].1,
-                Expr::Agg { func: AggFunc::Count | AggFunc::CountStar | AggFunc::CountDistinct, .. }
+                Expr::Agg {
+                    func: AggFunc::Count | AggFunc::CountStar | AggFunc::CountDistinct | AggFunc::CountDistinctStar,
+                    ..
+                }
             );
         let mut cols: Vec<pl::Expr> = keys.iter().map(|k| pl::col(k.as_str())).collect();
         cols.push(value.alias(column));

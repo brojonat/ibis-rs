@@ -652,6 +652,12 @@ impl ExprCompiler<'_> {
             }
             Expr::Agg { func, arg, filter, options } => {
                 // in a projection a bare reduction is broadcast over all rows
+                if let (true, AggFunc::First | AggFunc::Last, false) =
+                    (self.in_project, func, options.order_by.is_empty())
+                {
+                    // read in an order, it is the first value of an ordered window
+                    return self.sql(&e.clone().over(WindowSpec::new()));
+                }
                 let over = if self.in_project { Some("OVER ()") } else { None };
                 self.agg(*func, arg.as_deref(), filter.as_deref(), options, over)?
             }
@@ -694,20 +700,49 @@ impl ExprCompiler<'_> {
         options: &AggOptions,
         over: Option<&str>,
     ) -> Result<String> {
-        if let (false, Some(a)) = (options.is_plain(), arg) {
-            return self.reduction(func, a, filter, options, over);
+        if func == AggFunc::CountDistinctStar {
+            return self.count_distinct_rows(filter, over);
         }
-        // `collect`, `first` and `last` leave NULLs out: one more condition
-        // on the rows they see
-        if let (AggFunc::Collect | AggFunc::First | AggFunc::Last, Some(a)) = (func, arg) {
-            let present = a.clone().notnull();
-            let filter = match filter {
-                Some(f) => present.and(f.clone()),
-                None => present,
-            };
-            return self.filtered_agg(func, arg, Some(&filter), over);
+        // `collect`, `first` and `last` leave NULLs out unless told to keep
+        // them: one more condition on the rows they see
+        let present;
+        let filter = match (func, arg) {
+            (AggFunc::Collect | AggFunc::First | AggFunc::Last, Some(a)) if !options.include_null => {
+                present = match filter {
+                    Some(f) => a.clone().notnull().and(f.clone()),
+                    None => a.clone().notnull(),
+                };
+                Some(&present)
+            }
+            _ => filter,
+        };
+        match (options.is_plain(), arg) {
+            (false, Some(a)) => self.reduction(func, a, filter, options, over),
+            _ => self.filtered_agg(func, arg, filter, over),
         }
-        self.filtered_agg(func, arg, filter, over)
+    }
+
+    /// The number of distinct rows of the relation (`Dialect::count_distinct_rows`).
+    fn count_distinct_rows(&self, filter: Option<&Expr>, over: Option<&str>) -> Result<String> {
+        let columns = self.schema.names().map(|name| self.sql(&ibis_core::prelude::col(name)));
+        let columns = columns.collect::<Result<Vec<_>>>()?;
+        // the condition goes in FILTER where there is one, else to the dialect
+        let (mut tail, mut condition) = (String::new(), None);
+        if let Some(f) = filter {
+            let f = self.sql(f)?;
+            match self.d.supports_agg_filter(over.is_some()) {
+                true => tail = format!(" FILTER (WHERE {f})"),
+                false => condition = Some(f),
+            }
+        }
+        if let Some(o) = over {
+            tail.push(' ');
+            tail.push_str(o);
+        }
+        match self.d.count_distinct_rows(&columns, condition.as_deref(), &tail)? {
+            Some(s) => Ok(s),
+            None => unsupported(self.d, "count_distinct_star"),
+        }
     }
 
     /// A reduction with more than an argument (`Dialect::reduction`).
@@ -735,6 +770,10 @@ impl ExprCompiler<'_> {
             if self.d.supports_agg_filter(over.is_some()) {
                 tail = format!(" FILTER (WHERE {})", self.sql(f)?);
             } else {
+                if options.include_null {
+                    // a row failing the condition would be a NULL that counts
+                    return unsupported(self.d, format!("{} of NULLs with a condition", snake(&format!("{func:?}"))));
+                }
                 // rows failing the condition become NULL in what the reduction reads
                 let when = |then: Expr| Expr::Case { branches: vec![(f.clone(), then)], default: None };
                 arg = when(arg);
@@ -1024,6 +1063,7 @@ impl ExprCompiler<'_> {
         use AggFunc::*;
         let call = match f {
             CountStar => "COUNT(*)".into(),
+            CountDistinctStar => return unsupported(self.d, "count_distinct_star"),
             Count => format!("COUNT({x})"),
             CountDistinct => format!("COUNT(DISTINCT {x})"),
             Sum => format!("SUM({x})"),
@@ -1082,6 +1122,13 @@ impl ExprCompiler<'_> {
         }
         let keys = options.order_by.iter().map(|k| self.sort_key(k)).collect::<Result<Vec<_>>>()?;
         Ok(format!(" ORDER BY {}", keys.join(", ")))
+    }
+
+    /// `[DISTINCT ]arg[ ORDER BY ...]`: what goes inside the parentheses of
+    /// an aggregate that reads distinct values, or reads them in an order.
+    pub fn ordered(&self, arg: &Expr, options: &AggOptions) -> Result<String> {
+        let distinct = if options.distinct { "DISTINCT " } else { "" };
+        Ok(format!("{distinct}{}{}", self.sql(arg)?, self.agg_order(options)?))
     }
 
     /// `STRING_AGG(arg, separator ORDER BY ...)`, for a dialect's `reduction`.

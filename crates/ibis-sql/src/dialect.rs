@@ -74,6 +74,17 @@ pub trait Dialect: Send + Sync {
     ) -> Result<Option<String>> {
         Ok(None)
     }
+    /// The number of distinct rows, a row being `columns` (compiled).
+    /// `tail` is as for `agg`. `condition` is the rows to count where the
+    /// engine has no `FILTER` to put it in: the default refuses it, since a
+    /// tuple of NULLs is a value and would be counted. `None` where the
+    /// engine cannot count distinct values of more than one column.
+    fn count_distinct_rows(&self, columns: &[String], condition: Option<&str>, tail: &str) -> Result<Option<String>> {
+        Ok(match condition {
+            None => Some(format!("COUNT(DISTINCT ({})){tail}", columns.join(", "))),
+            Some(_) => None,
+        })
+    }
     /// A ranking or offset function over a window. `args` are already
     /// compiled and `over` is the whole `OVER (...)` clause.
     fn analytic(&self, _f: Analytic, _args: &[String], _over: &str) -> Result<Option<String>> {

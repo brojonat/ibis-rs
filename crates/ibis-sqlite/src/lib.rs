@@ -234,6 +234,10 @@ impl Dialect for SqliteDialect {
         })
     }
 
+    /// `COUNT(DISTINCT ...)` takes one argument.
+    fn count_distinct_rows(&self, _: &[String], _: Option<&str>, _: &str) -> Result<Option<String>> {
+        Ok(None)
+    }
     fn agg(&self, c: &ExprCompiler, f: AggFunc, arg: Option<&Expr>, filter: &str) -> Result<Option<String>> {
         Ok(match (f, arg) {
             (AggFunc::Any, Some(x)) => Some(format!("(MAX({}){filter} <> 0)", c.sql(x)?)),
@@ -246,6 +250,8 @@ impl Dialect for SqliteDialect {
             (AggFunc::BitXor, Some(x)) => c.call_agg("ibis_bit_xor", x, filter)?,
             (AggFunc::First | AggFunc::Arbitrary, Some(x)) => c.call_agg("ibis_first", x, filter)?,
             (AggFunc::Last, Some(x)) => c.call_agg("ibis_last", x, filter)?,
+            // no arrays to gather values into
+            (AggFunc::Collect, _) => return Err(Error::Unsupported { backend: "sqlite".into(), op: "collect".into() }),
             _ => None,
         })
     }
@@ -263,11 +269,18 @@ impl Dialect for SqliteDialect {
             return Ok(Some(format!("GROUP_CONCAT({}, {}){tail}", c.sql(arg)?, c.sql(&options.args[0])?)));
         }
         // aggregates this crate registers on the connection (polyfill.rs)
-        let name = match f {
-            AggFunc::ArgMin => "ibis_argmin",
-            AggFunc::ArgMax => "ibis_argmax",
+        let name = match (f, options.include_null) {
+            (AggFunc::ArgMin, _) => "ibis_argmin",
+            (AggFunc::ArgMax, _) => "ibis_argmax",
+            (AggFunc::First, false) => "ibis_first",
+            (AggFunc::First, true) => "ibis_first_null",
+            (AggFunc::Last, false) => "ibis_last",
+            (AggFunc::Last, true) => "ibis_last_null",
             _ => return Ok(None),
         };
+        if let AggFunc::First | AggFunc::Last = f {
+            return Ok(Some(format!("{name}({}){tail}", c.ordered(arg, options)?)));
+        }
         Ok(Some(format!("{name}({}, {}){tail}", c.sql(arg)?, c.sql(&options.args[0])?)))
     }
 }
@@ -479,6 +492,14 @@ mod tests {
         // of 5, 3, 3, 5, 6: AND 0, OR 7, XOR 6
         assert_eq!(got[0], ints([1, 5, 6, 5, 0, 7, 6, 6, 30]));
         assert_eq!(got[1][1..], vec![Value::Null; 8]);
+        // read in an order (SQLite 3.44 and later), NULLs passed over or kept
+        let by_x = || [x().desc()];
+        let ends =
+            [x().first().order_by(by_x()), x().last().order_by(by_x()), x().last().order_by(by_x()).include_null()];
+        let named = ends.into_iter().enumerate().map(|(i, e)| e.name(&format!("c{i}")));
+        let q = con.table("t").unwrap().filter([col("g").eq(1)]).unwrap().aggregate(named).unwrap();
+        let got = batch_to_rows(&con.execute(&q).unwrap()[0]).unwrap();
+        assert_eq!(got[0], [Value::Int(6), Value::Int(3), Value::Null]);
     }
 
     #[test]

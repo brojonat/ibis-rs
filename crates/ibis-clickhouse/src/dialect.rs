@@ -274,6 +274,19 @@ impl Dialect for ClickHouseDialect {
             }
             return Ok(Some(format!("{name}({fractions})({}){tail}", c.sql(arg)?)));
         }
+        if let AggFunc::First | AggFunc::Last | AggFunc::Collect = f {
+            // `any`, `anyLast` and `groupArray` pass over NULLs, and no
+            // aggregate reads its rows in an order
+            let what = if f == AggFunc::Collect { "collect" } else { "first or last" };
+            c.unordered(options, what)?;
+            if options.include_null {
+                return Err(Error::Unsupported { backend: "clickhouse".into(), op: format!("{what} of NULLs") });
+            }
+            return Ok(match f {
+                AggFunc::Collect => Some(format!("groupUniqArray({}){tail}", c.sql(arg)?)),
+                _ => None,
+            });
+        }
         let (x, other) = (c.sql(arg)?, c.sql(&options.args[0])?);
         if f == AggFunc::GroupConcat {
             c.unordered(options, "group_concat")?;

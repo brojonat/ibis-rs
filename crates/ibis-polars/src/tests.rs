@@ -222,6 +222,14 @@ fn collect_gathers_a_group_into_an_array() -> Result<()> {
     // SQL: an aggregate of no rows is NULL
     let none = rows(&con, &t.filter([col("id").gt(lit(100))])?.aggregate([col("id").collect().name("ids")])?)?;
     assert_eq!(none, [vec![Value::Null]]);
+    // in an order, each value once: a sort Polars must not optimize away
+    let ordered = col("k").collect().distinct().order_by([col("k").desc()]);
+    let strings = |v: &[&str]| Value::Array(v.iter().map(|s| Value::from(*s)).collect());
+    assert_eq!(rows(&con, &t.aggregate([ordered.name("ks")])?)?, [vec![strings(&["b", "a"])]]);
+    let ordered = col("id").collect().order_by([col("id").desc()]).include_null();
+    assert_eq!(rows(&con, &t.aggregate([ordered.name("ids")])?)?, [vec![ints(&[4, 3, 2, 1])]]);
+    let last = col("id").last().order_by([col("id").desc()]);
+    assert_eq!(rows(&con, &t.aggregate([last.name("id"), nunique().name("n")])?)?, [vec![1.into(), 4.into()]]);
     Ok(())
 }
 

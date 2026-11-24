@@ -27,7 +27,7 @@ pub mod prelude {
     pub use crate::datatypes::{DataType, Schema};
     pub use crate::expr::{
         Expr, WindowSpec, array, asc, cases, coalesce, col, count, date, date_from_ymd, desc, e, greatest, least, lit,
-        lit_as, map, null, pi, range, row_number, struct_, timestamp, timestamp_from_ymdhms,
+        lit_as, map, null, nunique, pi, range, row_number, struct_, timestamp, timestamp_from_ymdhms,
     };
     pub use crate::table::{How, JoinKind, Table};
     pub use crate::value::Value;
@@ -212,6 +212,14 @@ mod tests {
         // over a window, `first` is the first value of the frame
         let w = WindowSpec::new().order_by([asc(col("id"))]);
         assert!(format!("{:?}", col("int_col").first().over(w)).contains("FirstValue"));
+        // ... read in the reduction's own order, after the window's
+        let w = WindowSpec::new().order_by([asc(col("id"))]);
+        let ordered = format!("{:?}", col("int_col").last().order_by([col("year").desc()]).over(w));
+        assert!(ordered.contains("LastValue") && ordered.contains("year"), "{ordered}");
+        assert_eq!(dtype(nunique()), "int64");
+        assert_eq!(dtype(col("string_col").collect().distinct().include_null()), "array<string>");
+        let kept = format!("{:?}", col("string_col").collect().distinct().include_null());
+        assert!(kept.contains("distinct: true, include_null: true"), "{kept}");
     }
 
     #[test]

@@ -122,8 +122,10 @@ pub fn register(conn: &Connection) -> Result<()> {
     for (name, op) in [("ibis_bit_and", Bits::And), ("ibis_bit_or", Bits::Or), ("ibis_bit_xor", Bits::Xor)] {
         conn.create_aggregate_function(name, 1, DET, op)?;
     }
-    conn.create_aggregate_function("ibis_first", 1, DET, End { last: false })?;
-    conn.create_aggregate_function("ibis_last", 1, DET, End { last: true })?;
+    conn.create_aggregate_function("ibis_first", 1, DET, End { last: false, nulls: false })?;
+    conn.create_aggregate_function("ibis_last", 1, DET, End { last: true, nulls: false })?;
+    conn.create_aggregate_function("ibis_first_null", 1, DET, End { last: false, nulls: true })?;
+    conn.create_aggregate_function("ibis_last_null", 1, DET, End { last: true, nulls: true })?;
     conn.create_aggregate_function("ibis_mode", 1, DET, Mode)?;
     conn.create_aggregate_function("ibis_argmin", 2, DET, ArgEnd { largest: false })?;
     conn.create_aggregate_function("ibis_argmax", 2, DET, ArgEnd { largest: true })?;
@@ -206,9 +208,11 @@ impl Aggregate<Option<i64>, Option<i64>> for Bits {
     }
 }
 
-/// The first or the last value of a group that is not NULL.
+/// The first or the last value of a group: of those that are not NULL,
+/// or of all of them (`nulls`).
 struct End {
     last: bool,
+    nulls: bool,
 }
 
 impl Aggregate<Option<SqlValue>, Option<SqlValue>> for End {
@@ -218,7 +222,7 @@ impl Aggregate<Option<SqlValue>, Option<SqlValue>> for End {
 
     fn step(&self, ctx: &mut Context<'_>, acc: &mut Option<SqlValue>) -> Result<()> {
         let x: SqlValue = ctx.get(0)?;
-        if x != SqlValue::Null && (self.last || acc.is_none()) {
+        if (self.nulls || x != SqlValue::Null) && (self.last || acc.is_none()) {
             *acc = Some(x);
         }
         Ok(())

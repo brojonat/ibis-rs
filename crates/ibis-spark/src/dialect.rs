@@ -147,6 +147,13 @@ impl Dialect for SparkDialect {
         })
     }
 
+    /// A struct is a value even where a field of it is NULL.
+    fn count_distinct_rows(&self, columns: &[String], condition: Option<&str>, tail: &str) -> Result<Option<String>> {
+        Ok(match condition {
+            None => Some(format!("COUNT(DISTINCT STRUCT({})){tail}", columns.join(", "))),
+            Some(_) => None,
+        })
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,
@@ -157,6 +164,22 @@ impl Dialect for SparkDialect {
     ) -> Result<Option<String>> {
         let other = || c.sql(&options.args[0]);
         match f {
+            // the second argument: whether to pass over NULLs
+            AggFunc::First | AggFunc::Last => {
+                c.unordered(options, "first or last")?;
+                let name = if f == AggFunc::First { "FIRST" } else { "LAST" };
+                let skip = if options.include_null { "FALSE" } else { "TRUE" };
+                Ok(Some(format!("{name}({}, {skip}){tail}", c.sql(arg)?)))
+            }
+            AggFunc::Collect => {
+                c.unordered(options, "collect")?;
+                if options.include_null {
+                    // COLLECT_LIST and COLLECT_SET pass over NULLs
+                    return Err(Error::Unsupported { backend: "spark".into(), op: "collect of NULLs".into() });
+                }
+                let name = if options.distinct { "COLLECT_SET" } else { "COLLECT_LIST" };
+                Ok(Some(format!("{name}({}){tail}", c.sql(arg)?)))
+            }
             AggFunc::ArgMin => Ok(Some(format!("MIN_BY({}, {}){tail}", c.sql(arg)?, other()?))),
             AggFunc::ArgMax => Ok(Some(format!("MAX_BY({}, {}){tail}", c.sql(arg)?, other()?))),
             // one number for the sample and for the population
