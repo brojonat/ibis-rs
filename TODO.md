@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 905 Ibis tests (862 expression cases, 43 client tests) + 22 TPC-H queries. DuckDB 905, Polars 896, Trino 892, Spark 891, Postgres 879, ClickHouse 852, Impala 576, MySQL 563, SQLite 562; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 1,137 of 1,722 applicable test ids (66%); per module at https://brojonat.github.io/ibis-rs/
+Current: 1,184 Ibis tests (1,064 expression cases, 120 procedures) + 22 TPC-H queries. DuckDB 1,182, Polars 1,162, Trino 1,156, Postgres 1,154, Spark 1,133, ClickHouse 1,093, SQLite 793, Impala 766, MySQL 757; everything else is an expected failure with its reason in the case file (README has the table).
+Coverage of the Ibis suite: 1,185 of 1,722 applicable test ids (69%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -57,6 +57,12 @@ Coverage of the Ibis suite: 1,137 of 1,722 applicable test ids (66%); per module
   - [x] topk, value_counts, test_filter, test_grouped_case, test_group_by_expr, test_group_by_scalar, test_binds_are_cast, test_empty_sum, test_agg_sort, test_agg_name_in_output_column (13 ids)
   - [ ] Engines that have a reduction Ibis does not use there (Spark `mode`, `bit_and`, kurtosis; ClickHouse `kurtSamp`): today `Unsupported`, as in Ibis
   - [ ] MySQL `BIT_AND` of no rows is all ones, not NULL
+- [x] test_numeric: 154 of 159 applicable ids. Bitwise operators (`bitwise_and`/`or`/`xor`/`not`, `lshift`, `rshift`), `random()`, `histogram(nbins)`, typed and decimal literals, `log` with any base, decimal columns in memtables (48 ids)
+  - [ ] The five left have no DuckDB result to compare with: `test_numeric_literal[float16]` (no such type there or in ibis-rs), `test_decimal_literal[decimal-big]` (precision 76), `[decimal-infinity+]`, `[decimal-infinity-]`, `[decimal-NaN]` (not decimals on DuckDB; a decimal literal is an f64 in ibis-rs, so a `Value::Decimal` comes first)
+  - [ ] A decimal with no precision or scale (Ibis `dt.decimal`): `DataType::Decimal` always has both, so `test_decimal_literal[default]` differs from Ibis in its type (the one expected failure of the schema check)
+  - [ ] `histogram` with a bin width or a base (Ibis `binwidth=`, `base=`)
+  - [ ] ibis-polars: `random()` (needs a source of random numbers per row), `lshift`/`rshift` past bit 62 (they multiply and divide by a power of two)
+  - [ ] Shifts by a negative count or by 64 and more differ between engines; untested
 - [ ] Rest of test_string: translate, split, join, find_in_set, capitalize, slices
 - [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
 - [ ] Nested types, loose ends: several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB

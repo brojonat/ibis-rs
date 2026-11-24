@@ -862,3 +862,41 @@ the line of the backend they were run for and nothing else, so the one
   expression (`expr.type()`) when writing the case, not only the SQL.
 - Waiting for CI before the next push is what kept this to one red build:
   the following slice was ready and was held back when the run came in red.
+
+## Bits, random numbers and decimal literals
+
+- Bitwise operators are spelled four ways (operators; `bitAnd`; `BITWISE_AND`;
+  `BITAND`) and typed three. MySQL's answer in `BIGINT UNSIGNED`: `~2` is
+  18446744073709551613 unless it is cast to `SIGNED`, and that cast reads
+  the same bits back as -3. A shift is as wide as what is shifted on Trino,
+  ClickHouse and Impala, where a literal `3` is a TINYINT: Ibis marks
+  `3 << int_col` wrong on Impala for that. Casting the left side to BIGINT
+  first makes it Ibis's int64 everywhere.
+- Postgres has no `bigint << bigint`; the count must be an `integer`.
+- SQLite has `&`, `|`, `<<`, `>>` and `~` but no XOR: `(a | b) - (a & b)`.
+- Polars has no shift expression. Multiplying and floor-dividing by `2^n` is
+  exact in int64 (and floor division is the arithmetic shift of a negative
+  number), up to the bit that overflows.
+- SQLite's `RANDOM()` is any int64. `0.5 + RANDOM() / 2^64` can round to
+  exactly 1.0; masking 53 bits and dividing by 2^53 cannot.
+- Impala's `RAND()` starts from the same seed in every query, so a seed from
+  the clock is what makes two queries differ (Ibis does the same).
+- A test with a random answer has no golden: it is a procedure
+  (`crates/ibis-conformance/src/random.rs`) that checks what the Ibis test
+  checks, the range and that rows differ.
+- An expression that mixes a column with a reduction of it (`histogram`:
+  `(x - min(x)) / width`) is a projection whose reductions become windows
+  `OVER ()`. The conformance harness's `column` shape aggregates anything
+  that contains a reduction, so such a case is written as a `table`.
+- A decimal literal written as its digits (`1.1`) takes whatever type the
+  engine reads digits as: DECIMAL(2,1) on DuckDB, a double on others. The
+  values compare equal, so only the type gives it away; the literal is now a
+  cast to its decimal type.
+- Ibis's `dt.decimal` has no precision or scale and each engine fills in its
+  own (18 and 3 on DuckDB, 10 and 0 on MySQL, where 1.1 becomes 1).
+  `DataType::Decimal` always has both, so that one case differs from Ibis in
+  type: it carries a `notimpl` for the `schema` check, the first one.
+- A memtable column of decimals: PyArrow will not build a decimal array from
+  floats (convert through `Decimal(str(v))`), and Python's sqlite3 will not
+  bind a `Decimal` (hand it a float). SQLite keeps `DECIMAL(38, 9)` as the
+  declared type, which is the only place the type survives there.

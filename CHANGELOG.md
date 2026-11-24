@@ -62,6 +62,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Time zones: a cast between a timestamp without a zone and one with any zone compiles, as a change of type (the SQL backends keep the value as UTC's wall clock; results come back as Arrow timestamps with the zone). Comparisons between the two work. What reads the wall clock of a zone other than UTC (fields, `truncate`, `strftime`, `delta`, a cast to a date or back to no zone) is `Unsupported` on the SQL backends. `DataType::foreign_zone`.
 - `now()` and `today()` (Ibis `ibis.now()`, `ibis.today()`; `Func::Now`, `Func::Today`): the moment the query runs, a `timestamp('UTC')`, and its date in UTC, on every backend whatever the session's zone.
 - Conformance: 18 more ids of `test_temporal`: `test_timestamp_comparison_filter` and its numpy twin (12), `test_timestamp_with_timezone_literal` (2) with goldens; `test_now`, `test_today` and their `_from_projection` twins as procedures. All pass on all nine backends (Ibis marks MySQL, Spark, Impala and SQLite for the zone literal).
+- Bitwise operators on integers: `Expr::bitwise_and`, `bitwise_or`, `bitwise_xor`, `bitwise_not`, `lshift`, `rshift` (Ibis `&`, `|`, `^`, `~`, `<<`, `>>`; `Func::BitwiseAnd` and five more). The result is the wider of the two integers, and an int64 for a shift, as in Ibis. On every backend: operators where the engine has them, functions on ClickHouse, Trino and Impala, `(a | b) - (a & b)` for SQLite's missing XOR, signed results on MySQL (its operators answer in `BIGINT UNSIGNED`), powers of two on Polars.
+- `random()` (Ibis `ibis.random()`, `Func::Random`): a float in `[0, 1)`, drawn again for each row. On the eight SQL backends; not on Polars (as in Ibis).
+- `Expr::histogram(nbins)` (Ibis `histogram(nbins=n)`): the number of the equal-width bin a value falls in. Arithmetic on the column and its minimum and maximum, which a projection reads as window functions; no backend code.
+- A literal with a decimal type (`lit_as(1.1, DataType::Decimal { precision: 38, scale: 9 })`) compiles to a cast to that type; the digits alone were read as whatever the engine makes of them.
+- ibis-sqlite: a column declared `DECIMAL(p, s)` or `NUMERIC(p, s)` is read as that decimal (it was a string).
+- Conformance: 48 more ids of `test_numeric`: 46 with goldens (`test_numeric_literal`, two of `test_decimal_literal`, `test_bitwise_columns`, `test_bitwise_shift`, `test_bitwise_scalars`, `test_bitwise_not_*`, `test_histogram`, the two logarithms with a base, `test_*_round_is_integer`, `test_memtable_decimal`) and 2 procedures (`crates/ibis-conformance/src/random.rs`: `test_random`, `test_random_different_per_row`). Memtables `x_floats`, `range100`, `decimal_ints`, `decimal_decimals`; `gen_goldens.py` loads decimal columns. All pass on all nine backends except `random()` on Polars. The schema check has its first expected failure: `test_decimal_literal[default]`, where Ibis's type is a `decimal` with no precision.
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
@@ -89,6 +95,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - ibis-polars: a string cast to a timestamp is parsed with `str.to_datetime`; the plain cast gave NULL for a string with a fraction of a second.
 - ibis-polars: a timestamp in a zone compared with one that has none (Polars refuses the comparison; the zoneless one is read as UTC).
 - `as_timestamp(format)` is typed `timestamp('UTC')`, as in Ibis. It was `timestamp` when it was added (commit d44dced), which the schema check caught in CI: the run for 1a0471c, the push that carried it, failed on `test_string_as_timestamp[mysql_format]`.
+- **Breaking:** `Func` has seven more variants (`BitwiseAnd`, `BitwiseOr`, `BitwiseXor`, `BitwiseLeftShift`, `BitwiseRightShift`, `BitwiseNot`, `Random`).
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
 
