@@ -84,6 +84,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `Table::sample(fraction)` (Ibis `t.sample(fraction)`): each row kept or not at random. On the eight SQL backends (not Polars, which has no `random()`).
 - `Dialect::ranking_order`: what a ranking window is ordered by when the expression gives it no order. Spark and Impala refuse `ROW_NUMBER() OVER ()`, and get a constant.
 - Conformance: 17 more ids of `test_generic`: the four negative ids of `test_static_table_slice`, `test_dynamic_table_slice` (8) and `test_dynamic_table_slice_with_computed_offset` with goldens, passing on all nine backends; `test_order_by_random`, `test_sample[subquery-row]`, `[table-row]` and `test_sample_memtable` as procedures.
+- Conformance: `test_column` is a ported module (`test_distinct_column`, 4 ids), and `test_conditionals` is complete (`test_ibis_case_still_works`, 3 ids: Python's deprecated `case()` builder builds what `Expr::cases` does). `test_set_ops::test_table_set_operations_api` (3 ids) is marked not applicable: it tests the arity of Python's variadic functions.
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.

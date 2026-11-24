@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 1,308 Ibis tests (1,175 expression cases, 133 procedures) + 22 TPC-H queries. DuckDB 1,306, Trino 1,278, Polars 1,274, Postgres 1,269, Spark 1,255, ClickHouse 1,214, SQLite 898, Impala 879, MySQL 859; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 1,305 of 1,722 applicable test ids (76%); per module at https://brojonat.github.io/ibis-rs/
+Current: 1,315 Ibis tests (1,182 expression cases, 133 procedures) + 22 TPC-H queries. DuckDB 1,313, Trino 1,285, Polars 1,281, Postgres 1,276, Spark 1,262, ClickHouse 1,221, SQLite 905, Impala 886, MySQL 866; everything else is an expected failure with its reason in the case file (README has the table).
+Coverage of the Ibis suite: 1,312 of 1,719 applicable test ids (76%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
