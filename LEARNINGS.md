@@ -900,3 +900,59 @@ the line of the backend they were run for and nothing else, so the one
   floats (convert through `Decimal(str(v))`), and Python's sqlite3 will not
   bind a `Decimal` (hand it a float). SQLite keeps `DECIMAL(38, 9)` as the
   declared type, which is the only place the type survives there.
+
+## Strings: whitespace, accents, an emoji
+
+Ibis's `test_string_methods_accents_and_emoji` runs fourteen methods over
+seven strings: `"AbC\t"`, `"\n123\n   "`, `"abc, 123"`, `"123"`, `"aBc"`, a
+snake emoji and `"ÉéÈèêç"`. Every earlier string case used ASCII digits, and
+all of the following had gone unseen.
+
+- `strip` means all whitespace (space, tab, newline, carriage return,
+  vertical tab, form feed), not `TRIM(x)`, which takes off spaces. Every
+  engine takes a set of characters in some form (`TRIM(x, set)`,
+  `TRIM(BOTH set FROM x)`, `LTRIM(x, set)`), except MySQL, whose `TRIM`
+  takes off one whole string: there it is `REGEXP_REPLACE`. (Ibis nests six
+  `TRIM`s on MySQL, which leaves `" \t x"` with a space.)
+- `lpad`/`rpad` in Ibis never shorten a string; SQL's `LPAD(x, n, fill)` cuts
+  it to `n`. `LPAD(x, GREATEST(LENGTH(x), n), fill)` is the Ibis meaning.
+- Length in characters: ClickHouse's plain functions count bytes
+  (`lengthUTF8`, `upperUTF8`, `leftPadUTF8` are the others); Impala counts
+  bytes unless the session has `SET UTF8_MODE=true`, and its `LPAD`/`RPAD`
+  count bytes even then; SQLite's `UPPER`/`LOWER` know ASCII only.
+- Postgres takes `UPPER`/`LOWER` from the database's `LC_CTYPE`. The test
+  database was made with `--no-locale` (for bytewise ordering), which is also
+  "letters are ASCII". `--lc-collate=C --lc-ctype=C.UTF-8` keeps the ordering
+  and knows the letters. `initdb` runs once per volume: changing the
+  arguments does nothing until the volume is removed.
+- ibis-clickhouse read a response by dropping empty lines. In a result of one
+  string column an empty line is a row holding `''`: `capitalize('')` came
+  back as no rows. Strip the one trailing newline and keep every line.
+- A table with a tab and newlines in its values loaded correctly on all nine
+  backends through each one's existing loader (the SQL-text loaders escape
+  through their dialect's `quote_str`).
+
+Other things from the same batch:
+
+- DuckDB 2 answers `''` for `ARRAY_TO_STRING([], ',')`; DuckDB 1 answered
+  NULL, which is what Ibis's `test_empty_array_string_join` asserts and what
+  Ibis compiles every other backend to give. When the golden engine has
+  moved away from what the test states, the test is the spec: the case is a
+  procedure with the test's own expectation, and ibis-duckdb is compiled to
+  give NULL like the rest.
+- Spark's `SPLIT` takes a regular expression. A delimiter is wrapped in
+  `\Q...\E`, and the limit is `-1` so trailing empty strings are kept.
+- ClickHouse's `splitByRegexp` and Polars's `replace_all` take one pattern
+  for the whole column; a pattern per row is not expressible (Ibis marks
+  both too).
+- Polars has no regular-expression split. Replacing every match with U+0000
+  and splitting on that literal gives the same pieces, for any string
+  without that character in it.
+- `CONCAT_WS` skips NULL arguments and `||` does not; Ibis's `join` is the
+  first and its `concat`/`+` the second, so `"abc".concat(None)` is NULL.
+- Postgres has `LEVENSHTEIN` only with `CREATE EXTENSION fuzzystrmatch`
+  (shipped in the standard image, `docker/postgres/init.sql` creates it).
+- `scratchpad/multi.sh` starts the runner once per filter, and each start
+  loads every fixture: about a second on DuckDB, a minute and a half on
+  Impala. Eleven filters on Impala is a quarter of an hour; give Impala one
+  broad filter.

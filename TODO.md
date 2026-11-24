@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 1,184 Ibis tests (1,064 expression cases, 120 procedures) + 22 TPC-H queries. DuckDB 1,182, Polars 1,162, Trino 1,156, Postgres 1,154, Spark 1,133, ClickHouse 1,093, SQLite 793, Impala 766, MySQL 757; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 1,185 of 1,722 applicable test ids (69%); per module at https://brojonat.github.io/ibis-rs/
+Current: 1,254 Ibis tests (1,133 expression cases, 121 procedures) + 22 TPC-H queries. DuckDB 1,252, Polars 1,228, Trino 1,226, Postgres 1,224, Spark 1,203, ClickHouse 1,162, SQLite 856, Impala 829, MySQL 817; everything else is an expected failure with its reason in the case file (README has the table).
+Coverage of the Ibis suite: 1,254 of 1,722 applicable test ids (73%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -63,7 +63,12 @@ Coverage of the Ibis suite: 1,185 of 1,722 applicable test ids (69%); per module
   - [ ] `histogram` with a bin width or a base (Ibis `binwidth=`, `base=`)
   - [ ] ibis-polars: `random()` (needs a source of random numbers per row), `lshift`/`rshift` past bit 62 (they multiply and divide by a power of two)
   - [ ] Shifts by a negative count or by 64 and more differ between engines; untested
-- [ ] Rest of test_string: translate, split, join, find_in_set, capitalize, slices
+- [x] test_string: 116 of 127 applicable ids. `translate`, `find_in_set`, `split`, `re_split`, `join`, `levenshtein`, `substitute`, slices and negative indexes, strip of all whitespace, pads that do not cut, the tests on accents and an emoji (69 ids)
+  - [ ] `test_parse_url` (10 ids): `protocol`, `authority`, `userinfo`, `host`, `file`, `path`, `query`, `fragment` of a URL. Ibis has none of them on DuckDB, so no goldens: procedures, on the engines with URL functions (ClickHouse, Trino, Impala, Spark) and a Rust function for SQLite
+  - [ ] `test_string_methods_accents_and_emoji[find_in_set_w_comma]`: Ibis's docstring says an item with a comma is never found; DuckDB (and ibis-rs, which compares) finds it
+  - [ ] `translate` and `levenshtein` on MySQL and Polars; `split` by a delimiter that is not a literal on Spark and Polars; a pattern per row for `re_split` on ClickHouse and Polars
+  - [ ] ibis-clickhouse: `SUBSTRING` (so `substr`, `capitalize`, `left`) counts bytes; `substringUTF8` counts characters
+  - [ ] `join` on SQLite before 3.44 (no `CONCAT_WS`); `strip` takes off Unicode whitespace on Polars and the six ASCII characters elsewhere
 - [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
 - [ ] Nested types, loose ends: several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB
 - [ ] test_client (203 ids), in slices. These test the connection API, not expressions: they run as procedural tests per backend (`crates/ibis-conformance/src/client.rs`, ids `client::<module>::<pytest id>`, no goldens)
@@ -99,7 +104,7 @@ One compose service + one crate each; start in `EXPERIMENTAL` (README: "Adding t
 - [x] Published 2026-11-16: ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4 (the `spark` and `impala` features)
 - [ ] ibis-hiveserver2: TLS, Kerberos, and the HTTP transport (today: a plain socket, with or without SASL PLAIN)
 - [ ] Spark: Spark Connect as a second way in (Databricks and Spark 4 clusters often expose that and no Thrift server)
-- [ ] Impala: `IN (subquery)` in a select list (2 xfail; a left join against the distinct subquery would do it), `NTH_VALUE` (1 xfail), `LENGTH` and friends count bytes unless the session sets `utf8_mode`
+- [ ] Impala: `IN (subquery)` in a select list (2 xfail; a left join against the distinct subquery would do it), `NTH_VALUE` (1 xfail), `LENGTH` and friends count bytes on an Impala before 4.1 (later ones get `UTF8_MODE` from the connection)
 - [ ] Spark and Impala: a load path that is not SQL text, as for Trino
 - [ ] `rows()` and `insert_text()` are the same code in ibis-spark and ibis-impala (and `insert_text` in ibis-trino): share them once a fourth copy threatens
 - [ ] Cloud-only backends (BigQuery, Snowflake): credentials from environment variables, tests skipped without them

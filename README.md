@@ -14,27 +14,27 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. The shape to grow into is
 Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
 The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
-test, whether it is ported, and how each backend does on it: 1,185 of 1,722
+test, whether it is ported, and how each backend does on it: 1,254 of 1,722
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 1,184 ported Ibis tests (1,064 expression
-cases with a result from Python Ibis, 120 tests that are procedures: the
+Status: pre-alpha. Nine backends, 1,254 ported Ibis tests (1,133 expression
+cases with a result from Python Ibis, 121 tests that are procedures: the
 connection API, SQL as text, reductions whose answer is the engine's to
 choose, random numbers) and Ibis's 22 TPC-H queries:
 
-| backend | Ibis tests (1,184) | TPC-H (22) |
+| backend | Ibis tests (1,254) | TPC-H (22) |
 |---|---|---|
-| DuckDB | 1,182 (2 expected failures, as in Ibis: no sample correlation) | 22 |
-| Polars (default) | 1,162 (22 expected failures, as in Ibis: no `random()`, no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median or quantile of strings, one quantile at a time, `group_concat` with a literal separator only and not over a window) | 22 |
-| Trino | 1,156 (28 expected failures: no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median or quantile, no sample correlation, no interval of microseconds) | 22 |
-| Postgres | 1,154 (30 expected failures, as in Ibis: no arrays of arrays, no kurtosis, no sample correlation) | 22 |
-| Spark SQL | 1,133 (51 expected failures: no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median or quantile of strings or dates, no reduction that reads its rows in an order, no `collect` that keeps NULLs) | 22 |
-| ClickHouse | 1,093 (91 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median or quantile of strings, no population correlation, no reduction that reads its rows in an order, no `first`, `last` or `collect` that keeps NULLs; and no temporary tables over HTTP) | 22 |
-| SQLite | 793 (391 expected failures: no arrays, structs or maps, no NaN, no `MERGE`, no median, quantile, kurtosis, covariance or correlation, no ordered `group_concat`, no count of distinct rows, no interval of microseconds) | 22 |
-| Impala | 766 (418 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians and quantiles, kurtosis, the bitwise reductions, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance and correlation only the approximate median; `group_concat` neither ordered nor over a window) | 22 |
-| MySQL | 757 (427 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`, no `mode`, median, quantile, kurtosis, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance or correlation; `group_concat` with a literal separator only and not over a window) | 22 |
+| DuckDB | 1,252 (2 expected failures, as in Ibis: no sample correlation) | 22 |
+| Polars (default) | 1,228 (26 expected failures, as in Ibis: no `random()`, `translate` or `levenshtein`, a regular expression to split by is one for the whole column, no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median or quantile of strings, one quantile at a time, `group_concat` with a literal separator only and not over a window) | 22 |
+| Trino | 1,226 (28 expected failures: no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median or quantile, no sample correlation, no interval of microseconds) | 22 |
+| Postgres | 1,224 (30 expected failures, as in Ibis: no arrays of arrays, no kurtosis, no sample correlation) | 22 |
+| Spark SQL | 1,203 (51 expected failures: no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median or quantile of strings or dates, no reduction that reads its rows in an order, no `collect` that keeps NULLs) | 22 |
+| ClickHouse | 1,162 (92 expected failures, as in Ibis: a regular expression to split by is one for the whole column, an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median or quantile of strings, no population correlation, no reduction that reads its rows in an order, no `first`, `last` or `collect` that keeps NULLs; and no temporary tables over HTTP) | 22 |
+| SQLite | 856 (398 expected failures: no arrays, structs or maps (so no `split`), no NaN, no `MERGE`, no median, quantile, kurtosis, covariance or correlation, no ordered `group_concat`, no count of distinct rows, no interval of microseconds) | 22 |
+| Impala | 829 (425 expected failures, as in Ibis: no array, struct or map support (so no `split`), no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians and quantiles, kurtosis, the bitwise reductions, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance and correlation only the approximate median; `group_concat` neither ordered nor over a window) | 22 |
+| MySQL | 817 (437 expected failures: no arrays, structs or maps (so no `split`), no `translate` or `levenshtein`, no NaN or infinity, no `MERGE`, no `mode`, median, quantile, kurtosis, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance or correlation; `group_concat` with a literal separator only and not over a window) | 22 |
 
-Output column names and types match Ibis's on all 1,064 expression cases but
+Output column names and types match Ibis's on all 1,133 expression cases but
 one (Ibis's `decimal` without a precision; an ibis-rs decimal always has one).
 Ported so far: `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
 `test_temporal`, `test_join`, `test_window`, `test_set_ops`,
@@ -222,7 +222,9 @@ zone the session is in.
 - Docker with the compose plugin. Server backends run as containers defined in
   `compose.yaml` (Postgres on localhost:54330, MySQL on 13306, ClickHouse on
   18123, Trino on 18080, the Spark Thrift server on 20000, Impala on 21050),
-  holding throwaway test data. Nothing else needs installing per backend. All
+  holding throwaway test data. (On a Postgres of your own, `levenshtein` needs
+  `CREATE EXTENSION fuzzystrmatch`, and `upper`/`lower` follow the database's
+  `LC_CTYPE`.) Nothing else needs installing per backend. All
   of them together use about 10 GB of memory: Trino 3.4, Spark 2.3, Impala's
   four containers 2, the rest under 1 each. Start only the ones you are
   working on if that is too much.

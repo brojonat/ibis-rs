@@ -68,6 +68,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - A literal with a decimal type (`lit_as(1.1, DataType::Decimal { precision: 38, scale: 9 })`) compiles to a cast to that type; the digits alone were read as whatever the engine makes of them.
 - ibis-sqlite: a column declared `DECIMAL(p, s)` or `NUMERIC(p, s)` is read as that decimal (it was a string).
 - Conformance: 48 more ids of `test_numeric`: 46 with goldens (`test_numeric_literal`, two of `test_decimal_literal`, `test_bitwise_columns`, `test_bitwise_shift`, `test_bitwise_scalars`, `test_bitwise_not_*`, `test_histogram`, the two logarithms with a base, `test_*_round_is_integer`, `test_memtable_decimal`) and 2 procedures (`crates/ibis-conformance/src/random.rs`: `test_random`, `test_random_different_per_row`). Memtables `x_floats`, `range100`, `decimal_ints`, `decimal_decimals`; `gen_goldens.py` loads decimal columns. All pass on all nine backends except `random()` on Polars. The schema check has its first expected failure: `test_decimal_literal[default]`, where Ibis's type is a `decimal` with no precision.
+- String operations: `Expr::translate(from, to)`, `find_in_set(items)`, `split(delimiter)` and `re_split(pattern)` (arrays of strings), `join(parts)` (Python's `sep.join(parts)`; the parts may be one array, and `arr.join([sep])` joins an array), `levenshtein(other)`, `substitute(pairs, default)`. `Func::{Translate, StringSplit, RegexSplit, StringJoin, ArrayStringJoin, Levenshtein}`; `find_in_set` and `substitute` are a `CASE`, so they run everywhere. `split`, `re_split` and array joins on the six backends with arrays; `translate` everywhere but MySQL and Polars; `levenshtein` everywhere but MySQL and Polars (ClickHouse `editDistanceUTF8`, Postgres through its `fuzzystrmatch` extension, SQLite through a function this crate registers).
+- `Expr::at`, `Expr::slice` and `Expr::concat` work on strings as Python's `s[2]`, `s[1:3]` and `s.concat(...)` do (`ibis_core::expr::string_form` is the rewrite, shared by the SQL compiler and ibis-polars).
+- `ExprCompiler::whitespace` (the characters `strip` takes off, as a literal) and `ExprCompiler::length` (a string's length as the dialect counts it), for a dialect's `func`.
+- ibis-sqlite registers `ibis_translate`, `ibis_levenshtein`, `ibis_upper` and `ibis_lower` on the connection.
+- Conformance: 69 more ids of `test_string` (literals, `translate`, `find_in_set`, `split`, `join`, the slices of `test_substring`, `test_capitalize`, `test_levenshtein`, `test_re_split*`, `test_concat*`, `test_subs*`, and the two tests on strings with whitespace, accents and an emoji), 68 with goldens and one procedure (`crates/ibis-conformance/src/strings.rs`: `test_empty_array_string_join`, where DuckDB 2 no longer gives the NULL the test asks for). Memtables `strings_accents`, `strings_plain`, `arr_empty_abc`.
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
@@ -96,6 +101,15 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - ibis-polars: a timestamp in a zone compared with one that has none (Polars refuses the comparison; the zoneless one is read as UTC).
 - `as_timestamp(format)` is typed `timestamp('UTC')`, as in Ibis. It was `timestamp` when it was added (commit d44dced), which the schema check caught in CI: the run for 1a0471c, the push that carried it, failed on `test_string_as_timestamp[mysql_format]`.
 - **Breaking:** `Func` has seven more variants (`BitwiseAnd`, `BitwiseOr`, `BitwiseXor`, `BitwiseLeftShift`, `BitwiseRightShift`, `BitwiseNot`, `Random`).
+- **Breaking:** `Func` has six more variants (`Translate`, `StringSplit`, `RegexSplit`, `StringJoin`, `ArrayStringJoin`, `Levenshtein`).
+- **Behavior change:** `strip`, `lstrip` and `rstrip` take off spaces, tabs, newlines, carriage returns, vertical tabs and form feeds, as Ibis and Python do; they took off spaces only (on Polars they already took all of them). MySQL's `TRIM` takes off one string, so it is a regular expression there.
+- **Behavior change:** `lpad` and `rpad` leave a string that is already longer as it is, as Ibis does; they cut it to the length.
+- `substr` (and `at`, `slice` on a string) takes a negative start as counted from the end, on every backend; it was `Unsupported`.
+- ibis-clickhouse: a result of one column lost every row that was an empty string (an empty line of the response was taken for no row).
+- ibis-clickhouse: `upper`, `lower`, `lpad` and `rpad` use the functions that count characters (`upperUTF8`, `leftPadUTF8`, ...).
+- ibis-sqlite: `upper` and `lower` change letters beyond ASCII.
+- ibis-impala sets `UTF8_MODE=true` on the connection, so `length`, `substr`, `upper`, `lower` and the rest count characters as the other backends do (Impala 4.1 and later; an older one keeps counting bytes). `lpad` and `rpad` are written without `LPAD`/`RPAD`, which count bytes either way.
+- The test Postgres is initialised with `--lc-collate=C --lc-ctype=C.UTF-8` instead of `--no-locale` (its `UPPER` and `LOWER` now know accented letters; strings still order bytewise) and has the `fuzzystrmatch` extension. A database made before this needs `docker compose rm -sf postgres`, its volume removed, and `mise run setup`.
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
 
