@@ -52,6 +52,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Intervals: `DataType::Interval(IntervalUnit)` (Ibis `interval('D')`, parsed and printed that way), `interval(n, unit)` (Ibis `ibis.interval(days=n)`), `Expr::as_interval(unit)` and a cast of an integer to an interval type. `+` and `-` move a timestamp or a date by one; intervals add, subtract and multiply by an integer; the difference of two timestamps or two dates is typed as an interval. On all nine backends, down to the microsecond (the millisecond on SQLite and Trino).
 - `Expr::shifts()` and `Shift`: the steps an interval expression stands for (a count, a unit, forward or back), weeks as days and quarters as months. `Dialect::date_shift` compiles one step; `ExprCompiler::default_date_shift` and `ibis_sql::interval_unit_name` are the standard spelling. ibis-polars uses `offset_by` (a new feature of the `polars` dependency).
 - Conformance: 35 more ids of `test_temporal` (`test_integer_to_interval_timestamp`, `test_integer_to_interval_date`, six of `test_temporal_binop`, `test_temporal_binop_pandas_timedelta`, `test_interval_add_cast_scalar`, `test_interval_add_cast_column`). Beyond Ibis's marks: years and months on Polars, weeks on Trino, sub-second units on ClickHouse, sums of intervals on SQLite, MySQL and Impala, and quarters everywhere (Ibis expects its own quarter test to fail).
+- `Expr::delta(other, unit)` (Ibis `delta`): how many times a unit turns over between two dates or two timestamps, in every unit on every backend that has it. `Expr::epoch_days()`, `Expr::epoch_seconds()`, `Expr::iso_year()` (`Func::Delta`, `Func::EpochSeconds`, `Func::IsoYear`).
+- A number cast to a timestamp is that many seconds since 1970, and `Expr::as_timestamp(unit)` takes seconds, milliseconds, microseconds or nanoseconds (`Func::TimestampFromEpoch`). The result is the same wall-clock time on every engine, whatever the session's time zone.
+- `Dialect::date_diff` and `Dialect::timestamp_from_micros`; `ibis_core::expr::{delta_ends, epoch_micros, unit_arg}` are what both the SQL compiler and ibis-polars compile from.
+- Conformance: 32 more ids of `test_temporal`: 27 with goldens and 5 procedures (`crates/ibis-conformance/src/moments.rs`: `test_integer_to_timestamp`, `test_timestamp_extract_epoch_seconds`, which Python Ibis on DuckDB cannot make a golden for). All pass on all nine backends. Beyond Ibis's marks: ISO years on MySQL, SQLite, Spark and Impala; a delta of timestamps on Polars, SQLite, MySQL, Spark and Impala; `as_timestamp` in every unit on every backend; a float as a timestamp on ClickHouse and Impala; far-off timestamps on ClickHouse, Spark and Polars. The two tests of SQL text are marked not applicable.
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
@@ -75,6 +79,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - ibis-sqlite, ibis-mysql and ibis-impala report `collect` as `Unsupported` instead of sending `ARRAY_AGG` to an engine that has no arrays.
 - ibis-postgres: `first`, `last` and `arbitrary` of a boolean column no longer cast it to an integer (the cast is for the sums and bitwise reductions).
 - **Breaking:** `DataType::Interval` is a new variant.
+- ibis-sqlite: a string cast to a timestamp keeps its fraction of a second (`DATETIME` dropped it), and a timestamp cast to a timestamp is left alone.
+- ibis-polars: a string cast to a timestamp is parsed with `str.to_datetime`; the plain cast gave NULL for a string with a fraction of a second.
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
 

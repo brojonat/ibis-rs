@@ -731,3 +731,54 @@ every engine. It does not, and several engines have none:
   then an interval outside date arithmetic is `Unsupported` at compile time.
 - The conformance filter matches ids, not modules: `test_temporal` selected
   only the 18 ids that contain that text.
+
+## Seconds since 1970: the engine's own function answers in the session's zone
+
+A number cast to a timestamp, `as_timestamp` and `epoch_seconds` each have
+an obvious function in every engine, and most of those are wrong for a
+timestamp without a time zone. Checked with the session set to another zone:
+
+- MySQL `FROM_UNIXTIME(0)` is `1970-01-01 05:00:00` at `+05:00`, and
+  `UNIX_TIMESTAMP` reads its argument the same way. Postgres
+  `CAST(TO_TIMESTAMP(0) AS TIMESTAMP)` and Trino
+  `CAST(FROM_UNIXTIME(0) AS TIMESTAMP)` are `09:00:00` in Tokyo, and Trino's
+  `TO_UNIXTIME(TIMESTAMP '1970-01-01 09:00:00')` is 0 there.
+- The goldens are UTC wall-clock times (Python Ibis on DuckDB, on a machine
+  in US/Pacific, still gave `1970-01-01 00:00:00` for 0), so the test
+  containers, all in UTC, would have passed with the obvious functions and
+  a user's session would not.
+- What does not depend on the session: arithmetic from a literal. The count
+  is turned into microseconds once, in core (`epoch_micros`), and each
+  dialect adds them to `1970-01-01 00:00:00` its own way
+  (`Dialect::timestamp_from_micros`); `epoch_seconds` is the difference from
+  that literal (`TIMESTAMPDIFF`, `DATE_DIFF`), or `EXTRACT(EPOCH FROM ts)`
+  where the engine reads a zoneless timestamp as it is written (Postgres).
+- SQLite's `'unixepoch', 'subsec'` keeps three digits. The seconds go
+  through `STRFTIME` and the six digits after them are written with
+  `PRINTF('%06d', ...)`; the same trick keeps the fraction of a string cast
+  to a timestamp, which `DATETIME(x)` silently dropped.
+- Polars casts `"2023-01-07 13:20:05.561"` to a datetime as NULL;
+  `str.to_datetime` with no format works it out.
+
+## delta: truncate both ends, then any difference function will do
+
+Ibis's `delta` counts the boundaries of a unit between two moments (23:59:59
+to 01:58:00 is two hours). Engines split into those that count boundaries
+(DuckDB and ClickHouse `DATE_DIFF`) and those that count whole units elapsed
+(MySQL and Spark `TIMESTAMPDIFF`: one hour for that pair), and Postgres has
+neither. Cutting both ends back to the start of the unit first
+(`delta_ends`) makes the two kinds agree, so each dialect only names a
+difference function (`Dialect::date_diff`). Ibis leaves the timestamp delta
+out on MySQL, SQLite, Polars and Impala and expects Spark's to fail.
+
+It was checked beyond Ibis's two tests with a throwaway procedure: one pair
+of timestamps a year and two months apart, every unit from years to
+microseconds, on all nine backends. Worth doing again when a function has
+many units and the suite tests two of them.
+
+## ClickHouse `Date32` holds the year 1 and the year 9999 now
+
+Ibis marks `test_date_scalar` for dates outside 1900 to 2299 on ClickHouse.
+With ClickHouse 26.10 `toDate32('0001-07-17')` and `toDate32('9999-01-02')`
+come back unchanged, so those cases pass. An unexpected pass on a newer
+engine is worth one direct query before the mark is dropped.
