@@ -3,7 +3,7 @@
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
 Current: 905 Ibis tests (862 expression cases, 43 client tests) + 22 TPC-H queries. DuckDB 905, Polars 896, Trino 892, Spark 891, Postgres 879, ClickHouse 852, Impala 576, MySQL 563, SQLite 562; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 1,043 of 1,728 applicable test ids (60%); per module at https://brojonat.github.io/ibis-rs/
+Coverage of the Ibis suite: 1,078 of 1,728 applicable test ids (62%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -32,7 +32,13 @@ Coverage of the Ibis suite: 1,043 of 1,728 applicable test ids (60%); per module
 - [x] Polars: arrays, structs and maps (all 311 cases), unnest, collect, views. Lists, structs, and maps as lists of `{key, value}` structs; `crates/ibis-polars/src/nested.rs` has the split between Polars expressions and the row-by-row fallback
 
 ## Next: parity
-- [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
+- [ ] test_temporal tier 2 (76 ids left of 169)
+  - [x] Intervals: `DataType::Interval`, `interval(n, unit)`, `as_interval`, a timestamp or a date moved by one (35 ids)
+  - [ ] Intervals as values: a result column of intervals (`Value`, Arrow, each backend's reader), `test_temporal_binop[timestamp-subtract-timestamp]` and `[date-subtract-date]`, `test_interval_literal`; comparisons and columns of intervals
+  - [ ] Small things: `iso_year`, `epoch_days`, integers and floats cast to timestamps, `ibis.date` of several kinds of value, timestamps far from now, a timestamp compared with a date
+  - [ ] `delta` and `bucket`
+  - [ ] Conversions: `as_timestamp(unit)`, strings to timestamps, dates and times by a format
+  - [ ] Time zones (`timestamp('UTC')` casts and comparisons), the `time` type, `now` and `today`, strftime with a column format
 - [x] test_aggregation: all 162 applicable ids
   - [x] Reductions of one argument: mode, median, approx_median, approx_nunique, kurtosis, bit_and/or/xor, arbitrary, first/last, notany/notall (27 ids; the Python-UDF ids are not applicable)
   - [x] `AggOptions` on `Expr::Agg` (further arguments, order, distinct, include_null) and `Dialect::reduction`; argmin/argmax and corr/cov on it (26 ids)

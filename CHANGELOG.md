@@ -49,6 +49,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - An ordered `first` or `last` in a projection, or under `.over(w)`, is `FIRST_VALUE`/`LAST_VALUE` over a window in that order (after the window's own), as Ibis compiles it.
 - `ExprCompiler::ordered`: `[DISTINCT ]arg[ ORDER BY ...]`, for a dialect's `reduction`.
 - Conformance: the last 36 ids of `test_aggregation`, all procedures (`test_first_last` with NULLs kept, `test_first_last_ordered`, `test_first_last_ordered_in_mutate`, `test_collect`, `test_count_distinct_star`, `test_corr_cov[*-corr_samp]`). Beyond Ibis's marks: Postgres keeps NULLs in `first`/`last`, SQLite reads them in an order, Spark keeps NULLs under a condition, MySQL counts distinct rows under a condition, Polars does an ordered `first` in a projection.
+- Intervals: `DataType::Interval(IntervalUnit)` (Ibis `interval('D')`, parsed and printed that way), `interval(n, unit)` (Ibis `ibis.interval(days=n)`), `Expr::as_interval(unit)` and a cast of an integer to an interval type. `+` and `-` move a timestamp or a date by one; intervals add, subtract and multiply by an integer; the difference of two timestamps or two dates is typed as an interval. On all nine backends, down to the microsecond (the millisecond on SQLite and Trino).
+- `Expr::shifts()` and `Shift`: the steps an interval expression stands for (a count, a unit, forward or back), weeks as days and quarters as months. `Dialect::date_shift` compiles one step; `ExprCompiler::default_date_shift` and `ibis_sql::interval_unit_name` are the standard spelling. ibis-polars uses `offset_by` (a new feature of the `polars` dependency).
+- Conformance: 35 more ids of `test_temporal` (`test_integer_to_interval_timestamp`, `test_integer_to_interval_date`, six of `test_temporal_binop`, `test_temporal_binop_pandas_timedelta`, `test_interval_add_cast_scalar`, `test_interval_add_cast_column`). Beyond Ibis's marks: years and months on Polars, weeks on Trino, sub-second units on ClickHouse, sums of intervals on SQLite, MySQL and Impala, and quarters everywhere (Ibis expects its own quarter test to fail).
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
@@ -71,6 +74,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - **Breaking:** `AggFunc::CountDistinctStar` is a new variant.
 - ibis-sqlite, ibis-mysql and ibis-impala report `collect` as `Unsupported` instead of sending `ARRAY_AGG` to an engine that has no arrays.
 - ibis-postgres: `first`, `last` and `arbitrary` of a boolean column no longer cast it to an integer (the cast is for the sums and bitwise reductions).
+- **Breaking:** `DataType::Interval` is a new variant.
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
 

@@ -693,3 +693,41 @@ What was not obvious:
 - Dialect `reduction` hooks that read `options.args[0]` before looking at
   the function panic once a reduction with options and no further argument
   exists (`first().include_null()`). Read it inside the arm that needs it.
+
+## Intervals: compile the movement, not the interval
+
+A timestamp plus an interval looked like it needed an interval value in
+every engine. It does not, and several engines have none:
+
+- SQLite has no interval type at all (`DATETIME(ts, '+4 day')`), and MySQL
+  and Impala take `INTERVAL n UNIT` only as the right side of one addition.
+  Ibis refuses `ts + (interval_a - interval_b)` on all three.
+- `Expr::shifts()` flattens an interval expression into steps (count, unit,
+  forward or back), and the compiler applies them one after the other:
+  `((ts + INTERVAL '4' DAY) - INTERVAL '2' DAY)`. Each dialect spells one
+  step (`Dialect::date_shift`) and sums of intervals work everywhere.
+  Normalizing weeks to 7 days and quarters to 3 months in `shifts()` removed
+  the two units engines disagree on most (Postgres has no quarter: `INTERVAL
+  '1 quarter'` is invalid input; Ibis's Trino backend has no week).
+- A date plus an interval is a timestamp in DuckDB, Postgres and Impala and
+  a date in Ibis: the shift is wrapped in `CAST(... AS DATE)`.
+- Postgres does not refuse `ts + INTERVAL '1' MILLISECOND`: it adds one
+  second. `MILLISECOND` is no interval field there, so the statement is
+  `INTERVAL '1'` (a second) with `millisecond` as the column's alias. The
+  unit goes inside the quotes (`INTERVAL '1 millisecond'`), where it takes
+  any unit down to the microsecond.
+- For a count that is not a literal, `count * INTERVAL '1' UNIT` works on
+  DuckDB, Postgres and Spark; ClickHouse has `toIntervalDay(count)`, Trino
+  `DATE_ADD('day', count, ts)`, SQLite `PRINTF('%+d day', count)` as the
+  modifier (`'+' || count` gives `'+-3 day'` for a negative count, which
+  SQLite answers with NULL).
+- SQLite's `'floor'` modifier (3.46) is what keeps January 31 plus one month
+  in February (`2023-02-28`); without it the answer is `2023-03-03`.
+- Polars: `dt().offset_by()` takes a string expression (`"4d"`, or
+  `concat_str([count, lit("mo")])` for a column), so years and months work
+  there although `duration()` has neither. Ibis marks them unsupported.
+- An interval literal is `Value::Int` with an interval `DataType`: no new
+  `Value` variant until a column of intervals has to be read back. Until
+  then an interval outside date arithmetic is `Unsupported` at compile time.
+- The conformance filter matches ids, not modules: `test_temporal` selected
+  only the 18 ids that contain that text.
