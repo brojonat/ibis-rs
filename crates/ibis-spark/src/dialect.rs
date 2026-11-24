@@ -209,6 +209,11 @@ impl Dialect for SparkDialect {
         }
     }
 
+    /// `ROW_NUMBER` and its kind need an `ORDER BY`; a constant is one.
+    fn ranking_order(&self) -> Option<&str> {
+        Some("1")
+    }
+
     fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {
         if let Some(sql) = nested::func(self, c, f, args)? {
             return Ok(Some(sql));

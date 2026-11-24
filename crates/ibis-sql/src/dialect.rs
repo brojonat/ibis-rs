@@ -96,6 +96,13 @@ pub trait Dialect: Send + Sync {
     fn timestamp_from_micros(&self, _micros: &str) -> Result<Option<String>> {
         Ok(None)
     }
+    /// What the window of a ranking or offset function (`ROW_NUMBER`,
+    /// `LAG`, ...) is ordered by when the expression gives it no order, on
+    /// an engine that refuses to rank without one: something that is the
+    /// same for every row. `None` where `OVER ()` will do.
+    fn ranking_order(&self) -> Option<&str> {
+        None
+    }
     /// The number of distinct rows, a row being `columns` (compiled).
     /// `tail` is as for `agg`. `condition` is the rows to count where the
     /// engine has no `FILTER` to put it in: the default refuses it, since a

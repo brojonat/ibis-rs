@@ -7,8 +7,7 @@
 Deviations from the Ibis source, all to keep goldens small or deterministic:
 - cases whose Ibis test only checks one column of a wide frame select that
   column (plus `id`) at the end;
-- tests with several assertions become `name#1`, `name#2`, ...;
-- negative slices in test_static_table_slice are not ported.
+- tests with several assertions become `name#1`, `name#2`, ....
 """
 
 from __future__ import annotations
@@ -485,3 +484,30 @@ r.params(
 )
 # the Ibis test reads the first ten rows in the order of id
 r.add("test_hexdigest", column(lambda t: t.string_col.hexdigest()))
+
+# Slices with a bound counted from the last row. The Ibis tests count the rows of the slice.
+NEGATIVE_SLICES = {
+    "test_static_table_slice": {
+        "[-3:0]": slice(-3, 0),
+        "[-3:-3]": slice(-3, -3),
+        "[-3:-4]": slice(-3, -4),
+        "[-3:-5]": slice(-3, -5),
+    },
+    "test_dynamic_table_slice": {
+        "[:-2]": slice(None, -2),
+        "[0:-2]": slice(0, -2),
+        "[-3:]": slice(-3, None),
+        "[-3:-2]": slice(-3, -2),
+        "[-4000:7000]": slice(-4000, 7000),
+        "[-3:2]": slice(-3, 2),
+        "[3:-2]": slice(3, -2),
+        "[3:-4]": slice(3, -4),
+    },
+}
+for test, slices in NEGATIVE_SLICES.items():
+    for pid, slc in slices.items():
+        r.add(f"{test}[{pid}]", table(lambda t, slc=slc: t[slc].aggregate(n=_.count())))
+r.add(
+    "test_dynamic_table_slice_with_computed_offset",
+    table(lambda t: t[["id"]].order_by("id")[-10:], ordered=True),
+)

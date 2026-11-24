@@ -101,6 +101,11 @@ impl Dialect for ImpalaDialect {
         })
     }
 
+    /// `ROW_NUMBER` and its kind need an `ORDER BY`; a constant is one.
+    fn ranking_order(&self) -> Option<&str> {
+        Some("1")
+    }
+
     fn func(&self, c: &ExprCompiler, f: Func, args: &[Expr]) -> Result<Option<String>> {
         let a = |i: usize| c.sql(&args[i]);
         let int = |s: String| format!("CAST({s} AS INT)");

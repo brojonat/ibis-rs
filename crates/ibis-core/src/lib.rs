@@ -319,6 +319,24 @@ mod tests {
     }
 
     #[test]
+    fn a_slice_from_the_end_numbers_the_rows() {
+        let t = alltypes();
+        let op = |t: &Table| format!("{:?}", t.rel().op).split_whitespace().next().unwrap_or("").to_string();
+        // from the front: a limit and an offset
+        assert_eq!(op(&t.slice(Some(3), Some(5)).unwrap()), "Limit");
+        assert_eq!(op(&t.slice(Some(3), None).unwrap()), "Limit");
+        // empty whatever the table holds
+        assert_eq!(op(&t.slice(Some(-3), Some(-5)).unwrap()), "Limit");
+        // from the back: numbered, filtered, and the columns it had
+        let last = t.order_by(["id"]).unwrap().slice(Some(-3), None).unwrap();
+        assert_eq!(op(&last), "Project");
+        assert_eq!(last.schema(), t.schema());
+        assert_eq!(t.slice(None, Some(-2)).unwrap().schema(), t.schema());
+        assert!(t.sample(1.5).is_err());
+        assert_eq!(t.sample(0.5).unwrap().schema(), t.schema());
+    }
+
+    #[test]
     fn epochs_and_deltas_have_ibis_types() {
         use IntervalUnit::*;
         let t = alltypes();

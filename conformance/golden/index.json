@@ -5227,6 +5227,150 @@
    "postgres": "same"
   }
  },
+ "test_dynamic_table_slice[[-3:-2]]": {
+  "file": "test_generic/test_dynamic_table_slice[[-3:-2]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_dynamic_table_slice[[-3:2]]": {
+  "file": "test_generic/test_dynamic_table_slice[[-3:2]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_dynamic_table_slice[[-3:]]": {
+  "file": "test_generic/test_dynamic_table_slice[[-3:]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_dynamic_table_slice[[-4000:7000]]": {
+  "file": "test_generic/test_dynamic_table_slice[[-4000:7000]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_dynamic_table_slice[[0:-2]]": {
+  "file": "test_generic/test_dynamic_table_slice[[0:-2]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_dynamic_table_slice[[3:-2]]": {
+  "file": "test_generic/test_dynamic_table_slice[[3:-2]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_dynamic_table_slice[[3:-4]]": {
+  "file": "test_generic/test_dynamic_table_slice[[3:-4]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_dynamic_table_slice[[:-2]]": {
+  "file": "test_generic/test_dynamic_table_slice[[:-2]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_dynamic_table_slice_with_computed_offset": {
+  "file": "test_generic/test_dynamic_table_slice_with_computed_offset.parquet",
+  "kind": "table",
+  "ordered": true,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_empty_sum#1": {
   "file": "test_aggregation/test_empty_sum#1.parquet",
   "kind": "tables",
@@ -16069,6 +16213,70 @@
   "ibis": {
    "sqlite": "error: TableNotFound",
    "postgres": "error: TableNotFound"
+  }
+ },
+ "test_static_table_slice[[-3:-3]]": {
+  "file": "test_generic/test_static_table_slice[[-3:-3]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[-3:-4]]": {
+  "file": "test_generic/test_static_table_slice[[-3:-4]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[-3:-5]]": {
+  "file": "test_generic/test_static_table_slice[[-3:-5]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_static_table_slice[[-3:0]]": {
+  "file": "test_generic/test_static_table_slice[[-3:0]].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "n"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
   }
  },
  "test_static_table_slice[[0:0]]": {

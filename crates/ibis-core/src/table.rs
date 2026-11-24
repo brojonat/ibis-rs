@@ -677,6 +677,60 @@ impl Table {
         self.wrap(RelOp::Limit { input: self.rel.clone(), n: None, offset: n }, self.schema().clone())
     }
 
+    /// About `fraction` of the rows, each kept or not at random (Ibis
+    /// `t.sample(fraction)`, by row). Another draw each time it runs.
+    pub fn sample(&self, fraction: f64) -> Result<Table> {
+        if !(0.0..=1.0).contains(&fraction) {
+            return invalid(format!("sample: a fraction is between 0 and 1, got {fraction}"));
+        }
+        self.filter([crate::expr::random().lt(crate::expr::lit(fraction))])
+    }
+
+    /// Python's `t[start:stop]` on the rows: `None` is an open end and a
+    /// negative bound counts from the last row (Ibis `t[-3:]`).
+    ///
+    /// Bounds counted from the front are a limit and an offset. One counted
+    /// from the back needs the number of rows: the rows are numbered (in
+    /// the table's order, if it ends in an `order_by`) and counted by window
+    /// functions, and filtered on that. Which rows a slice of an unordered
+    /// table holds is up to the engine.
+    pub fn slice(&self, start: Option<i64>, stop: Option<i64>) -> Result<Table> {
+        let first = start.unwrap_or(0);
+        match stop {
+            None if first >= 0 => return Ok(self.offset(first as u64)),
+            Some(stop) if first >= 0 && stop >= 0 => {
+                return Ok(self.limit((stop - first).max(0) as u64, first as u64));
+            }
+            // nothing lies between a start counted from the back and an end at or before it
+            Some(stop) if first < 0 && (stop == 0 || (stop < 0 && stop <= first)) => return Ok(self.limit(0, 0)),
+            _ => {}
+        }
+        let keys = match &self.rel.op {
+            RelOp::Sort { keys, .. } => keys.clone(),
+            _ => vec![],
+        };
+        let ordered = !keys.is_empty();
+        let names: Vec<String> = self.schema().names().map(String::from).collect();
+        let (row, rows) = ("_slice_row", "_slice_rows");
+        let numbered = self.mutate([
+            crate::expr::row_number().over(crate::WindowSpec::new().order_by(keys)).name(row),
+            crate::expr::count().over(crate::WindowSpec::new()).name(rows),
+        ])?;
+        let col = crate::expr::col;
+        // the row with 0-based number `i` is kept if `lo <= i < hi`
+        let bound = |b: i64| if b >= 0 { crate::expr::lit(b) } else { col(rows) + b };
+        let mut kept = vec![];
+        if first != 0 {
+            kept.push(col(row).ge(bound(first)));
+        }
+        if let Some(stop) = stop {
+            kept.push(col(row).lt(bound(stop)));
+        }
+        let sliced = numbered.filter(kept)?;
+        let sliced = if ordered { sliced.order_by([col(row)])? } else { sliced };
+        sliced.select(names.iter())
+    }
+
     /// Replace NULLs in the named columns (Ibis `t.fill_null({col: value})`).
     /// Column types don't change.
     pub fn fill_null<'a>(&self, replacements: impl IntoIterator<Item = (&'a str, crate::Value)>) -> Result<Table> {

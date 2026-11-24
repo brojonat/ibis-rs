@@ -544,6 +544,35 @@ fn more(v: &mut Vec<Case>) {
         .ordered()
         .notimpl(no_try),
     );
+    // Slices with a bound counted from the last row; the Ibis tests count the rows.
+    let p = |test: &str, id: &str| format!("{test}[{id}]");
+    let static_slices = [("[-3:0]", -3, 0), ("[-3:-3]", -3, -3), ("[-3:-4]", -3, -4), ("[-3:-5]", -3, -5)];
+    for (id, start, stop) in static_slices {
+        v.push(table(&p("test_static_table_slice", id), move |t| {
+            t.slice(Some(start), Some(stop))?.aggregate([count().name("n")])
+        }));
+    }
+    let dynamic_slices: [(&str, Option<i64>, Option<i64>); 8] = [
+        ("[:-2]", None, Some(-2)),
+        ("[0:-2]", Some(0), Some(-2)),
+        ("[-3:]", Some(-3), None),
+        ("[-3:-2]", Some(-3), Some(-2)),
+        ("[-4000:7000]", Some(-4000), Some(7000)),
+        ("[-3:2]", Some(-3), Some(2)),
+        ("[3:-2]", Some(3), Some(-2)),
+        ("[3:-4]", Some(3), Some(-4)),
+    ];
+    for (id, start, stop) in dynamic_slices {
+        v.push(table(&p("test_dynamic_table_slice", id), move |t| {
+            t.slice(start, stop)?.aggregate([count().name("n")])
+        }));
+    }
+    v.push(
+        table("test_dynamic_table_slice_with_computed_offset", |t| {
+            t.select(["id"])?.order_by(["id"])?.slice(Some(-10), None)
+        })
+        .ordered(),
+    );
     // no SHA-256 in SQLite or Polars (as in Ibis)
     v.push(column("test_hexdigest", |_| Ok(c("string_col").hexdigest())).notimpl(&["sqlite", "polars"]));
 }

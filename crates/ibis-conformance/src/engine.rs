@@ -62,5 +62,44 @@ pub(crate) fn cases() -> Vec<ClientCase> {
         }));
     }
 
+    // Polars has no random number to give a row (as in Ibis)
+    let no_random: &[&str] = &["polars"];
+    v.push(
+        test("test_order_by_random", |b, target| {
+            let shuffled = target.fx.alltypes.filter([col("id").lt(100)])?.order_by([random()])?.limit(5, 0);
+            let (first, second) = (rows(b, &shuffled)?, rows(b, &shuffled)?);
+            check(first.len() == 5 && second.len() == 5 && first != second, || {
+                format!("want five rows, and five others the second time; got {} and {}", first.len(), second.len())
+            })
+        })
+        .notimpl(no_random),
+    );
+    // A sample has the table's columns and no more than its rows. (Ibis's
+    // `method="block"` and `seed=` are not ported: `sample` draws by row.)
+    for (id, filtered) in [("subquery-row", true), ("table-row", false)] {
+        let run = move |b: &dyn Backend, target: &Target| {
+            let t = target.fx.alltypes.clone();
+            let t = if filtered { t.filter([col("int_col").ge(2)])? } else { t };
+            let total = rows(b, &t.aggregate([count().name("n")])?)?;
+            let sample = t.sample(0.1)?;
+            check(sample.schema() == t.schema(), || format!("the sample's columns are {}", sample.schema()))?;
+            let drawn = rows(b, &sample)?.len() as i64;
+            check(matches!(total[..], [ref row] if matches!(row[..], [Value::Int(n)] if drawn <= n)), || {
+                format!("{drawn} rows drawn from {total:?}")
+            })
+        };
+        v.push(test(&format!("test_sample[{id}]"), run).notimpl(no_random));
+    }
+    v.push(
+        test("test_sample_memtable", |b, target| {
+            let t = target.fx.mem("c1_dups")?;
+            let sample = t.sample(0.5)?;
+            check(sample.schema() == t.schema(), || format!("the sample's columns are {}", sample.schema()))?;
+            let drawn = rows(b, &sample)?.len();
+            check(drawn <= 5, || format!("{drawn} rows drawn from 5"))
+        })
+        .notimpl(no_random),
+    );
+
     v
 }

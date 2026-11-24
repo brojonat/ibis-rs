@@ -1371,7 +1371,12 @@ impl ExprCompiler<'_> {
         } else if spec.frame.is_none() && !spec.order_by.is_empty() {
             spec = spec.rows(None, None);
         }
-        let over = self.over(&spec)?;
+        // a ranking with no order, on an engine that will not rank without one
+        let any_order = match f {
+            Expr::Analytic(..) if !framed && spec.order_by.is_empty() => self.d.ranking_order(),
+            _ => None,
+        };
+        let over = self.over(&spec, any_order)?;
         // compile the function without the broadcast `OVER ()`
         let inner =
             ExprCompiler { d: self.d, schema: self.schema, in_project: false, qual: self.qual.clone(), rc: self.rc };
@@ -1408,7 +1413,7 @@ impl ExprCompiler<'_> {
         })
     }
 
-    fn over(&self, spec: &WindowSpec) -> Result<String> {
+    fn over(&self, spec: &WindowSpec, any_order: Option<&str>) -> Result<String> {
         let mut parts = vec![];
         if !spec.partition_by.is_empty() {
             let p = spec.partition_by.iter().map(|e| self.sql(e)).collect::<Result<Vec<_>>>()?;
@@ -1417,6 +1422,8 @@ impl ExprCompiler<'_> {
         if !spec.order_by.is_empty() {
             let o = spec.order_by.iter().map(|k| self.sort_key(k)).collect::<Result<Vec<_>>>()?;
             parts.push(format!("ORDER BY {}", o.join(", ")));
+        } else if let Some(order) = any_order {
+            parts.push(format!("ORDER BY {order}"));
         }
         if let Some(fr) = &spec.frame {
             let b = |b: &Bound| match b {
