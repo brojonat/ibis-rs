@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 1,291 Ibis tests (1,162 expression cases, 129 procedures) + 22 TPC-H queries. DuckDB 1,289, Polars 1,261, Trino 1,261, Postgres 1,252, Spark 1,238, ClickHouse 1,197, SQLite 881, Impala 862, MySQL 842; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 1,288 of 1,722 applicable test ids (75%); per module at https://brojonat.github.io/ibis-rs/
+Current: 1,308 Ibis tests (1,175 expression cases, 133 procedures) + 22 TPC-H queries. DuckDB 1,306, Trino 1,278, Polars 1,274, Postgres 1,269, Spark 1,255, ClickHouse 1,214, SQLite 898, Impala 879, MySQL 859; everything else is an expected failure with its reason in the case file (README has the table).
+Coverage of the Ibis suite: 1,305 of 1,722 applicable test ids (76%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -69,9 +69,11 @@ Coverage of the Ibis suite: 1,288 of 1,722 applicable test ids (75%); per module
   - [ ] `translate` and `levenshtein` on MySQL and Polars; `split` by a delimiter that is not a literal on Spark and Polars; a pattern per row for `re_split` on ClickHouse and Polars
   - [ ] ibis-clickhouse: `SUBSTRING` (so `substr`, `capitalize`, `left`) counts bytes; `substringUTF8` counts characters
   - [ ] `join` on SQLite before 3.44 (no `CONCAT_WS`); `strip` takes off Unicode whitespace on Polars and the six ASCII characters elsewhere
-- [ ] test_generic (66 ids left of 233 applicable)
+- [ ] test_generic (49 ids left of 233 applicable)
   - [x] Literals of NULL and booleans, `identical_to`, a window in `filter`, `try_cast`, `typeof_`, `hash`, `hexdigest`, casts of arrays and structs, and the plain select, sort and union tests (34 ids)
-  - [ ] Table slices with negative bounds (`test_static_table_slice`, `test_dynamic_table_slice*`: 13 ids), `sample` (6), `order_by(random())` (1)
+  - [x] Table slices with negative bounds (`Table::slice`: 13 ids), `sample` by row (3), `order_by([random()])` (1)
+  - [ ] `sample` by block and with a seed (`test_sample[*-block]`, `test_sample_with_seed`: 3 ids). A seed needs a repeatable draw per engine (`TABLESAMPLE ... REPEATABLE`, a seeded `RAND`)
+  - [ ] `Table::slice` from the end reads the whole table to number it; a limit that is an expression (`LIMIT (SELECT COUNT(*) - 3 ...)`) would not, on the engines that take one
   - [ ] `distinct(on=..., keep=...)` (7 ids; six read Ibis's `diamonds` table, which is not among the fixtures), `pivot_longer`/`pivot_wider` (6)
   - [ ] `info` and `describe` (7 ids)
   - [ ] `ibis.memtable` (19 ids; with test_client slice 4), `test_named_literal` (a table from a value, with no table under it)

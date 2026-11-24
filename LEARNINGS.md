@@ -988,3 +988,23 @@ Other things from the same batch:
 - A conformance `column` case whose function returns a literal is run as an
   aggregate (a literal is a scalar to Ibis, as a reduction is). A test that
   reads a literal as a column of the table is a `table` case.
+
+## Slices counted from the end
+
+- Ibis writes `t[-3:]` as a limit and an offset that are expressions
+  (`OFFSET (SELECT COUNT(*) - 3 FROM t)`), which MySQL, Trino, Spark, Impala,
+  Polars and others will not take: eight ids of `test_dynamic_table_slice`
+  are marked failing on most of Ibis's backends. Numbering the rows
+  (`ROW_NUMBER`) and counting them (`COUNT(*) OVER ()`), then filtering on
+  `lo <= row < hi`, needs only window functions and passes on all nine.
+- A slice only means something on an ordered table. `Table::slice` reads the
+  keys off a final `order_by` and numbers the rows by them; it orders by the
+  row number afterwards, since a filter over a window is a subquery and a
+  subquery's order is not kept everywhere.
+- Spark and Impala refuse a `ROW_NUMBER()` whose window has no `ORDER BY`
+  (`WINDOW_FUNCTION_FRAME_NOT_ORDERED`; "requires an ORDER BY clause").
+  `ORDER BY 1` inside `OVER` is a constant, not a column position, and both
+  take it: `Dialect::ranking_order`.
+- Which slices need the count: only those where one bound is negative and
+  the answer is not empty by arithmetic alone. `[-3:0]`, `[-3:-3]` and
+  `[-3:-5]` are empty whatever the table holds (Ibis calls them static).
