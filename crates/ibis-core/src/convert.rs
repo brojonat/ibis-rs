@@ -38,6 +38,15 @@ pub fn parse_timestamp(s: &str) -> Option<i64> {
     NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp_micros())
 }
 
+/// Parse `s` by a C `strptime` pattern to microseconds since epoch; a
+/// pattern with no time of day gives midnight. `None` if it does not match.
+pub fn strptime(s: &str, format: &str) -> Option<i64> {
+    let moment = NaiveDateTime::parse_from_str(s, format)
+        .ok()
+        .or_else(|| NaiveDate::parse_from_str(s, format).ok().and_then(|d| d.and_hms_opt(0, 0, 0)))?;
+    Some(moment.and_utc().timestamp_micros())
+}
+
 pub fn format_date(days: i32) -> String {
     NaiveDate::from_num_days_from_ce_opt(days + EPOCH_DAYS_FROM_CE)
         .map_or_else(|| days.to_string(), |d| d.format("%Y-%m-%d").to_string())

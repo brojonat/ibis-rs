@@ -15,8 +15,8 @@ pub use backend::{Backend, CreateOptions, scratch_name};
 pub use datatypes::{DataType, Field, IntervalUnit, Schema};
 pub use error::{Error, Result};
 pub use expr::{
-    AggFunc, AggOptions, Analytic, BinaryOp, Bound, Expr, Frame, Func, IntoOperand, Lambda, Shift, SortKey, UnaryOp,
-    WindowSpec,
+    AggFunc, AggOptions, Analytic, AsTimestamp, BinaryOp, Bound, Expr, Frame, Func, IntoOperand, Lambda, Shift,
+    SortKey, UnaryOp, WindowSpec,
 };
 pub use table::{DerefMap, GroupedTable, How, JoinKind, JoinPred, Rel, RelOp, SetKind, Side, Table};
 pub use value::Value;
@@ -274,6 +274,39 @@ mod tests {
             (unit, start.to_string(), end.to_string()),
             (Hour, r#"Truncate(a, "h")"#.into(), r#"Truncate(b, "h")"#.into())
         );
+    }
+
+    #[test]
+    fn buckets_and_formats() {
+        use IntervalUnit::*;
+        let t = alltypes();
+        let dtype = |e: Expr| t.select([e.name("x")]).map(|t| t.schema().fields[0].dtype.to_string());
+        let ts = || col("timestamp_col");
+        assert_eq!(dtype(ts().bucket(interval(5, Minute))).unwrap(), "timestamp");
+        assert!(dtype(col("int_col").bucket(interval(5, Minute))).is_err());
+        // one method, as in Ibis: a unit for a number, a pattern for a string
+        assert_eq!(dtype(col("string_col").as_timestamp("%m/%d/%y")).unwrap(), "timestamp");
+        assert_eq!(dtype(col("string_col").as_date("%m/%d/%y")).unwrap(), "date");
+        assert!(dtype(col("int_col").as_date("%m/%d/%y")).is_err());
+
+        // a bucket is the microseconds since 1970 rounded down to the width, the offset aside
+        let bucket = |width: Expr, offset: Option<Expr>| {
+            let args: Vec<Expr> = [ts(), width].into_iter().chain(offset).collect();
+            crate::expr::bucket_expr(&args).map(|e| e.to_string())
+        };
+        let plain = bucket(interval(1, Week), None).unwrap();
+        assert!(plain.contains("604800000000") && !plain.contains("Sub("), "{plain}");
+        let offset = bucket(interval(5, Minute), Some(interval(-2, Minute))).unwrap();
+        assert!(offset.contains("300000000") && offset.contains("-120000000"), "{offset}");
+        // a month has no fixed length, and the width is a literal
+        assert!(bucket(interval(1, Month), None).is_err());
+        assert!(bucket(col("int_col").as_interval(Day), None).is_err());
+        assert!(bucket(interval(0, Day), None).is_err());
+
+        let parsed = |s, f| crate::convert::strptime(s, f).map(crate::convert::format_timestamp);
+        assert_eq!(parsed("11/01/10", "%m/%d/%y").unwrap(), "2010-11-01 00:00:00");
+        assert_eq!(parsed("2010-11-01 13:05:09", "%Y-%m-%d %H:%M:%S").unwrap(), "2010-11-01 13:05:09");
+        assert_eq!(parsed("November", "%m/%d/%y"), None);
     }
 
     fn ibis_core_micros(x: &Expr, t: &DataType, unit: IntervalUnit) -> String {

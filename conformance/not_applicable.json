@@ -35,5 +35,7 @@
   "test_udf": "Tests UDFs written as Python functions.",
   "test_vectorized_udf": "Tests UDFs written as Python functions over pandas or PyArrow data.",
   "test_temporal::test_temporal_literal_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead.",
-  "test_temporal::test_time_literal_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead."
+  "test_temporal::test_time_literal_sql": "Snapshot test of the SQL text Ibis generates. ibis-rs writes its own SQL and is checked on results instead.",
+  "test_temporal::test_string_as_timestamp[pyspark_format]": "Passes a format in the engine's own pattern language (Java's MM/dd/yy) through to the engine. ibis-rs takes C strptime patterns and translates them for each engine; the [mysql_format] id of this test is ported.",
+  "test_temporal::test_string_as_date[pyspark_format]": "Passes a format in the engine's own pattern language (Java's MM/dd/yy) through to the engine. ibis-rs takes C strptime patterns and translates them for each engine; the [mysql_format] id of this test is ported."
 }

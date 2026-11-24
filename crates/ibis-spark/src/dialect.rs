@@ -221,6 +221,16 @@ impl Dialect for SparkDialect {
         };
         let int = |s: String| format!("CAST({s} AS INT)");
         Ok(match f {
+            Func::StringToTimestamp | Func::StringToDate => {
+                let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
+                    return unsupported("a string parsed by a non-literal format");
+                };
+                let (x, fmt) = (a(0)?, quote_str(&strftime_to_java_format("spark", fmt)?));
+                Some(match f {
+                    Func::StringToDate => format!("TO_DATE({x}, {fmt})"),
+                    _ => format!("TO_TIMESTAMP_NTZ({x}, {fmt})"),
+                })
+            }
             Func::IsoYear => Some(int(format!("EXTRACT(YEAROFWEEK FROM {})", a(0)?))),
             // UNIX_TIMESTAMP reads its argument in the session's zone
             Func::EpochSeconds => {

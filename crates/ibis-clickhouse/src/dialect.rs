@@ -155,6 +155,17 @@ impl Dialect for ClickHouseDialect {
         };
         let int = |s: String| cast(s, DataType::Int32);
         Ok(match f {
+            Func::StringToTimestamp | Func::StringToDate => {
+                let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
+                    return unsupported("a string parsed by a non-literal format");
+                };
+                // parseDateTime reads the patterns formatDateTime writes; NULL where it does not match
+                let parsed = format!("parseDateTimeOrNull({}, {})", a(0)?, quote_str(&format_datetime_pattern(fmt)?));
+                return match f {
+                    Func::StringToDate => cast(parsed, DataType::Date),
+                    _ => cast(parsed, DataType::Timestamp { tz: None }),
+                };
+            }
             Func::IsoYear => return int(format!("toISOYear({})", a(0)?)),
             Func::EpochSeconds => return int(format!("toRelativeSecondNum({})", a(0)?)),
             Func::Length => return int(format!("lengthUTF8({})", a(0)?)),

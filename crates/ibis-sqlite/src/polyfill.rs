@@ -81,6 +81,17 @@ pub fn register(conn: &Connection) -> Result<()> {
         let rep: String = ctx.get(2)?;
         Ok(text(ctx, 0)?.map(|s| re.replace_all(&s, rep.as_str()).into_owned()))
     })?;
+    // SQLite formats moments (`strftime`) and has nothing to read them
+    // back: text by a C `strptime` pattern, as the text of a timestamp;
+    // NULL where it does not match.
+    conn.create_scalar_function("ibis_strptime", 2, DET, |ctx| {
+        Ok(match (text(ctx, 0)?, text(ctx, 1)?) {
+            (Some(s), Some(format)) => {
+                ibis_core::convert::strptime(&s, &format).map(ibis_core::convert::format_timestamp)
+            }
+            _ => None,
+        })
+    })?;
     // Math functions: only present when SQLite is built with
     // SQLITE_ENABLE_MATH_FUNCTIONS, which the bundled build is not.
     let unary: [(&str, UnaryF64); 14] = [

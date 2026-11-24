@@ -99,6 +99,20 @@ impl Dialect for PostgresDialect {
         let a = |i: usize| c.sql(&args[i]);
         let float_arg = args.first().is_some_and(|x| c.dtype(x).map(|t| !t.is_integer()).unwrap_or(false));
         Ok(match f {
+            Func::StringToTimestamp | Func::StringToDate => {
+                let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
+                    return Err(Error::Unsupported {
+                        backend: "postgres".into(),
+                        op: "a string parsed by a non-literal format".into(),
+                    });
+                };
+                let (x, fmt) = (a(0)?, quote_str(&to_char_format(fmt)?));
+                // TO_TIMESTAMP gives a moment with a zone: back to what the text said
+                Some(match f {
+                    Func::StringToDate => format!("TO_DATE({x}, {fmt})"),
+                    _ => format!("CAST(TO_TIMESTAMP({x}, {fmt}) AS TIMESTAMP)"),
+                })
+            }
             Func::IsoYear => Some(format!("CAST(EXTRACT(ISOYEAR FROM {}) AS INTEGER)", a(0)?)),
             Func::EpochSeconds => Some(format!("CAST(FLOOR(EXTRACT(EPOCH FROM {})) AS INTEGER)", a(0)?)),
             Func::RegexSearch => Some(format!("({} ~ {})", a(0)?, a(1)?)),

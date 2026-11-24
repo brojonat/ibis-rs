@@ -142,6 +142,9 @@ impl Dialect for SqliteDialect {
             Ok(Some(format!("CAST(STRFTIME('{fmt}', {}) AS INTEGER)", a(0)?)))
         };
         Ok(match f {
+            // a function this crate registers on the connection (polyfill.rs)
+            Func::StringToTimestamp => Some(format!("ibis_strptime({}, {})", a(0)?, a(1)?)),
+            Func::StringToDate => Some(format!("DATE(ibis_strptime({}, {}))", a(0)?, a(1)?)),
             Func::IsoYear => extract("%G")?,
             Func::EpochSeconds => extract("%s")?,
             Func::Like | Func::ILike => {
@@ -581,6 +584,10 @@ mod tests {
         // of 5, 3, 3, 5, 6: AND 0, OR 7, XOR 6
         assert_eq!(got[0], ints([1, 5, 6, 5, 0, 7, 6, 6, 30]));
         assert_eq!(got[1][1..], vec![Value::Null; 8]);
+        // text read by a pattern: a function this crate registers
+        let read = con.sql("SELECT ibis_strptime('11/01/10', '%m/%d/%y') AS a, ibis_strptime('x', '%m/%d/%y') AS b");
+        let got = batch_to_rows(&con.execute(&read.unwrap()).unwrap()[0]).unwrap();
+        assert_eq!(got[0], [Value::from("2010-11-01 00:00:00"), Value::Null]);
         // read in an order (SQLite 3.44 and later), NULLs passed over or kept
         let by_x = || [x().desc()];
         let ends =

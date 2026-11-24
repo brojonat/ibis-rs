@@ -105,6 +105,16 @@ impl Dialect for ImpalaDialect {
         let a = |i: usize| c.sql(&args[i]);
         let int = |s: String| format!("CAST({s} AS INT)");
         Ok(match f {
+            Func::StringToTimestamp | Func::StringToDate => {
+                let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
+                    return unsupported("a string parsed by a non-literal format");
+                };
+                let (x, fmt) = (a(0)?, quote_str(&strftime_to_impala_format(fmt)?));
+                Some(match f {
+                    Func::StringToDate => format!("CAST(TO_TIMESTAMP({x}, {fmt}) AS DATE)"),
+                    _ => format!("TO_TIMESTAMP({x}, {fmt})"),
+                })
+            }
             // the year of the Thursday of the week (DAYOFWEEK: Sunday is 1)
             Func::IsoYear => {
                 let x = a(0)?;

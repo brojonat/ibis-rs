@@ -217,6 +217,8 @@ impl Tx<'_> {
                     None => self.binary(e, *op, l, r)?,
                 }
             }
+            // a bucket is arithmetic on the microseconds since 1970
+            Expr::Func(Func::Bucket, args) => self.expr(&ibis_core::expr::bucket_expr(args)?)?,
             Expr::Func(f, args) => {
                 let first = args.first().map(|a| self.dtype(a)).transpose()?;
                 self.func(e, f.resolve(first.as_ref()), args)?
@@ -466,6 +468,14 @@ impl Tx<'_> {
             Quarter => x.dt().quarter().cast(t),
             WeekOfYear => x.dt().week().cast(t),
             IsoYear => x.dt().iso_year().cast(t),
+            StringToTimestamp | StringToDate => {
+                let format = Some(str_arg(1, "format")?.into());
+                let options = pl::StrptimeOptions { format, strict: false, ..Default::default() };
+                match f {
+                    StringToDate => x.str().to_date(options),
+                    _ => x.str().to_datetime(Some(pl::TimeUnit::Microseconds), None, options, pl::lit("raise")),
+                }
+            }
             EpochSeconds => {
                 let micros = x.cast(pl::DataType::Datetime(pl::TimeUnit::Microseconds, None)).cast(pl::DataType::Int64);
                 micros.floor_div(pl::lit(1_000_000i64)).cast(t)

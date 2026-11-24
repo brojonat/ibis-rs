@@ -94,6 +94,16 @@ impl Dialect for MySqlDialect {
         // without a NaN or an infinity, no value is one; NULL stays NULL
         let never = |x: String| format!("({x} IS NULL AND NULL)");
         Ok(match f {
+            Func::StringToTimestamp | Func::StringToDate => {
+                let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
+                    return unsupported("a string parsed by a non-literal format");
+                };
+                let (x, fmt) = (a(0)?, quote_str(&strftime_to_date_format("mysql", fmt)?));
+                Some(match f {
+                    Func::StringToDate => format!("CAST(STR_TO_DATE({x}, {fmt}) AS DATE)"),
+                    _ => format!("CAST(STR_TO_DATE({x}, {fmt}) AS DATETIME(6))"),
+                })
+            }
             Func::IsoYear => Some(format!("CAST(YEARWEEK({}, 3) DIV 100 AS SIGNED)", a(0)?)),
             // UNIX_TIMESTAMP reads its argument in the session's zone
             Func::EpochSeconds => Some(format!("TIMESTAMPDIFF(SECOND, '1970-01-01 00:00:00', {})", a(0)?)),

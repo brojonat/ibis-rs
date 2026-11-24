@@ -128,6 +128,33 @@ pub fn register(v: &mut Vec<Case>) {
 
     intervals(v);
     epochs_and_edges(v);
+    buckets_and_formats(v);
+}
+
+/// Timestamps cut into buckets of a fixed width; strings read by a format.
+fn buckets_and_formats(v: &mut Vec<Case>) {
+    use IntervalUnit::*;
+    let widths = [
+        ("milliseconds", 50, Millisecond),
+        ("seconds", 2, Second),
+        ("minutes", 5, Minute),
+        ("hours", 2, Hour),
+        ("days", 2, Day),
+    ];
+    for (id, n, unit) in widths {
+        v.push(column(&format!("test_timestamp_bucket[{id}]"), move |_| {
+            Ok(c("timestamp_col").bucket(interval(n, unit)))
+        }));
+    }
+    for (id, minutes) in [("pos", 2), ("neg", -2)] {
+        v.push(column(&format!("test_timestamp_bucket_offset[{id}]"), move |_| {
+            Ok(c("timestamp_col").bucket_offset(interval(5, Minute), interval(minutes, Minute)))
+        }));
+    }
+
+    // date_string_col is mm/dd/yy; the pattern is C's on every backend
+    v.push(column("test_string_as_timestamp[mysql_format]", |_| Ok(c("date_string_col").as_timestamp("%m/%d/%y"))));
+    v.push(column("test_string_as_date[mysql_format]", |_| Ok(c("date_string_col").as_date("%m/%d/%y"))));
 }
 
 /// ISO years, numbers as timestamps, literals far from now, deltas.

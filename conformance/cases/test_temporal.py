@@ -6,9 +6,9 @@
 
 Ported so far: field extraction, truncation, literals and constructors,
 strftime with a literal format, timestamps and dates moved by intervals, ISO
-years, numbers as timestamps, deltas of dates and timestamps. Not yet: time
-zones, the `time` type, buckets, and the two differences of
-test_temporal_binop (their result is an interval). No golden, because Python
+years, numbers as timestamps, deltas of dates and timestamps, buckets,
+strings read by a format. Not yet: time zones, the `time` type, and the two
+differences of test_temporal_binop (their result is an interval). No golden, because Python
 Ibis on DuckDB can't produce one: test_timestamp_extract_epoch_seconds (its
 result doesn't fit the int32 Ibis declares) and test_integer_to_timestamp
 (DuckDB has two of its four units); those are procedures on the Rust side
@@ -255,3 +255,20 @@ r.params(
         "date_column": column(lambda t: ibis.literal(DATE) == _built_date(t)),
     },
 )
+
+BUCKETS = {
+    "milliseconds": {"milliseconds": 50}, "seconds": {"seconds": 2}, "minutes": {"minutes": 5}, "hours": {"hours": 2},
+    "days": {"days": 2},
+}  # fmt: skip
+for pid, width in BUCKETS.items():
+    r.add(f"test_timestamp_bucket[{pid}]", column(lambda t, width=width: t.timestamp_col.bucket(**width)))
+for pid, minutes in {"pos": 2, "neg": -2}.items():
+    r.add(
+        f"test_timestamp_bucket_offset[{pid}]",
+        column(lambda t, minutes=minutes: t.timestamp_col.bucket(minutes=5, offset=ibis.interval(minutes=minutes))),
+    )
+
+# date_string_col is mm/dd/yy. The [pyspark_format] ids pass Java's pattern
+# through to the engine and are not applicable: patterns here are C's.
+r.add("test_string_as_timestamp[mysql_format]", column(lambda t: t.date_string_col.as_timestamp("%m/%d/%y")))
+r.add("test_string_as_date[mysql_format]", column(lambda t: t.date_string_col.as_date("%m/%d/%y")))

@@ -224,6 +224,15 @@ pub enum Func {
     /// `start` to `end` (23:59 to 00:01 is one day). The unit is an
     /// `IntervalUnit`'s short name.
     Delta,
+    /// `string_to_timestamp(x, format)` and `string_to_date(x, format)`:
+    /// text read by a literal C `strptime` pattern; NULL where it does not
+    /// match.
+    StringToTimestamp,
+    StringToDate,
+    /// `bucket(x, width[, offset])`: the start of the bucket of fixed
+    /// `width` (an interval of weeks or shorter) that the timestamp falls
+    /// in. Buckets are counted from 1970-01-01 00:00:00, plus `offset`.
+    Bucket,
     /// `timestamp_from_epoch(x, unit)`: the moment `x` seconds (`s`),
     /// milliseconds (`ms`), microseconds (`us`) or nanoseconds (`ns`)
     /// after 1970-01-01 00:00:00.
@@ -598,6 +607,26 @@ pub fn null(dtype: DataType) -> Expr {
 /// date is moved by with `+` and `-`.
 pub fn interval(n: i64, unit: IntervalUnit) -> Expr {
     Expr::Literal(Value::Int(n), DataType::Interval(unit))
+}
+
+/// What `as_timestamp` reads its value by: a unit for a number, a pattern
+/// for a string.
+#[derive(Clone, Debug, PartialEq)]
+pub enum AsTimestamp {
+    Unit(IntervalUnit),
+    Format(String),
+}
+
+impl From<IntervalUnit> for AsTimestamp {
+    fn from(unit: IntervalUnit) -> Self {
+        AsTimestamp::Unit(unit)
+    }
+}
+
+impl From<&str> for AsTimestamp {
+    fn from(format: &str) -> Self {
+        AsTimestamp::Format(format.to_string())
+    }
 }
 
 /// One step of date arithmetic: `count` units forward, or back.
@@ -1119,11 +1148,33 @@ impl Expr {
     pub fn delta(self, other: impl Into<Expr>, unit: IntervalUnit) -> Expr {
         func(Func::Delta, vec![self, other.into(), lit(unit.short())])
     }
-    /// This number as a moment: `unit` (seconds to nanoseconds) since
-    /// 1970-01-01 00:00:00 (Ibis `as_timestamp(unit)`). A cast of a number
-    /// to a timestamp counts seconds.
-    pub fn as_timestamp(self, unit: IntervalUnit) -> Expr {
-        func(Func::TimestampFromEpoch, vec![self, lit(unit.short())])
+    /// A number as a moment, or a string read as one (Ibis `as_timestamp`):
+    /// with a unit (`IntervalUnit::Second` to `Nanosecond`), that many
+    /// units since 1970-01-01 00:00:00; with a C `strptime` pattern
+    /// (`"%m/%d/%y"`), the string parsed by it, NULL where it does not
+    /// match. A cast of a number to a timestamp counts seconds.
+    pub fn as_timestamp(self, how: impl Into<AsTimestamp>) -> Expr {
+        match how.into() {
+            AsTimestamp::Unit(unit) => func(Func::TimestampFromEpoch, vec![self, lit(unit.short())]),
+            AsTimestamp::Format(format) => func(Func::StringToTimestamp, vec![self, lit(format.as_str())]),
+        }
+    }
+    /// This string read as a date by a C `strptime` pattern (Ibis
+    /// `as_date`); NULL where it does not match.
+    pub fn as_date(self, format: &str) -> Expr {
+        func(Func::StringToDate, vec![self, lit(format)])
+    }
+    /// The start of the bucket of `width` this timestamp falls in (Ibis
+    /// `bucket`): `ts.bucket(interval(5, Minute))`. The width is an
+    /// interval of weeks or shorter units; buckets are counted from
+    /// 1970-01-01 00:00:00.
+    pub fn bucket(self, width: Expr) -> Expr {
+        func(Func::Bucket, vec![self, width])
+    }
+    /// `bucket`, with the buckets counted from 1970-01-01 00:00:00 plus
+    /// `offset` (Ibis `bucket(..., offset=)`).
+    pub fn bucket_offset(self, width: Expr, offset: Expr) -> Expr {
+        func(Func::Bucket, vec![self, width, offset])
     }
     /// The date part of a timestamp, or a string parsed as an ISO date.
     pub fn date(self) -> Expr {
@@ -2055,6 +2106,48 @@ pub fn epoch_micros(x: &Expr, t: &DataType, unit: IntervalUnit) -> Result<Expr> 
     })
 }
 
+/// An interval of one fixed length in microseconds: literal counts of
+/// weeks and shorter units. A month has no fixed length.
+fn fixed_micros(e: &Expr) -> Result<i64> {
+    let mut total = 0i64;
+    for step in e.shifts()? {
+        let per = match step.unit {
+            IntervalUnit::Day => 86_400_000_000,
+            IntervalUnit::Hour => 3_600_000_000,
+            IntervalUnit::Minute => 60_000_000,
+            IntervalUnit::Second => 1_000_000,
+            IntervalUnit::Millisecond => 1_000,
+            IntervalUnit::Microsecond => 1,
+            other => return invalid(format!("a bucket is weeks or shorter units wide, not {other:?}s")),
+        };
+        let Some(count) = step.literal() else {
+            return invalid("a bucket's width and offset are literal intervals".to_string());
+        };
+        total += if step.back { -count * per } else { count * per };
+    }
+    Ok(total)
+}
+
+/// The arguments of a `bucket` as the expression it stands for: the
+/// microseconds since 1970 rounded down to a multiple of the width (after
+/// the offset is taken off, and put back on), as a timestamp again. Built
+/// from `delta`, `microsecond` and `as_timestamp`, which every backend has.
+pub fn bucket_expr(args: &[Expr]) -> Result<Expr> {
+    let width = fixed_micros(&args[1])?;
+    if width <= 0 {
+        return invalid("a bucket has a positive width".to_string());
+    }
+    let offset = args.get(2).map(fixed_micros).transpose()?.unwrap_or(0);
+    let x = || args[0].clone();
+    let seconds = x().delta(timestamp("1970-01-01 00:00:00"), IntervalUnit::Second);
+    let micros = seconds * 1_000_000i64 + x().microsecond().cast(DataType::Int64);
+    let start = match offset {
+        0 => micros.floordiv(width) * width,
+        _ => (micros - offset).floordiv(width) * width + offset,
+    };
+    Ok(start.as_timestamp(IntervalUnit::Microsecond))
+}
+
 /// The arguments of a `delta` as its unit and its two ends, start first,
 /// each cut back to the start of the unit: the whole units between those
 /// are the times the unit turns over.
@@ -2140,6 +2233,15 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
         Delta => match (&first, ts.get(1)) {
             (T::Date, Some(T::Date)) | (T::Timestamp { .. }, Some(T::Timestamp { .. })) => T::Int64,
             (a, b) => return invalid(format!("delta needs two dates or two timestamps, got {a} and {b:?}")),
+        },
+        StringToTimestamp | StringToDate => match (&first, ts.get(1)) {
+            (T::String | T::Null, Some(T::String)) if f == StringToTimestamp => T::Timestamp { tz: None },
+            (T::String | T::Null, Some(T::String)) => T::Date,
+            (a, b) => return invalid(format!("{f:?} reads a string by a format, got {a} and {b:?}")),
+        },
+        Bucket => match (&first, ts[1..].iter().all(|t| matches!(t, T::Interval(_)))) {
+            (T::Timestamp { .. }, true) => first,
+            _ => return invalid(format!("bucket takes a timestamp and intervals, got {ts:?}")),
         },
         TimestampFromEpoch => {
             if !first.is_numeric() && first != T::Null {

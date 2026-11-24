@@ -679,6 +679,8 @@ impl ExprCompiler<'_> {
                     None => self.default_binary(*op, l, r)?,
                 }
             }
+            // a bucket is arithmetic on the microseconds since 1970
+            Expr::Func(Func::Bucket, args) => self.sql(&ibis_core::expr::bucket_expr(args)?)?,
             Expr::Func(f, args) => {
                 let first = args.first().map(|a| self.dtype(a)).transpose()?;
                 let f = f.resolve(first.as_ref());
@@ -1081,6 +1083,8 @@ impl ExprCompiler<'_> {
                     None => format!("MAKE_TIMESTAMP({micros})"),
                 }
             }
+            StringToTimestamp => format!("STRPTIME({x}, {})", a[1]),
+            StringToDate => format!("CAST(STRPTIME({x}, {}) AS DATE)", a[1]),
             DayOfWeekName => format!("DAYNAME({x})"),
             Truncate => {
                 let unit = match Self::lit_str(&args[1]) {

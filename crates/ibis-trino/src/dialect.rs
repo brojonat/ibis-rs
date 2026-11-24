@@ -192,6 +192,16 @@ impl Dialect for TrinoDialect {
         let a = |i: usize| c.sql(&args[i]);
         let int = |s: String| format!("CAST({s} AS INTEGER)");
         Ok(match f {
+            Func::StringToTimestamp | Func::StringToDate => {
+                let Some(fmt) = ExprCompiler::lit_str(&args[1]) else {
+                    return unsupported("a string parsed by a non-literal format");
+                };
+                let (x, fmt) = (a(0)?, quote_str(&strftime_to_date_format("trino", fmt)?));
+                Some(match f {
+                    Func::StringToDate => format!("CAST(DATE_PARSE({x}, {fmt}) AS DATE)"),
+                    _ => format!("CAST(DATE_PARSE({x}, {fmt}) AS TIMESTAMP(6))"),
+                })
+            }
             Func::IsoYear => Some(int(format!("YEAR_OF_WEEK({})", a(0)?))),
             // TO_UNIXTIME reads a timestamp in the session's zone
             Func::EpochSeconds => Some(int(format!("DATE_DIFF('second', TIMESTAMP '1970-01-01 00:00:00', {})", a(0)?))),
