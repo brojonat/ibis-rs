@@ -2,7 +2,7 @@
 //! spells differently; everything else falls through to the defaults in
 //! `compiler.rs` (DuckDB/Postgres-flavored ANSI SQL).
 
-use ibis_core::{AggFunc, AggOptions, Analytic, BinaryOp, DataType, Expr, Func, Lambda, Result, Value};
+use ibis_core::{AggFunc, AggOptions, Analytic, BinaryOp, DataType, Expr, Func, Lambda, Result, Shift, Value};
 
 use crate::compiler::ExprCompiler;
 
@@ -72,6 +72,13 @@ pub trait Dialect: Send + Sync {
         _options: &AggOptions,
         _tail: &str,
     ) -> Result<Option<String>> {
+        Ok(None)
+    }
+    /// `moment` (compiled; a timestamp or a date, as `t` says) moved by
+    /// one step: a count of units forward or back. The unit is never a
+    /// week or a quarter. The result has the type of `moment`. `None` for
+    /// `ExprCompiler::default_date_shift`.
+    fn date_shift(&self, _c: &ExprCompiler, _moment: &str, _t: &DataType, _step: &Shift) -> Result<Option<String>> {
         Ok(None)
     }
     /// The number of distinct rows, a row being `columns` (compiled).
@@ -241,8 +248,9 @@ pub fn default_type_name(backend: &str, t: &DataType) -> Result<String> {
         Timestamp { tz: Some(_) } => {
             return Err(ibis_core::Error::Unsupported { backend: backend.into(), op: "timestamp with tz".into() });
         }
-        // each engine that has them names them its own way, in `Dialect::type_name`
-        Array(_) | Struct(_) | Map(..) => {
+        // Each engine that has them names them its own way, in
+        // `Dialect::type_name`. No column holds an interval yet.
+        Array(_) | Struct(_) | Map(..) | Interval(_) => {
             return Err(ibis_core::Error::Unsupported { backend: backend.into(), op: format!("the type {t}") });
         }
     })

@@ -8,6 +8,59 @@ use arrow_schema::{DataType as ArrowType, Field as ArrowField, Schema as ArrowSc
 
 use crate::error::{Result, invalid};
 
+/// What an interval counts (Ibis `interval('D')`), largest first.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum IntervalUnit {
+    Year,
+    Quarter,
+    Month,
+    Week,
+    Day,
+    Hour,
+    Minute,
+    Second,
+    Millisecond,
+    Microsecond,
+    Nanosecond,
+}
+
+impl IntervalUnit {
+    const SHORT: [(IntervalUnit, &'static str); 11] = [
+        (IntervalUnit::Year, "Y"),
+        (IntervalUnit::Quarter, "Q"),
+        (IntervalUnit::Month, "M"),
+        (IntervalUnit::Week, "W"),
+        (IntervalUnit::Day, "D"),
+        (IntervalUnit::Hour, "h"),
+        (IntervalUnit::Minute, "m"),
+        (IntervalUnit::Second, "s"),
+        (IntervalUnit::Millisecond, "ms"),
+        (IntervalUnit::Microsecond, "us"),
+        (IntervalUnit::Nanosecond, "ns"),
+    ];
+
+    /// Ibis's letter for the unit: `Y`, `Q`, `M`, `W`, `D`, `h`, `m`, `s`, `ms`, `us`, `ns`.
+    pub fn short(self) -> &'static str {
+        Self::SHORT.iter().find(|(u, _)| *u == self).map_or("", |(_, s)| s)
+    }
+
+    /// A day or longer: what a date can be moved by.
+    pub fn is_date(self) -> bool {
+        self <= IntervalUnit::Day
+    }
+}
+
+impl FromStr for IntervalUnit {
+    type Err = crate::error::Error;
+
+    fn from_str(s: &str) -> Result<IntervalUnit> {
+        match Self::SHORT.iter().find(|(_, short)| *short == s) {
+            Some((unit, _)) => Ok(*unit),
+            None => invalid(format!("no interval unit {s:?}: one of Y, Q, M, W, D, h, m, s, ms, us, ns")),
+        }
+    }
+}
+
 /// Logical types, following Ibis's dtype names (`int32`, `float64`, `string`, ...).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DataType {
@@ -35,6 +88,9 @@ pub enum DataType {
     Timestamp {
         tz: Option<String>,
     },
+    /// A count of units of time (Ibis `interval('D')`): what a timestamp
+    /// or a date is moved by, and the difference of two of them.
+    Interval(IntervalUnit),
     /// A variable-length list of values of one type (Ibis `array<T>`).
     Array(Box<DataType>),
     /// Named fields, in order (Ibis `struct<a: T, b: U>`).
@@ -191,6 +247,7 @@ impl DataType {
             Binary => ArrowType::Binary,
             Date => ArrowType::Date32,
             Timestamp { tz } => ArrowType::Timestamp(TimeUnit::Microsecond, tz.as_deref().map(Into::into)),
+            Interval(_) => ArrowType::Interval(arrow_schema::IntervalUnit::MonthDayNano),
             Array(item) => ArrowType::List(Arc::new(ArrowField::new("item", item.to_arrow(), true))),
             Struct(fields) => {
                 ArrowType::Struct(fields.iter().map(|(n, t)| ArrowField::new(n, t.to_arrow(), true)).collect())
@@ -278,6 +335,7 @@ impl fmt::Display for DataType {
             Date => "date",
             Timestamp { tz: None } => "timestamp",
             Timestamp { tz: Some(tz) } => return write!(f, "timestamp('{tz}')"),
+            Interval(unit) => return write!(f, "interval('{}')", unit.short()),
             Array(item) => return write!(f, "array<{item}>"),
             Map(key, value) => return write!(f, "map<{key}, {value}>"),
             Struct(fields) => {
@@ -390,6 +448,16 @@ impl TypeParser<'_> {
                     self.expect(")")?;
                 }
                 Timestamp { tz }
+            }
+            "interval" => {
+                self.expect("(")?;
+                let t = self.rest.trim_start();
+                let Some((unit, after)) = t.strip_prefix('\'').and_then(|q| q.split_once('\'')) else {
+                    return invalid(format!("type: expected a quoted interval unit at {t:?}"));
+                };
+                self.rest = after;
+                self.expect(")")?;
+                Interval(unit.parse()?)
             }
             "array" => {
                 self.expect("<")?;

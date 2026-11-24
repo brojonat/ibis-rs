@@ -256,6 +256,45 @@ impl Dialect for SqliteDialect {
         })
     }
 
+    /// No intervals: `DATETIME` and `DATE` take modifiers, `'+4 day'`.
+    /// `floor` (SQLite 3.46) keeps January 31 plus a month in February;
+    /// `subsec` keeps the milliseconds, which is as fine as SQLite reads.
+    fn date_shift(
+        &self,
+        c: &ExprCompiler,
+        moment: &str,
+        t: &DataType,
+        step: &ibis_core::Shift,
+    ) -> Result<Option<String>> {
+        use ibis_core::IntervalUnit::*;
+        let unsupported = |op: &str| Err(Error::Unsupported { backend: "sqlite".into(), op: op.into() });
+        let (name, floor) = match step.unit {
+            Year => ("year", ", 'floor'"),
+            Month => ("month", ", 'floor'"),
+            Day => ("day", ""),
+            Hour => ("hour", ""),
+            Minute => ("minute", ""),
+            Second | Millisecond => ("second", ""),
+            _ => return unsupported("an interval finer than a millisecond"),
+        };
+        let thousandths = step.unit == Millisecond;
+        let modifier = match (step.literal(), thousandths) {
+            (Some(n), false) => format!("'{:+} {name}'", if step.back { -n } else { n }),
+            (Some(n), true) => format!("'{:+.3} {name}'", if step.back { -n } else { n } as f64 / 1000.0),
+            (None, _) => {
+                let sign = if step.back { "-" } else { "" };
+                let count = c.sql(&step.count)?;
+                match thousandths {
+                    true => format!("PRINTF('%+.3f {name}', {sign}({count}) / 1000.0)"),
+                    false => format!("PRINTF('%+d {name}', {sign}({count}))"),
+                }
+            }
+        };
+        Ok(Some(match t {
+            DataType::Date => format!("DATE({moment}, {modifier}{floor})"),
+            _ => format!("DATETIME({moment}, {modifier}{floor}, 'subsec')"),
+        }))
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,

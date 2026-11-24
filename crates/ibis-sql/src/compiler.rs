@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use ibis_core::{
-    AggFunc, AggOptions, Analytic, BinaryOp, Bound, DataType, DerefMap, Error, Expr, Func, JoinKind, Rel, RelOp,
-    Result, Schema, SetKind, Side, SortKey, Table, UnaryOp, Value, WindowSpec,
+    AggFunc, AggOptions, Analytic, BinaryOp, Bound, DataType, DerefMap, Error, Expr, Func, IntervalUnit, JoinKind, Rel,
+    RelOp, Result, Schema, SetKind, Shift, Side, SortKey, Table, UnaryOp, Value, WindowSpec,
 };
 
 use crate::dialect::Dialect;
@@ -33,6 +33,24 @@ pub fn sql_query(d: &dyn Dialect, query: &str, views: &[(String, Arc<Rel>)]) -> 
 }
 
 /// `KurtosisSamp` -> `kurtosis_samp`.
+/// The SQL keyword of an interval unit: `YEAR`, ..., `MICROSECOND`.
+pub fn interval_unit_name(unit: IntervalUnit) -> &'static str {
+    use IntervalUnit::*;
+    match unit {
+        Year => "YEAR",
+        Quarter => "QUARTER",
+        Month => "MONTH",
+        Week => "WEEK",
+        Day => "DAY",
+        Hour => "HOUR",
+        Minute => "MINUTE",
+        Second => "SECOND",
+        Millisecond => "MILLISECOND",
+        Microsecond => "MICROSECOND",
+        Nanosecond => "NANOSECOND",
+    }
+}
+
 fn snake(name: &str) -> String {
     let mut out = String::new();
     for ch in name.chars() {
@@ -617,6 +635,10 @@ impl ExprCompiler<'_> {
                 };
                 format!("({needle} IN ({}))", self.rc.rel(rel)?.render(d))
             }
+            // an interval is what a date is moved by (`shift`), not a value by itself
+            Expr::Literal(_, DataType::Interval(_)) | Expr::Cast(_, DataType::Interval(_)) => {
+                return unsupported(d, "an interval outside date arithmetic");
+            }
             Expr::Literal(v, t) => self.literal(v, t)?,
             Expr::Alias(e, _) => self.sql(e)?,
             Expr::Cast(e, t) => match d.cast(self, e, t)? {
@@ -633,9 +655,20 @@ impl ExprCompiler<'_> {
                 }
             }
             Expr::Binary(op, l, r) => {
+                let (lt, rt) = (self.dtype(l)?, self.dtype(r)?);
                 // `+` and `*` on arrays and maps are functions
-                if let Some(call) = ibis_core::expr::nested_binary(*op, l, r, &self.dtype(l)?, &self.dtype(r)?) {
+                if let Some(call) = ibis_core::expr::nested_binary(*op, l, r, &lt, &rt) {
                     return self.sql(&call);
+                }
+                match (&lt, &rt) {
+                    (moment, DataType::Interval(_)) if moment.is_temporal() => {
+                        return self.shift(l, moment, r, *op == BinaryOp::Sub);
+                    }
+                    (DataType::Interval(_), moment) if moment.is_temporal() => return self.shift(r, moment, l, false),
+                    (DataType::Interval(_), _) | (_, DataType::Interval(_)) => {
+                        return unsupported(d, "an interval outside date arithmetic");
+                    }
+                    _ => {}
                 }
                 match d.binary(self, *op, l, r)? {
                     Some(s) => s,
@@ -743,6 +776,35 @@ impl ExprCompiler<'_> {
             Some(s) => Ok(s),
             None => unsupported(self.d, "count_distinct_star"),
         }
+    }
+
+    /// A timestamp or a date moved by an interval, one step after the
+    /// other (`Dialect::date_shift`).
+    fn shift(&self, moment: &Expr, t: &DataType, by: &Expr, back: bool) -> Result<String> {
+        let mut moved = self.sql(moment)?;
+        for mut step in by.shifts()? {
+            step.back ^= back;
+            moved = match self.d.date_shift(self, &moved, t, &step)? {
+                Some(s) => s,
+                None => self.default_date_shift(&moved, t, &step)?,
+            };
+        }
+        Ok(moved)
+    }
+
+    /// `moment + INTERVAL 'n' UNIT`, or `moment + count * INTERVAL '1' UNIT`
+    /// for a count that is not a literal. A date stays a date.
+    pub fn default_date_shift(&self, moment: &str, t: &DataType, step: &Shift) -> Result<String> {
+        let sign = if step.back { '-' } else { '+' };
+        let unit = interval_unit_name(step.unit);
+        let moved = match step.literal() {
+            Some(n) => format!("{moment} {sign} INTERVAL '{n}' {unit}"),
+            None => format!("{moment} {sign} {} * INTERVAL '1' {unit}", self.sql(&step.count)?),
+        };
+        Ok(match t {
+            DataType::Date => format!("CAST({moved} AS DATE)"),
+            _ => format!("({moved})"),
+        })
     }
 
     /// A reduction with more than an argument (`Dialect::reduction`).

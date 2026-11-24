@@ -65,6 +65,8 @@ pub(crate) fn to_pl(t: &DataType) -> pl::DataType {
     use pl::DataType as P;
     match t {
         DataType::Null => P::Null,
+        // dates are moved with `offset_by`; no column holds an interval
+        DataType::Interval(_) => P::Duration(pl::TimeUnit::Microseconds),
         DataType::Boolean => P::Boolean,
         DataType::Int8 => P::Int8,
         DataType::Int16 => P::Int16,

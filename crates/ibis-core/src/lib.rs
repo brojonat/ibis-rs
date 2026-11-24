@@ -12,10 +12,10 @@ pub mod table;
 pub mod value;
 
 pub use backend::{Backend, CreateOptions, scratch_name};
-pub use datatypes::{DataType, Field, Schema};
+pub use datatypes::{DataType, Field, IntervalUnit, Schema};
 pub use error::{Error, Result};
 pub use expr::{
-    AggFunc, AggOptions, Analytic, BinaryOp, Bound, Expr, Frame, Func, IntoOperand, Lambda, SortKey, UnaryOp,
+    AggFunc, AggOptions, Analytic, BinaryOp, Bound, Expr, Frame, Func, IntoOperand, Lambda, Shift, SortKey, UnaryOp,
     WindowSpec,
 };
 pub use table::{DerefMap, GroupedTable, How, JoinKind, JoinPred, Rel, RelOp, SetKind, Side, Table};
@@ -24,10 +24,10 @@ pub use value::Value;
 /// Everything needed to write queries.
 pub mod prelude {
     pub use crate::backend::{Backend, CreateOptions};
-    pub use crate::datatypes::{DataType, Schema};
+    pub use crate::datatypes::{DataType, IntervalUnit, Schema};
     pub use crate::expr::{
-        Expr, WindowSpec, array, asc, cases, coalesce, col, count, date, date_from_ymd, desc, e, greatest, least, lit,
-        lit_as, map, null, nunique, pi, range, row_number, struct_, timestamp, timestamp_from_ymdhms,
+        Expr, WindowSpec, array, asc, cases, coalesce, col, count, date, date_from_ymd, desc, e, greatest, interval,
+        least, lit, lit_as, map, null, nunique, pi, range, row_number, struct_, timestamp, timestamp_from_ymdhms,
     };
     pub use crate::table::{How, JoinKind, Table};
     pub use crate::value::Value;
@@ -220,6 +220,31 @@ mod tests {
         assert_eq!(dtype(col("string_col").collect().distinct().include_null()), "array<string>");
         let kept = format!("{:?}", col("string_col").collect().distinct().include_null());
         assert!(kept.contains("distinct: true, include_null: true"), "{kept}");
+    }
+
+    #[test]
+    fn intervals_move_timestamps_and_dates() {
+        use IntervalUnit::*;
+        let t = alltypes();
+        let dtype = |e: Expr| t.select([e.name("x")]).map(|t| t.schema().fields[0].dtype.to_string());
+        let (ts, date) = (|| col("timestamp_col"), || col("timestamp_col").date());
+        assert_eq!(dtype(ts() + interval(4, Day)).unwrap(), "timestamp");
+        assert_eq!(dtype(interval(1, Hour) + ts()).unwrap(), "timestamp");
+        assert_eq!(dtype(date() - col("int_col").as_interval(Month)).unwrap(), "date");
+        // a date takes days and longer
+        assert!(dtype(date() + interval(2, Hour)).is_err());
+        // differences are intervals; a sum of intervals counts the finer unit
+        assert_eq!(dtype(ts() - ts()).unwrap(), "interval('s')");
+        assert_eq!(dtype(date() - date()).unwrap(), "interval('D')");
+        assert_eq!(dtype(interval(4, Day) + interval(2, Hour)).unwrap(), "interval('h')");
+        assert_eq!("interval('ms')".parse::<DataType>().unwrap(), DataType::Interval(Millisecond));
+
+        // weeks are days and quarters months; a difference turns its right side back
+        let steps = (interval(2, Week) - col("int_col").as_interval(Quarter) * 2).shifts().unwrap();
+        assert_eq!(steps.len(), 2);
+        assert_eq!((steps[0].literal(), steps[0].unit, steps[0].back), (Some(14), Day, false));
+        assert_eq!((steps[1].literal(), steps[1].unit, steps[1].back), (None, Month, true));
+        assert!(col("int_col").shifts().is_err());
     }
 
     #[test]

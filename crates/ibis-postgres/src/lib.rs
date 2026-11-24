@@ -180,6 +180,29 @@ impl Dialect for PostgresDialect {
             _ => None,
         })
     }
+    /// The unit goes inside the quotes: `INTERVAL '1' MILLISECOND` is not
+    /// Postgres. A date moved is a timestamp.
+    fn date_shift(
+        &self,
+        c: &ExprCompiler,
+        moment: &str,
+        t: &DataType,
+        step: &ibis_core::Shift,
+    ) -> Result<Option<String>> {
+        if step.unit == ibis_core::IntervalUnit::Nanosecond {
+            return Err(Error::Unsupported { backend: "postgres".into(), op: "an interval of nanoseconds".into() });
+        }
+        let sign = if step.back { '-' } else { '+' };
+        let unit = ibis_sql::interval_unit_name(step.unit);
+        let moved = match step.literal() {
+            Some(n) => format!("{moment} {sign} INTERVAL '{n} {unit}'"),
+            None => format!("{moment} {sign} {} * INTERVAL '1 {unit}'", c.sql(&step.count)?),
+        };
+        Ok(Some(match t {
+            DataType::Date => format!("CAST({moved} AS DATE)"),
+            _ => format!("({moved})"),
+        }))
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,

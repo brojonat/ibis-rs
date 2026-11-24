@@ -5,10 +5,12 @@
 """ibis/backends/tests/test_temporal.py
 
 Ported so far: field extraction, truncation, literals and constructors,
-strftime with a literal format. Not yet: intervals and date arithmetic, time
-zones, the `time` type, deltas and buckets. Also left out, because Python
-Ibis on DuckDB can't produce a golden: test_timestamp_extract_epoch_seconds
-(its result doesn't fit the int32 Ibis declares) and truncation to "ns".
+strftime with a literal format, timestamps and dates moved by intervals. Not
+yet: time zones, the `time` type, deltas and buckets, and the two differences
+of test_temporal_binop (their result is an interval). Also left out, because
+Python Ibis on DuckDB can't produce a golden:
+test_timestamp_extract_epoch_seconds (its result doesn't fit the int32 Ibis
+declares) and truncation to "ns".
 
 Tests with several assertions become `name#1`, `name#2`.
 """
@@ -17,6 +19,7 @@ from __future__ import annotations
 
 import ibis
 import ibis.expr.datatypes as dt
+import pandas as pd
 
 from cases import Registry, column, scalar, table
 
@@ -120,4 +123,68 @@ r.add("test_date_scalar_from_iso", scalar(lambda: ibis.date(ibis.literal("2022-0
 r.add(
     "test_date_column_from_iso",
     column(lambda t: ibis.date(t.year.cast("string") + "-" + t.month.cast("string").lpad(2, "0") + "-13")),
+)
+
+# The second half of each id is the pandas class Ibis's test builds the
+# expected column with.
+INTERVAL_UNITS = {
+    "Y-DateOffset": "Y", "Q-DateOffset": "Q", "M-DateOffset": "M", "W-DateOffset": "W", "D-DateOffset": "D",
+    "h-Timedelta": "h", "m-Timedelta": "m", "s-Timedelta": "s", "ms-Timedelta": "ms", "us-Timedelta": "us",
+}  # fmt: skip
+for pid, unit in INTERVAL_UNITS.items():
+    r.add(
+        f"test_integer_to_interval_timestamp[{pid}]",
+        column(lambda t, unit=unit: t.timestamp_col + t.int_col.as_interval(unit)),
+    )
+
+
+def _date_col(t):
+    month = t.date_string_col[:2]
+    day = t.date_string_col[3:5]
+    year = t.date_string_col[6:8]
+    return ("20" + year + "-" + month + "-" + day).cast("date")
+
+
+for unit in ["Y", "Q", "M", "W", "D"]:
+    r.add(
+        f"test_integer_to_interval_date[{unit}]", column(lambda t, unit=unit: _date_col(t) + t.int_col.as_interval(unit))
+    )
+
+r.params(
+    "test_temporal_binop",
+    {
+        "timestamp-add-interval": column(lambda t: t.timestamp_col + ibis.interval(days=4)),
+        "timestamp-add-interval-binop": column(
+            lambda t: t.timestamp_col + (ibis.interval(days=4) - ibis.interval(days=2))
+        ),
+        "timestamp-add-interval-binop-different-units": column(
+            lambda t: t.timestamp_col + (ibis.interval(days=4) + ibis.interval(hours=2))
+        ),
+        "timestamp-subtract-interval": column(lambda t: t.timestamp_col - ibis.interval(days=17)),
+        "date-add-interval": column(lambda t: t.timestamp_col.date() + ibis.interval(days=4)),
+        "date-subtract-interval": column(lambda t: t.timestamp_col.date() - ibis.interval(days=14)),
+    },
+)
+
+TIMEDELTAS = {
+    "large-days": "36500D", "weeks": "5W", "three-days": "3D", "two-hours": "2h", "three-minutes": "3m",
+    "ten-seconds": "10s",
+}  # fmt: skip
+for pid, delta in TIMEDELTAS.items():
+    r.add(
+        f"test_temporal_binop_pandas_timedelta[{pid}-plus]",
+        column(lambda t, delta=delta: t.timestamp_col + pd.Timedelta(delta)),
+    )
+    r.add(
+        f"test_temporal_binop_pandas_timedelta[{pid}-minus]",
+        column(lambda t, delta=delta: t.timestamp_col - pd.Timedelta(delta)),
+    )
+
+r.add(
+    "test_interval_add_cast_scalar",
+    column(lambda t: t.timestamp_col.date() + ibis.literal(10).cast("interval('D')")),
+)
+r.add(
+    "test_interval_add_cast_column",
+    table(lambda t: t.select("id", (t.timestamp_col.date() + t.bigint_col.cast("interval('D')")).name("tmp"))),
 )

@@ -125,4 +125,85 @@ pub fn register(v: &mut Vec<Case>) {
         Ok((c("year").cast(DataType::String) + lit("-") + c("month").cast(DataType::String).lpad(2, "0") + lit("-13"))
             .date())
     }));
+
+    intervals(v);
+}
+
+/// Timestamps and dates moved by intervals. The differences of
+/// test_temporal_binop (two timestamps, two dates) are not here: their
+/// result is an interval, which no column holds yet.
+fn intervals(v: &mut Vec<Case>) {
+    use IntervalUnit::*;
+
+    // the second half of each id is the pandas class Ibis's test compares with
+    let units = [
+        ("Y-DateOffset", Year),
+        ("Q-DateOffset", Quarter),
+        ("M-DateOffset", Month),
+        ("W-DateOffset", Week),
+        ("D-DateOffset", Day),
+        ("h-Timedelta", Hour),
+        ("m-Timedelta", Minute),
+        ("s-Timedelta", Second),
+        ("ms-Timedelta", Millisecond),
+        ("us-Timedelta", Microsecond),
+    ];
+    for (id, unit) in units {
+        let case = column(&format!("test_integer_to_interval_timestamp[{id}]"), move |_| {
+            Ok(c("timestamp_col") + c("int_col").as_interval(unit))
+        });
+        // SQLite's modifiers and Trino's DATE_ADD stop at the millisecond
+        let none: &[&str] = if unit == Microsecond { &["sqlite", "trino"] } else { &[] };
+        v.push(case.notimpl(none));
+    }
+
+    for (id, unit) in [("Y", Year), ("Q", Quarter), ("M", Month), ("W", Week), ("D", Day)] {
+        v.push(column(&format!("test_integer_to_interval_date[{id}]"), move |_| {
+            // date_string_col is mm/dd/yy
+            let part = |start: i64| c("date_string_col").substr(start, Some(lit(2)));
+            let date = (lit("20") + part(6) + lit("-") + part(0) + lit("-") + part(3)).cast(DataType::Date);
+            Ok(date + c("int_col").as_interval(unit))
+        }));
+    }
+
+    let ts = || c("timestamp_col");
+    let binops: [(&str, fn() -> Expr); 6] = [
+        ("timestamp-add-interval", || c("timestamp_col") + interval(4, Day)),
+        ("timestamp-add-interval-binop", || c("timestamp_col") + (interval(4, Day) - interval(2, Day))),
+        ("timestamp-add-interval-binop-different-units", || {
+            c("timestamp_col") + (interval(4, Day) + interval(2, Hour))
+        }),
+        ("timestamp-subtract-interval", || c("timestamp_col") - interval(17, Day)),
+        ("date-add-interval", || c("timestamp_col").date() + interval(4, Day)),
+        ("date-subtract-interval", || c("timestamp_col").date() - interval(14, Day)),
+    ];
+    for (id, f) in binops {
+        v.push(column(&format!("test_temporal_binop[{id}]"), move |_| Ok(f())));
+    }
+
+    // Ibis's test passes pandas Timedeltas: 5 weeks is 35 days either way
+    let deltas = [
+        ("large-days", 36500, Day),
+        ("weeks", 5, Week),
+        ("three-days", 3, Day),
+        ("two-hours", 2, Hour),
+        ("three-minutes", 3, Minute),
+        ("ten-seconds", 10, Second),
+    ];
+    for (id, n, unit) in deltas {
+        v.push(column(&format!("test_temporal_binop_pandas_timedelta[{id}-plus]"), move |_| {
+            Ok(ts() + interval(n, unit))
+        }));
+        v.push(column(&format!("test_temporal_binop_pandas_timedelta[{id}-minus]"), move |_| {
+            Ok(ts() - interval(n, unit))
+        }));
+    }
+
+    v.push(column("test_interval_add_cast_scalar", |_| {
+        Ok(c("timestamp_col").date() + lit(10).cast(DataType::Interval(Day)))
+    }));
+    v.push(table("test_interval_add_cast_column", |t| {
+        let moved = c("timestamp_col").date() + c("bigint_col").cast(DataType::Interval(Day));
+        t.select([c("id"), moved.name("tmp")])
+    }));
 }

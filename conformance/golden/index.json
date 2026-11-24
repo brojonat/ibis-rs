@@ -5625,6 +5625,276 @@
    "postgres": "same"
   }
  },
+ "test_integer_to_interval_date[D]": {
+  "file": "test_temporal/test_integer_to_interval_date[D].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_date[M]": {
+  "file": "test_temporal/test_integer_to_interval_date[M].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_date[Q]": {
+  "file": "test_temporal/test_integer_to_interval_date[Q].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_integer_to_interval_date[W]": {
+  "file": "test_temporal/test_integer_to_interval_date[W].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_date[Y]": {
+  "file": "test_temporal/test_integer_to_interval_date[Y].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[D-DateOffset]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[D-DateOffset].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[M-DateOffset]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[M-DateOffset].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[Q-DateOffset]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[Q-DateOffset].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "error: UndefinedFunction"
+  }
+ },
+ "test_integer_to_interval_timestamp[W-DateOffset]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[W-DateOffset].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[Y-DateOffset]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[Y-DateOffset].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[h-Timedelta]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[h-Timedelta].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[m-Timedelta]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[m-Timedelta].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[ms-Timedelta]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[ms-Timedelta].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[s-Timedelta]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[s-Timedelta].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_integer_to_interval_timestamp[us-Timedelta]": {
+  "file": "test_temporal/test_integer_to_interval_timestamp[us-Timedelta].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: UnsupportedOperationError",
+   "postgres": "same"
+  }
+ },
  "test_integer_truediv": {
   "file": "test_numeric/test_integer_truediv.parquet",
   "kind": "scalar",
@@ -5716,6 +5986,42 @@
    "int64"
   ],
   "rows": 4,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_interval_add_cast_column": {
+  "file": "test_temporal/test_interval_add_cast_column.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_interval_add_cast_scalar": {
+  "file": "test_temporal/test_interval_add_cast_scalar.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
   "ibis": {
    "sqlite": "same",
    "postgres": "same"
@@ -15215,6 +15521,330 @@
   "ibis": {
    "sqlite": "error: TableNotFound",
    "postgres": "error: TableNotFound"
+  }
+ },
+ "test_temporal_binop[date-add-interval]": {
+  "file": "test_temporal/test_temporal_binop[date-add-interval].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop[date-subtract-interval]": {
+  "file": "test_temporal/test_temporal_binop[date-subtract-interval].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "date"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop[timestamp-add-interval-binop-different-units]": {
+  "file": "test_temporal/test_temporal_binop[timestamp-add-interval-binop-different-units].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop[timestamp-add-interval-binop]": {
+  "file": "test_temporal/test_temporal_binop[timestamp-add-interval-binop].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "error: OperationNotDefinedError",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop[timestamp-add-interval]": {
+  "file": "test_temporal/test_temporal_binop[timestamp-add-interval].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop[timestamp-subtract-interval]": {
+  "file": "test_temporal/test_temporal_binop[timestamp-subtract-interval].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[large-days-minus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[large-days-minus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[large-days-plus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[large-days-plus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[ten-seconds-minus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[ten-seconds-minus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[ten-seconds-plus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[ten-seconds-plus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[three-days-minus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[three-days-minus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[three-days-plus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[three-days-plus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[three-minutes-minus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[three-minutes-minus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[three-minutes-plus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[three-minutes-plus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[two-hours-minus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[two-hours-minus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[two-hours-plus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[two-hours-plus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[weeks-minus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[weeks-minus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_temporal_binop_pandas_timedelta[weeks-plus]": {
+  "file": "test_temporal/test_temporal_binop_pandas_timedelta[weeks-plus].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
   }
  },
  "test_timestamp_column_from_ymdhms": {

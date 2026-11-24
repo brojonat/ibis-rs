@@ -133,6 +133,8 @@ pub fn build_array(dtype: &DataType, vals: &[Value]) -> Result<ArrayRef> {
         }};
     }
     Ok(match dtype {
+        // what moves a date, not yet a value a column holds
+        DataType::Interval(_) => return Err(Error::Other(format!("no column of {dtype} values yet"))),
         DataType::Null => Arc::new(arrow_array::NullArray::new(vals.len())),
         DataType::Boolean => build!(BooleanBuilder, as_bool),
         DataType::Int8 => build!(Int8Builder, |v| as_i64(v).map(|i| i as i8)),

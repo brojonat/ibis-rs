@@ -124,6 +124,26 @@ impl Dialect for TrinoDialect {
             Some(_) => None,
         })
     }
+    /// `DATE_ADD('day', count, moment)`: it takes any count, and a date
+    /// stays a date. It has no unit finer than the millisecond.
+    fn date_shift(
+        &self,
+        c: &ExprCompiler,
+        moment: &str,
+        _t: &DataType,
+        step: &ibis_core::Shift,
+    ) -> Result<Option<String>> {
+        use ibis_core::IntervalUnit::*;
+        if let Microsecond | Nanosecond = step.unit {
+            return unsupported("an interval finer than a millisecond");
+        }
+        let unit = ibis_sql::interval_unit_name(step.unit).to_lowercase();
+        let count = match step.back {
+            true => format!("-({})", c.sql(&step.count)?),
+            false => c.sql(&step.count)?,
+        };
+        Ok(Some(format!("DATE_ADD('{unit}', {count}, {moment})")))
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,

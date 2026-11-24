@@ -54,7 +54,7 @@ impl Dialect for MySqlDialect {
             DataType::Binary => "BINARY".into(),
             DataType::Date => "DATE".into(),
             DataType::Timestamp { .. } => "DATETIME(6)".into(),
-            DataType::Array(_) | DataType::Struct(_) | DataType::Map(..) => {
+            DataType::Array(_) | DataType::Struct(_) | DataType::Map(..) | DataType::Interval(_) => {
                 return unsupported(format!("the type {t}"));
             }
         })
@@ -208,6 +208,24 @@ impl Dialect for MySqlDialect {
             None => columns.to_vec(),
         };
         Ok(Some(format!("COUNT(DISTINCT {}){tail}", columns.join(", "))))
+    }
+    /// `moment + INTERVAL count UNIT`. No unit names the millisecond, and
+    /// none is finer than the microsecond.
+    fn date_shift(
+        &self,
+        c: &ExprCompiler,
+        moment: &str,
+        _t: &DataType,
+        step: &ibis_core::Shift,
+    ) -> Result<Option<String>> {
+        let sign = if step.back { '-' } else { '+' };
+        let count = c.sql(&step.count)?;
+        let (count, unit) = match step.unit {
+            ibis_core::IntervalUnit::Millisecond => (format!("{count} * 1000"), "MICROSECOND"),
+            ibis_core::IntervalUnit::Nanosecond => return unsupported("an interval of nanoseconds"),
+            unit => (count, ibis_sql::interval_unit_name(unit)),
+        };
+        Ok(Some(format!("({moment} {sign} INTERVAL ({count}) {unit})")))
     }
     fn reduction(
         &self,

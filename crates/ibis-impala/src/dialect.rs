@@ -196,6 +196,22 @@ impl Dialect for ImpalaDialect {
         };
         Ok(Some(format!("COUNT(DISTINCT {}){tail}", columns.join(", "))))
     }
+    /// `moment + INTERVAL count DAYS`; a date moved is a timestamp.
+    fn date_shift(
+        &self,
+        c: &ExprCompiler,
+        moment: &str,
+        t: &DataType,
+        step: &ibis_core::Shift,
+    ) -> Result<Option<String>> {
+        let sign = if step.back { '-' } else { '+' };
+        let unit = ibis_sql::interval_unit_name(step.unit);
+        let moved = format!("{moment} {sign} INTERVAL ({}) {unit}S", c.sql(&step.count)?);
+        Ok(Some(match t {
+            DataType::Date => format!("CAST({moved} AS DATE)"),
+            _ => format!("({moved})"),
+        }))
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,

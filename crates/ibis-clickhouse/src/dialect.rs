@@ -107,6 +107,7 @@ impl Dialect for ClickHouseDialect {
             DataType::Timestamp { tz: None } => "DateTime64(6)".into(),
             DataType::Timestamp { tz: Some(tz) } => format!("DateTime64(6, {})", quote_str(tz)),
             DataType::Array(_) | DataType::Struct(_) | DataType::Map(..) => unreachable!("named above"),
+            DataType::Interval(_) => return unsupported(format!("the type {t}")),
         };
         Ok(format!("Nullable({name})"))
     }
@@ -241,6 +242,32 @@ impl Dialect for ClickHouseDialect {
         })
     }
 
+    /// `moment + toIntervalDay(count)`: the functions take a count that is
+    /// not a literal, which `INTERVAL n DAY` does not everywhere.
+    fn date_shift(
+        &self,
+        c: &ExprCompiler,
+        moment: &str,
+        _t: &DataType,
+        step: &ibis_core::Shift,
+    ) -> Result<Option<String>> {
+        use ibis_core::IntervalUnit::*;
+        let name = match step.unit {
+            Year => "toIntervalYear",
+            Quarter => "toIntervalQuarter",
+            Month => "toIntervalMonth",
+            Week => "toIntervalWeek",
+            Day => "toIntervalDay",
+            Hour => "toIntervalHour",
+            Minute => "toIntervalMinute",
+            Second => "toIntervalSecond",
+            Millisecond => "toIntervalMillisecond",
+            Microsecond => "toIntervalMicrosecond",
+            Nanosecond => "toIntervalNanosecond",
+        };
+        let sign = if step.back { '-' } else { '+' };
+        Ok(Some(format!("({moment} {sign} {name}({}))", c.sql(&step.count)?)))
+    }
     fn reduction(
         &self,
         c: &ExprCompiler,

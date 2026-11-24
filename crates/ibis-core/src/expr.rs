@@ -8,7 +8,7 @@ use std::fmt;
 use std::ops;
 use std::sync::Arc;
 
-use crate::datatypes::{DataType, Schema};
+use crate::datatypes::{DataType, IntervalUnit, Schema};
 use crate::error::{Result, invalid};
 use crate::table::Rel;
 use crate::value::Value;
@@ -580,6 +580,66 @@ pub fn lit(v: impl Into<Value>) -> Expr {
 /// A typed NULL literal.
 pub fn null(dtype: DataType) -> Expr {
     Expr::Literal(Value::Null, dtype)
+}
+
+/// `n` units of time (Ibis `ibis.interval(days=4)`): what a timestamp or a
+/// date is moved by with `+` and `-`.
+pub fn interval(n: i64, unit: IntervalUnit) -> Expr {
+    Expr::Literal(Value::Int(n), DataType::Interval(unit))
+}
+
+/// One step of date arithmetic: `count` units forward, or back.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Shift {
+    pub count: Expr,
+    /// Never a week or a quarter: those are 7 days and 3 months.
+    pub unit: IntervalUnit,
+    pub back: bool,
+}
+
+impl Shift {
+    fn new(count: Expr, unit: IntervalUnit) -> Shift {
+        let (count, unit) = match unit {
+            IntervalUnit::Week => (times(count, lit(7)), IntervalUnit::Day),
+            IntervalUnit::Quarter => (times(count, lit(3)), IntervalUnit::Month),
+            unit => (count, unit),
+        };
+        Shift { count, unit, back: false }
+    }
+
+    /// The count, where it is a literal.
+    pub fn literal(&self) -> Option<i64> {
+        match &self.count {
+            Expr::Literal(Value::Int(n), _) => Some(*n),
+            _ => None,
+        }
+    }
+}
+
+/// `a * b`, worked out where both are literals.
+fn times(a: Expr, b: Expr) -> Expr {
+    match (&a, &b) {
+        (Expr::Literal(Value::Int(x), _), Expr::Literal(Value::Int(y), _)) => lit(x * y),
+        _ => a * b,
+    }
+}
+
+/// A timestamp or a date moved by an interval. A date takes days and longer.
+fn shifted(moment: DataType, by: &DataType) -> Result<DataType> {
+    match (&moment, by) {
+        (DataType::Date, DataType::Interval(unit)) if !unit.is_date() => {
+            invalid(format!("a date is moved by days or longer units, not by {by}"))
+        }
+        _ => Ok(moment),
+    }
+}
+
+/// The sum of two intervals counts the finer of their units.
+fn finer(a: DataType, b: DataType) -> DataType {
+    match (&a, &b) {
+        (DataType::Interval(x), DataType::Interval(y)) if y > x => b,
+        _ => a,
+    }
 }
 
 /// Number of rows (Ibis `t.count()`).
@@ -1274,6 +1334,34 @@ impl Expr {
             other => other,
         }
     }
+    /// This integer as a count of `unit`s (Ibis `as_interval`); the same as
+    /// a cast to `interval(unit)`.
+    pub fn as_interval(self, unit: IntervalUnit) -> Expr {
+        self.cast(DataType::Interval(unit))
+    }
+    /// The steps an interval stands for, in order: `interval(4, Day) -
+    /// x.as_interval(Hour)` is four days forward and `x` hours back. An
+    /// error for an expression that is not built from interval literals,
+    /// integers cast to intervals, `+`, `-` and `*` by an integer.
+    pub fn shifts(&self) -> Result<Vec<Shift>> {
+        let flipped = |shifts: Vec<Shift>| shifts.into_iter().map(|s| Shift { back: !s.back, ..s }).collect();
+        Ok(match self {
+            Expr::Literal(Value::Int(n), DataType::Interval(unit)) => vec![Shift::new(lit(*n), *unit)],
+            Expr::Cast(count, DataType::Interval(unit)) => vec![Shift::new((**count).clone(), *unit)],
+            Expr::Alias(e, _) => e.shifts()?,
+            Expr::Unary(UnaryOp::Negate, e) => flipped(e.shifts()?),
+            Expr::Binary(BinaryOp::Add, l, r) => l.shifts()?.into_iter().chain(r.shifts()?).collect(),
+            Expr::Binary(BinaryOp::Sub, l, r) => l.shifts()?.into_iter().chain(flipped(r.shifts()?)).collect(),
+            Expr::Binary(BinaryOp::Mul, l, r) => {
+                let (shifts, by) = match l.shifts() {
+                    Ok(shifts) => (shifts, r),
+                    Err(_) => (r.shifts()?, l),
+                };
+                shifts.into_iter().map(|s| Shift { count: times(s.count, (**by).clone()), ..s }).collect()
+            }
+            other => return invalid(format!("{other} is not an interval that date arithmetic can use")),
+        })
+    }
     /// Keep NULLs as values (Ibis `include_null=True`): `first` and `last`
     /// may then be NULL, and `collect` gathers the NULLs too.
     pub fn include_null(self) -> Expr {
@@ -1727,6 +1815,16 @@ impl Expr {
                     }
                     Mul if matches!(lt, T::Array(_)) && rt.is_integer() => lt,
                     Mul if lt.is_integer() && matches!(rt, T::Array(_)) => rt,
+                    // a moment and an interval; two intervals (the finer unit)
+                    Add | Sub if lt.is_temporal() && matches!(rt, T::Interval(_)) => shifted(lt, &rt)?,
+                    Add if matches!(lt, T::Interval(_)) && rt.is_temporal() => shifted(rt, &lt)?,
+                    Add | Sub if matches!((&lt, &rt), (T::Interval(_), T::Interval(_))) => finer(lt, rt),
+                    Mul if matches!(lt, T::Interval(_)) && rt.is_integer() => lt,
+                    Mul if lt.is_integer() && matches!(rt, T::Interval(_)) => rt,
+                    Sub if matches!((&lt, &rt), (T::Timestamp { .. }, T::Timestamp { .. })) => {
+                        T::Interval(IntervalUnit::Second)
+                    }
+                    Sub if lt == T::Date && rt == T::Date => T::Interval(IntervalUnit::Day),
                     Add if lt == T::String && rt == T::String => T::String,
                     Mul if (lt == T::String && rt.is_integer()) || (lt.is_integer() && rt == T::String) => T::String,
                     Div | Pow => T::Float64,

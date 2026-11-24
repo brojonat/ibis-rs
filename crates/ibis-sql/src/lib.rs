@@ -9,7 +9,7 @@ pub mod dialect;
 pub mod json;
 mod nested;
 
-pub use compiler::{ExprCompiler, compile, create_table_sql, quote_str, sql_query};
+pub use compiler::{ExprCompiler, compile, create_table_sql, interval_unit_name, quote_str, sql_query};
 pub use ddl::SqlClient;
 pub use dialect::{
     Dialect, GenericDialect, Unnest, default_type_name, strftime_to_date_format, strftime_to_java_format,
@@ -328,6 +328,24 @@ mod tests {
         let filtered = t().aggregate([col("s").first().include_null().filter_where(col("a").gt(1)).name("f")]).unwrap();
         let err = compile(&Bare, &filtered).unwrap_err().to_string();
         assert!(err.contains("first of NULLs with a condition"), "{err}");
+    }
+
+    #[test]
+    fn a_timestamp_is_moved_by_an_interval_one_step_at_a_time() {
+        use ibis_core::IntervalUnit::*;
+        let schema =
+            Schema::of(&[("ts", DataType::Timestamp { tz: None }), ("d", DataType::Date), ("n", DataType::Int32)]);
+        let t = Table::named("e", schema);
+        let one = |e: Expr| compile(&GenericDialect, &t.select([e.name("x")]).unwrap());
+        // four days forward, then `n` weeks (7 days each) back
+        let moved = one(col("ts") + (interval(4, Day) - col("n").as_interval(Week))).unwrap();
+        assert!(moved.contains(r#"((t0."ts" + INTERVAL '4' DAY) - (t0."n" * 7) * INTERVAL '1' DAY)"#), "{moved}");
+        // a date stays a date
+        let date = one(col("d") - interval(1, Quarter)).unwrap();
+        assert!(date.contains(r#"CAST(t0."d" - INTERVAL '3' MONTH AS DATE)"#), "{date}");
+        // an interval by itself is not a value a query returns
+        let err = one(interval(4, Day) * 2).unwrap_err().to_string();
+        assert!(err.contains("an interval outside date arithmetic"), "{err}");
     }
 
     #[test]

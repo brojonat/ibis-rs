@@ -174,6 +174,10 @@ impl Tx<'_> {
                     "isin_col outside a table operation (select, filter, ...)".into(),
                 ));
             }
+            // an interval is what a date is moved by (`shift`), not a value by itself
+            Expr::Literal(_, DataType::Interval(_)) | Expr::Cast(_, DataType::Interval(_)) => {
+                return unsupported("an interval outside date arithmetic");
+            }
             Expr::Literal(v, t) => literal(v, t)?,
             Expr::Alias(inner, _) => self.expr(inner)?,
             Expr::Cast(inner, t) => self.expr(inner)?.cast(to_pl(t)),
@@ -187,8 +191,19 @@ impl Tx<'_> {
                 }
             }
             Expr::Binary(op, l, r) => {
+                let (lt, rt) = (self.dtype(l)?, self.dtype(r)?);
+                match (&lt, &rt) {
+                    (moment, DataType::Interval(_)) if moment.is_temporal() => {
+                        return self.shift(l, r, *op == BinaryOp::Sub);
+                    }
+                    (DataType::Interval(_), moment) if moment.is_temporal() => return self.shift(r, l, false),
+                    (DataType::Interval(_), _) | (_, DataType::Interval(_)) => {
+                        return unsupported("an interval outside date arithmetic");
+                    }
+                    _ => {}
+                }
                 // `+` and `*` on arrays and maps are functions
-                match ibis_core::expr::nested_binary(*op, l, r, &self.dtype(l)?, &self.dtype(r)?) {
+                match ibis_core::expr::nested_binary(*op, l, r, &lt, &rt) {
                     Some(call) => self.expr(&call)?,
                     None => self.binary(e, *op, l, r)?,
                 }
@@ -602,6 +617,39 @@ impl Tx<'_> {
             }
         }
         .cast(t))
+    }
+
+    /// A timestamp or a date moved by an interval, one step after the
+    /// other: `offset_by` takes the count and its unit as a string.
+    fn shift(&self, moment: &Expr, by: &Expr, back: bool) -> Result<pl::Expr> {
+        use ibis_core::IntervalUnit::*;
+        let mut moved = self.expr(moment)?;
+        for step in by.shifts()? {
+            let back = step.back != back;
+            let unit = match step.unit {
+                Year => "y",
+                Quarter => "q",
+                Month => "mo",
+                Week => "w",
+                Day => "d",
+                Hour => "h",
+                Minute => "m",
+                Second => "s",
+                Millisecond => "ms",
+                Microsecond => "us",
+                Nanosecond => "ns",
+            };
+            let by = match step.literal() {
+                Some(n) => pl::lit(format!("{}{unit}", if back { -n } else { n })),
+                None => {
+                    let count = self.expr(&step.count)?.cast(pl::DataType::Int64);
+                    let count = if back { -count } else { count };
+                    pl::concat_str([count.cast(pl::DataType::String), pl::lit(unit)], "", false)
+                }
+            };
+            moved = moved.dt().offset_by(by);
+        }
+        Ok(moved)
     }
 
     /// The keys a reduction's rows are ordered by, and how: on the rows
