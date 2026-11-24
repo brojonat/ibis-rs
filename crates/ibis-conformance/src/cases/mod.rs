@@ -13,6 +13,7 @@ mod generic;
 mod join;
 mod map;
 mod numeric;
+mod param;
 mod set_ops;
 mod string;
 // `struct` is a keyword; the file is named after the Ibis module like the rest
@@ -145,5 +146,6 @@ pub fn all() -> Vec<Case> {
     structs::register(&mut v);
     map::register(&mut v);
     column::register(&mut v);
+    param::register(&mut v);
     v
 }

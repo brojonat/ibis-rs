@@ -27,7 +27,7 @@ pub mod prelude {
     pub use crate::datatypes::{DataType, IntervalUnit, Schema};
     pub use crate::expr::{
         Expr, WindowSpec, array, asc, cases, coalesce, col, count, date, date_from_ymd, desc, e, greatest, interval,
-        least, lit, lit_as, map, now, null, nunique, pi, random, range, row_number, struct_, timestamp,
+        least, lit, lit_as, map, now, null, nunique, param, pi, random, range, row_number, struct_, timestamp,
         timestamp_from_ymdhms, today,
     };
     pub use crate::table::{How, JoinKind, Table};
@@ -334,6 +334,25 @@ mod tests {
         assert_eq!(t.slice(None, Some(-2)).unwrap().schema(), t.schema());
         assert!(t.sample(1.5).is_err());
         assert_eq!(t.sample(0.5).unwrap().schema(), t.schema());
+    }
+
+    #[test]
+    fn a_parameter_takes_its_value_when_bound() {
+        let t = alltypes();
+        let p = param(DataType::Date);
+        assert_eq!(p.dtype(t.schema()).unwrap(), DataType::Date);
+        let open = t.filter([col("int_col").gt(0)]).unwrap().select([col("id"), p.clone().name("day")]).unwrap();
+        let has_param = |t: &Table| format!("{:?}", t.rel().op).contains("_param_");
+        assert!(has_param(&open));
+        // the value is cast to the parameter's type, and the table is the same table otherwise
+        let bound = open.bind([(p.clone(), lit("2009-03-01"))]).unwrap();
+        assert!(!has_param(&bound));
+        assert!(format!("{:?}", bound.rel().op).contains("Cast("), "{:?}", bound.rel().op);
+        assert_eq!((bound.rel().id, bound.schema()), (open.rel().id, open.schema()));
+        // a value for something that is not a parameter is a mistake
+        assert!(open.bind([(col("id"), lit(1))]).is_err());
+        // two parameters are two parameters
+        assert_ne!(param(DataType::Int64), param(DataType::Int64));
     }
 
     #[test]

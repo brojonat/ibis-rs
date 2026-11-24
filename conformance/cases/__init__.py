@@ -41,6 +41,7 @@ MODULES = [
     "test_struct",
     "test_map",
     "test_column",
+    "test_param",
 ]
 
 

@@ -4261,6 +4261,42 @@
    "postgres": "same"
   }
  },
+ "test_date_scalar_parameter[2009-03-01-2010-07-03]": {
+  "file": "test_param/test_date_scalar_parameter[2009-03-01-2010-07-03].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_date_scalar_parameter[2014-12-01-2017-01-05]": {
+  "file": "test_param/test_date_scalar_parameter[2014-12-01-2017-01-05].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "boolean"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_date_truncate[D]": {
   "file": "test_temporal/test_date_truncate[D].parquet",
   "kind": "column",
@@ -6111,6 +6147,78 @@
  },
  "test_floating_mod": {
   "file": "test_numeric/test_floating_mod.parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_floating_scalar_parameter[double_col-0.0]": {
+  "file": "test_param/test_floating_scalar_parameter[double_col-0.0].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_floating_scalar_parameter[double_col-10.1]": {
+  "file": "test_param/test_floating_scalar_parameter[double_col-10.1].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_floating_scalar_parameter[float_col-1.1]": {
+  "file": "test_param/test_floating_scalar_parameter[float_col-1.1].parquet",
+  "kind": "column",
+  "ordered": false,
+  "columns": [
+   "id",
+   "tmp"
+  ],
+  "dtypes": [
+   "int64",
+   "float64"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_floating_scalar_parameter[float_col-2.2]": {
+  "file": "test_param/test_floating_scalar_parameter[float_col-2.2].parquet",
   "kind": "column",
   "ordered": false,
   "columns": [
@@ -15695,6 +15803,230 @@
    "postgres": "same"
   }
  },
+ "test_scalar_param[bool]": {
+  "file": "test_param/test_scalar_param[bool].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 3650,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param[date_timestamp]": {
+  "file": "test_param/test_scalar_param[date_timestamp].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param[datetime_timestamp]": {
+  "file": "test_param/test_scalar_param[datetime_timestamp].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param[double]": {
+  "file": "test_param/test_scalar_param[double].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 730,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param[int]": {
+  "file": "test_param/test_scalar_param[int].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 730,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param[string]": {
+  "file": "test_param/test_scalar_param[string].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 730,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param[string_timestamp]": {
+  "file": "test_param/test_scalar_param[string_timestamp].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 0,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param_array": {
+  "file": "test_param/test_scalar_param_array.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param_date[date]": {
+  "file": "test_param/test_scalar_param_date[date].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param_date[datetime]": {
+  "file": "test_param/test_scalar_param_date[datetime].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param_date[string]": {
+  "file": "test_param/test_scalar_param_date[string].parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 10,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_scalar_param_map": {
+  "file": "test_param/test_scalar_param_map.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "string"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: InvalidTextRepresentation"
+  }
+ },
+ "test_scalar_param_nested": {
+  "file": "test_param/test_scalar_param_nested.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "struct<x: array<struct<y: array<float64>>>>"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "error: UnsupportedBackendType",
+   "postgres": "error: SyntaxError"
+  }
+ },
+ "test_scalar_param_struct": {
+  "file": "test_param/test_scalar_param_struct.parquet",
+  "kind": "scalar",
+  "ordered": false,
+  "columns": [
+   "tmp"
+  ],
+  "dtypes": [
+   "int64"
+  ],
+  "rows": 1,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
  "test_scalar_round_is_integer": {
   "file": "test_numeric/test_scalar_round_is_integer.parquet",
   "kind": "scalar",
@@ -18836,6 +19168,24 @@
   "dtypes": [
    "int64",
    "timestamp(6)"
+  ],
+  "rows": 7300,
+  "ibis": {
+   "sqlite": "same",
+   "postgres": "same"
+  }
+ },
+ "test_timestamp_accepts_date_literals": {
+  "file": "test_param/test_timestamp_accepts_date_literals.parquet",
+  "kind": "table",
+  "ordered": false,
+  "columns": [
+   "id",
+   "param"
+  ],
+  "dtypes": [
+   "int64",
+   "timestamp"
   ],
   "rows": 7300,
   "ibis": {

@@ -165,6 +165,53 @@ impl Rel {
         Rel { id: NEXT_ID.fetch_add(1, Ordering::Relaxed), op, schema }
     }
 
+    /// This relation with each parameter of `values` replaced by its
+    /// value, everywhere under it. Relations keep their ids, so a column
+    /// bound to one of them (`t.col("x")`) still finds it.
+    pub fn bind(self: &Arc<Rel>, values: &[(Expr, Expr)]) -> Result<Arc<Rel>> {
+        let e = |e: &Expr| e.clone().bind(values);
+        let named = |v: &[(String, Expr)]| v.iter().map(|(n, x)| Ok((n.clone(), e(x)?))).collect::<Result<Vec<_>>>();
+        let all = |v: &[Expr]| v.iter().map(e).collect::<Result<Vec<_>>>();
+        let r = |r: &Arc<Rel>| r.bind(values);
+        let op = match &self.op {
+            RelOp::Table { .. } => return Ok(self.clone()),
+            RelOp::Sql { query, views } => RelOp::Sql {
+                query: query.clone(),
+                views: views.iter().map(|(n, v)| Ok((n.clone(), r(v)?))).collect::<Result<_>>()?,
+            },
+            RelOp::View { input } => RelOp::View { input: r(input)? },
+            RelOp::Alias { input, name } => RelOp::Alias { input: r(input)?, name: name.clone() },
+            RelOp::Project { input, exprs } => RelOp::Project { input: r(input)?, exprs: named(exprs)? },
+            RelOp::Filter { input, predicates } => RelOp::Filter { input: r(input)?, predicates: all(predicates)? },
+            RelOp::Aggregate { input, groups, metrics } => {
+                RelOp::Aggregate { input: r(input)?, groups: named(groups)?, metrics: named(metrics)? }
+            }
+            RelOp::Sort { input, keys } => RelOp::Sort {
+                input: r(input)?,
+                keys: keys.iter().map(|k| Ok(SortKey { expr: e(&k.expr)?, ..k.clone() })).collect::<Result<_>>()?,
+            },
+            RelOp::Limit { input, n, offset } => RelOp::Limit { input: r(input)?, n: *n, offset: *offset },
+            RelOp::Distinct { input } => RelOp::Distinct { input: r(input)? },
+            RelOp::Join { left, right, how, predicates, outputs } => RelOp::Join {
+                left: r(left)?,
+                right: r(right)?,
+                how: *how,
+                predicates: all(predicates)?,
+                outputs: outputs.clone(),
+            },
+            RelOp::SetOp { kind, distinct, left, right } => {
+                RelOp::SetOp { kind: *kind, distinct: *distinct, left: r(left)?, right: r(right)? }
+            }
+            RelOp::Unnest { input, column, offset, keep_empty } => RelOp::Unnest {
+                input: r(input)?,
+                column: column.clone(),
+                offset: offset.clone(),
+                keep_empty: *keep_empty,
+            },
+        };
+        Ok(Arc::new(Rel { id: self.id, op, schema: self.schema.clone() }))
+    }
+
     pub fn inputs(&self) -> Vec<&Arc<Rel>> {
         match &self.op {
             RelOp::Table { .. } => vec![],
@@ -684,6 +731,18 @@ impl Table {
             return invalid(format!("sample: a fraction is between 0 and 1, got {fraction}"));
         }
         self.filter([crate::expr::random().lt(crate::expr::lit(fraction))])
+    }
+
+    /// This table with a value for each parameter (Ibis
+    /// `expr.execute(params={param: value})`): pairs of a `param(..)` and
+    /// the expression, usually a literal, that takes its place. The value
+    /// is cast to the parameter's type, so a date parameter takes a string.
+    pub fn bind(&self, values: impl IntoIterator<Item = (Expr, Expr)>) -> Result<Table> {
+        let values: Vec<(Expr, Expr)> = values.into_iter().collect();
+        if let Some((not, _)) = values.iter().find(|(p, _)| !matches!(p, Expr::Param(..))) {
+            return invalid(format!("bind: {not} is not a parameter (make one with `param(dtype)`)"));
+        }
+        Ok(Table::from_arc(self.rel.bind(&values)?))
     }
 
     /// Python's `t[start:stop]` on the rows: `None` is an open end and a

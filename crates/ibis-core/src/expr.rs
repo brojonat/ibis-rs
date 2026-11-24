@@ -577,6 +577,15 @@ pub fn e() -> Expr {
     lit(std::f64::consts::E)
 }
 
+/// A value given when the query runs, of type `dtype` (Ibis
+/// `ibis.param(dtype)`). `Table::bind` puts a value in its place; an
+/// expression with a parameter left in it does not compile.
+pub fn param(dtype: DataType) -> Expr {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    Expr::Param(format!("_param_{n}"), dtype)
+}
+
 /// A random float in `[0, 1)`, drawn again for each row (Ibis `ibis.random()`).
 pub fn random() -> Expr {
     func(Func::Random, vec![])
@@ -1853,6 +1862,26 @@ impl Expr {
     /// Whether `pred` holds for this expression or any part of it.
     pub fn has(&self, pred: &impl Fn(&Expr) -> bool) -> bool {
         pred(self) || self.children().into_iter().any(|c| c.has(pred))
+    }
+
+    /// This expression with each parameter of `values` replaced by its
+    /// value, cast to the parameter's type; in subqueries too.
+    pub fn bind(self, values: &[(Expr, Expr)]) -> Result<Expr> {
+        match self {
+            Expr::Param(name, t) => {
+                let given = values.iter().find(|(p, _)| matches!(p, Expr::Param(n, _) if *n == name));
+                Ok(match given {
+                    Some((_, value)) => value.clone().cast(t),
+                    None => Expr::Param(name, t),
+                })
+            }
+            Expr::ScalarSubquery(rel) => Ok(Expr::ScalarSubquery(rel.bind(values)?)),
+            Expr::Exists(rel) => Ok(Expr::Exists(rel.bind(values)?)),
+            Expr::InSubquery { arg, rel } => {
+                Ok(Expr::InSubquery { arg: Box::new(arg.bind(values)?), rel: rel.bind(values)? })
+            }
+            e => e.map_children(&mut |c| c.bind(values)),
+        }
     }
 
     /// Whether the expression multiplies rows (contains an `unnest`).
