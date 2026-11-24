@@ -3,7 +3,7 @@
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
 Current: 905 Ibis tests (862 expression cases, 43 client tests) + 22 TPC-H queries. DuckDB 905, Polars 896, Trino 892, Spark 891, Postgres 879, ClickHouse 852, Impala 576, MySQL 563, SQLite 562; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 908 of 1,778 applicable test ids (51%); per module at https://brojonat.github.io/ibis-rs/
+Coverage of the Ibis suite: 1,043 of 1,728 applicable test ids (60%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -33,19 +33,21 @@ Coverage of the Ibis suite: 908 of 1,778 applicable test ids (51%); per module a
 
 ## Next: parity
 - [ ] test_temporal tier 2: intervals and date arithmetic, deltas, buckets, time zones, the `time` type, strftime with a column format
-- [ ] Rest of test_aggregation (36 ids left of 162 applicable)
+- [x] test_aggregation: all 162 applicable ids
   - [x] Reductions of one argument: mode, median, approx_median, approx_nunique, kurtosis, bit_and/or/xor, arbitrary, first/last, notany/notall (27 ids; the Python-UDF ids are not applicable)
   - [x] `AggOptions` on `Expr::Agg` (further arguments, order, distinct, include_null) and `Dialect::reduction`; argmin/argmax and corr/cov on it (26 ids)
   - [x] quantile, quantiles, approx_quantile, approx_quantiles (10 ids)
   - [x] group_concat with a separator, a condition, an order, over a window (9 ids); `Expr::order_by` for a reduction's order
-  - [ ] On `AggOptions`, still to do: first/last with `order_by` and `include_null` (16 ids), collect with `order_by`, `distinct`, `include_null` (16 ids), test_count_distinct_star (2 ids)
-  - [ ] `test_corr_cov[*-corr_samp]` (2 ids): DuckDB has no sample correlation, so there is no golden; needs a procedure that computes the coefficient from the rows
+  - [x] first/last with `order_by` and `include_null` (16 ids), collect with `order_by`, `distinct`, `include_null` (16 ids), test_count_distinct_star (2 ids), `test_corr_cov[*-corr_samp]` (2 ids; a procedure, since DuckDB has no sample correlation to make a golden from)
+  - [ ] ClickHouse and Spark: reductions that read their rows in an order (`first`, `last`, `collect`, `group_concat` with `order_by`). Both can sort an array of `(key, value)` pairs; Ibis does not either
+  - [ ] An ordered `first`/`last` in a projection is `FIRST_VALUE` over an ordered window, which does not pass over NULLs (as in Ibis); `include_null` is not looked at there
+  - [ ] A count of distinct rows on SQLite (one argument to `COUNT(DISTINCT ...)`), and on MySQL and Impala for rows with a NULL (they are not counted there)
   - [x] topk, value_counts, test_filter, test_grouped_case, test_group_by_expr, test_group_by_scalar, test_binds_are_cast, test_empty_sum, test_agg_sort, test_agg_name_in_output_column (13 ids)
   - [ ] Engines that have a reduction Ibis does not use there (Spark `mode`, `bit_and`, kurtosis; ClickHouse `kurtSamp`): today `Unsupported`, as in Ibis
   - [ ] MySQL `BIT_AND` of no rows is all ones, not NULL
 - [ ] Rest of test_string: translate, split, join, find_in_set, capitalize, slices
 - [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
-- [ ] Nested types, loose ends: `collect` options (`order_by`, `distinct`, `include_null`, `where`), several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB
+- [ ] Nested types, loose ends: several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB
 - [ ] test_client (203 ids), in slices. These test the connection API, not expressions: they run as procedural tests per backend (`crates/ibis-conformance/src/client.rs`, ids `client::<module>::<pytest id>`, no goldens)
   - [x] Slice 1, table lifecycle: `Backend::{drop_table, insert, insert_from, rename_table, create_view, drop_view, create_empty_table}`; shared DDL text in `ibis_sql::ddl` (`SqlClient`, `sql_client_methods!`); each backend's loader split from its `create_table` so `insert` reuses it. 25 ids ported, passing on all nine backends (Polars: views unsupported)
   - [x] Slice 1, the rest: test_insert_using_col_name_not_position (3), test_overwrite (`Backend::create_table_from`), views on Polars

@@ -653,3 +653,43 @@ cannot compute one), so those two ids need a procedure.
   the array forms above work over a window on all three, so those marks
   were dropped here (the harness reports an unexpected pass as a failure,
   which is how it showed).
+
+## Reductions with an order, NULLs kept, or distinct values
+
+`first`, `last` and `collect` take `order_by`, `include_null` and `distinct`.
+What was not obvious:
+
+- Polars removes a sort whose result feeds `implode(maintain_order=false)`:
+  the optimizer is told the order does not matter and believes it. An
+  ordered `collect` came back unsorted, but only when nothing stood between
+  the sort and the `implode`: with a filter in between the sort survived, so
+  one of the sixteen `test_collect` variants failed. Pass `true` when there
+  is an order.
+- Postgres refuses `ARRAY_AGG(x ORDER BY k) OVER ()` ("aggregate ORDER BY is
+  not implemented for window functions"), so an ordered `first` in a
+  projection cannot be the reduction with `OVER ()` after it. Ibis compiles
+  it to `FIRST_VALUE(x) OVER (ORDER BY k ROWS BETWEEN UNBOUNDED PRECEDING AND
+  UNBOUNDED FOLLOWING)` on every backend, and so does ibis-sql. That form
+  does not pass over NULLs; neither does Ibis's.
+- SQLite 3.44 and later take `ORDER BY` inside any aggregate call, registered
+  ones included: `ibis_first(x ORDER BY k)` works with the SQLite that
+  rusqlite bundles. Ibis marks it unsupported. A build against an older
+  system SQLite would get a syntax error from the engine.
+- Postgres has no `FIRST`, and `(ARRAY_AGG(x ORDER BY k))[1]` keeps NULLs as
+  it stands: `include_null` costs nothing there, where Ibis refuses it.
+- Without `FILTER`, a condition is folded into the argument
+  (`CASE WHEN cond THEN x END`). With `include_null` that turns every row
+  failing the condition into a NULL that counts, so the compiler refuses the
+  combination on such dialects instead of returning a wrong value.
+- A count of distinct rows is `COUNT(DISTINCT (a, b))` on DuckDB and
+  Postgres, `ROW(a, b)` on Trino, `STRUCT(a, b)` on Spark, and several
+  arguments (`COUNT(DISTINCT a, b)`) on MySQL and Impala. They do not agree
+  on NULLs: for the rows `(1, NULL), (1, NULL), (2, 3), (NULL, NULL)`
+  Postgres and Spark's `STRUCT` count 3, MySQL and Spark's several-argument
+  form count 1 (a row with any NULL is not counted). So the fold above is
+  right only for the several-argument form, and `Dialect::count_distinct_rows`
+  is handed the condition rather than columns already folded: the default
+  (a tuple) refuses it.
+- Dialect `reduction` hooks that read `options.args[0]` before looking at
+  the function panic once a reduction with options and no further argument
+  exists (`first().include_null()`). Read it inside the arm that needs it.

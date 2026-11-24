@@ -44,6 +44,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Conformance: 13 more ids of `test_aggregation` (a filter before a grouping, a `CASE` inside a reduction, grouping by an expression and by a constant, `value_counts`, `topk`, the sum of no rows, default names of unnamed reductions), passing on all nine backends. Memtables `grouped_case` and `project_names`.
 - Conformance: 27 more ids of `test_aggregation`: 20 cases with goldens (`mode`, `notany`, `notall`, kurtosis, `approx_nunique`, the bitwise reductions, the medians) and 7 procedures for the reductions whose answer the engine chooses (`first`, `last`, `arbitrary`, `approx_median`; `crates/ibis-conformance/src/reductions.rs`). The Python-UDF ids are marked not applicable; `conformance/not_applicable.json` now also takes the id of one parameter (`module::test[param]`).
 - Conformance: `test_dot_sql` ported, 15 tests as procedures (`crates/ibis-conformance/src/dot_sql.rs`), passing on all nine backends (one expected failure on Polars, as in Ibis). Its 44 `transpile` ids and the repr test are marked not applicable: ibis-rs passes SQL on as written and has no translator between dialects.
+- `Expr::include_null()` and `Expr::distinct()` on a reduction (Ibis `include_null=True`, `distinct=True`), and `Expr::order_by` is now read by `first`, `last` and `collect`: `col("x").collect().distinct().order_by([col("x").desc()])`. DuckDB, Postgres, Trino and Polars take all three; SQLite takes an order and NULLs for `first`/`last` (new registered aggregates `ibis_first_null`, `ibis_last_null`); Spark takes NULLs for `first`/`last` and `distinct` for `collect`; ClickHouse takes `distinct` for `collect`. The rest is `Unsupported`, as in Ibis.
+- `nunique()` (Ibis `t.nunique()`, `AggFunc::CountDistinctStar`): the number of distinct rows, with `filter_where` for a condition. `Dialect::count_distinct_rows` is the hook; not on SQLite.
+- An ordered `first` or `last` in a projection, or under `.over(w)`, is `FIRST_VALUE`/`LAST_VALUE` over a window in that order (after the window's own), as Ibis compiles it.
+- `ExprCompiler::ordered`: `[DISTINCT ]arg[ ORDER BY ...]`, for a dialect's `reduction`.
+- Conformance: the last 36 ids of `test_aggregation`, all procedures (`test_first_last` with NULLs kept, `test_first_last_ordered`, `test_first_last_ordered_in_mutate`, `test_collect`, `test_count_distinct_star`, `test_corr_cov[*-corr_samp]`). Beyond Ibis's marks: Postgres keeps NULLs in `first`/`last`, SQLite reads them in an order, Spark keeps NULLs under a condition, MySQL counts distinct rows under a condition, Polars does an ordered `first` in a projection.
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
@@ -63,6 +68,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - **Breaking:** `RelOp::Sql` has a `views` field. `ibis_sql::ddl::sql` takes the table the query is run over (`None` for `Backend::sql`).
 - ibis-sqlite: a view column that is an expression has no declared type; `table` (and so `sql`) now gives it the type of its value in the first row, as Ibis does, instead of string.
 - CI runs the suite once instead of twice: `mise run unit` (new: unit tests and doctests, no containers) and then `mise run site`, whose conformance run fails the job on any failing case. Images are pulled while the code compiles.
+- **Breaking:** `AggFunc::CountDistinctStar` is a new variant.
+- ibis-sqlite, ibis-mysql and ibis-impala report `collect` as `Unsupported` instead of sending `ARRAY_AGG` to an engine that has no arrays.
+- ibis-postgres: `first`, `last` and `arbitrary` of a boolean column no longer cast it to an integer (the cast is for the sums and bitwise reductions).
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
 

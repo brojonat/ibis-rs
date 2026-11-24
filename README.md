@@ -14,25 +14,25 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. The shape to grow into is
 Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
 The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
-test, whether it is ported, and how each backend does on it: 908 of 1,778
+test, whether it is ported, and how each backend does on it: 1,043 of 1,728
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 1,005 ported Ibis tests (932 expression
-cases with a result from Python Ibis, 73 tests that are procedures: the
+Status: pre-alpha. Nine backends, 1,041 ported Ibis tests (932 expression
+cases with a result from Python Ibis, 109 tests that are procedures: the
 connection API, SQL as text, reductions whose answer is the engine's to
 choose) and Ibis's 22 TPC-H queries:
 
-| backend | Ibis tests (1,005) | TPC-H (22) |
+| backend | Ibis tests (1,041) | TPC-H (22) |
 |---|---|---|
-| DuckDB | 1,005 | 22 |
-| Polars (default) | 985 (20 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median or quantile of strings, one quantile at a time, `group_concat` with a literal separator only and not over a window) | 22 |
-| Trino | 980 (25 expected failures: no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median or quantile) | 22 |
-| Postgres | 977 (28 expected failures, as in Ibis: no arrays of arrays, no kurtosis) | 22 |
-| Spark SQL | 974 (31 expected failures: no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median or quantile of strings or dates, no ordered `group_concat`) | 22 |
-| ClickHouse | 938 (67 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median or quantile of strings, no population correlation, no ordered `group_concat`; and no temporary tables over HTTP) | 22 |
-| SQLite | 635 (370 expected failures: no arrays, structs or maps, no NaN, no `MERGE`, no median, quantile, kurtosis, covariance or correlation, no ordered `group_concat`) | 22 |
-| Impala | 617 (388 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians and quantiles, kurtosis, the bitwise reductions, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance and correlation only the approximate median; `group_concat` neither ordered nor over a window) | 22 |
-| MySQL | 608 (397 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`, no `mode`, median, quantile, kurtosis, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance or correlation; `group_concat` with a literal separator only and not over a window) | 22 |
+| DuckDB | 1,039 (2 expected failures, as in Ibis: no sample correlation) | 22 |
+| Polars (default) | 1,021 (20 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median or quantile of strings, one quantile at a time, `group_concat` with a literal separator only and not over a window) | 22 |
+| Trino | 1,014 (27 expected failures: no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median or quantile, no sample correlation) | 22 |
+| Postgres | 1,011 (30 expected failures, as in Ibis: no arrays of arrays, no kurtosis, no sample correlation) | 22 |
+| Spark SQL | 990 (51 expected failures: no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median or quantile of strings or dates, no reduction that reads its rows in an order, no `collect` that keeps NULLs) | 22 |
+| ClickHouse | 950 (91 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median or quantile of strings, no population correlation, no reduction that reads its rows in an order, no `first`, `last` or `collect` that keeps NULLs; and no temporary tables over HTTP) | 22 |
+| SQLite | 651 (390 expected failures: no arrays, structs or maps, no NaN, no `MERGE`, no median, quantile, kurtosis, covariance or correlation, no ordered `group_concat`, no count of distinct rows) | 22 |
+| Impala | 623 (418 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians and quantiles, kurtosis, the bitwise reductions, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance and correlation only the approximate median; `group_concat` neither ordered nor over a window) | 22 |
+| MySQL | 614 (427 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`, no `mode`, median, quantile, kurtosis, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance or correlation; `group_concat` with a literal separator only and not over a window) | 22 |
 
 Output column names and types match Ibis's on all 932. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
@@ -149,6 +149,7 @@ col("tags").contains("urgent");  col("tags").length();  col("tags").at(-1);  col
 map(col("keys"), col("values")).get_or("k", 0);       col("attrs").keys();
 struct_([("x", col("a")), ("y", lit(1))]).field("x");  t.unpack(&["point"])?;
 col("x").collect();                                    // aggregate a column into an array
+col("x").collect().distinct().order_by([col("x").desc()]).include_null();  // each value once, in an order, NULLs kept
 ```
 
 Positions count from 0 everywhere, a negative one counts from the end, and an
