@@ -188,6 +188,18 @@ impl Dialect for ClickHouseDialect {
             Func::RegexExtract => Some(format!("regexpExtract({}, {}, {})", a(0)?, a(1)?, a(2)?)),
             Func::RegexReplace => Some(format!("replaceRegexpAll({}, {}, {})", a(0)?, a(1)?, a(2)?)),
             Func::IsNan => Some(format!("isNaN({})", a(0)?)),
+            Func::BitwiseAnd => Some(format!("bitAnd({}, {})", a(0)?, a(1)?)),
+            Func::BitwiseOr => Some(format!("bitOr({}, {})", a(0)?, a(1)?)),
+            Func::BitwiseXor => Some(format!("bitXor({}, {})", a(0)?, a(1)?)),
+            // a shift has the type of what is shifted
+            Func::BitwiseLeftShift => {
+                Some(format!("bitShiftLeft(CAST({} AS {}), {})", a(0)?, self.type_name(&DataType::Int64)?, a(1)?))
+            }
+            Func::BitwiseRightShift => {
+                Some(format!("bitShiftRight(CAST({} AS {}), {})", a(0)?, self.type_name(&DataType::Int64)?, a(1)?))
+            }
+            Func::BitwiseNot => Some(format!("bitNot({})", a(0)?)),
+            Func::Random => Some("randCanonical()".into()),
             Func::IsInf => Some(format!("isInfinite({})", a(0)?)),
             Func::Cot => Some(format!("(1 / tan({}))", a(0)?)),
             Func::DayOfWeekIndex => return cast(format!("toDayOfWeek({}) - 1", a(0)?), DataType::Int16),

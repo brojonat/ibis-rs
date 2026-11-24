@@ -250,6 +250,10 @@ impl Dialect for SparkDialect {
             Func::RegexExtract => Some(format!("REGEXP_EXTRACT({}, {}, {})", a(0)?, pattern(1)?, a(2)?)),
             Func::RegexReplace => Some(format!("REGEXP_REPLACE({}, {}, {})", a(0)?, pattern(1)?, a(2)?)),
             // no ISINF
+            Func::BitwiseXor => Some(format!("({} ^ {})", a(0)?, a(1)?)),
+            Func::BitwiseLeftShift => Some(format!("SHIFTLEFT(CAST({} AS BIGINT), {})", a(0)?, int(a(1)?))),
+            Func::BitwiseRightShift => Some(format!("SHIFTRIGHT(CAST({} AS BIGINT), {})", a(0)?, int(a(1)?))),
+            Func::Random => Some("RAND()".into()),
             Func::IsInf => Some(format!("(ABS({}) = CAST('Infinity' AS DOUBLE))", a(0)?)),
             // WEEKDAY: 0 is Monday
             Func::DayOfWeekIndex => Some(format!("CAST(WEEKDAY({}) AS SMALLINT)", a(0)?)),

@@ -938,6 +938,16 @@ impl ExprCompiler<'_> {
     }
 
     pub fn literal(&self, v: &Value, t: &DataType) -> Result<String> {
+        // a decimal says its precision and scale; the digits alone would
+        // be read as whatever the engine makes of them
+        if let (Value::Int(_) | Value::Float(_), DataType::Decimal { .. }) = (v, t) {
+            let digits = match v {
+                Value::Float(f) if !f.is_finite() => return unsupported(self.d, format!("the decimal {f}")),
+                Value::Float(f) => f.to_string(),
+                _ => self.literal(v, &DataType::Int64)?,
+            };
+            return Ok(format!("CAST({digits} AS {})", self.d.cast_type_name(t)?));
+        }
         if let Some(s) = self.d.literal(v, t)? {
             return Ok(s);
         }
@@ -1164,6 +1174,14 @@ impl ExprCompiler<'_> {
             Atan => format!("ATAN({x})"),
             Atan2 => format!("ATAN2({x}, {})", a[1]),
             Cot => format!("COT({x})"),
+            BitwiseAnd => format!("({x} & {})", a[1]),
+            BitwiseOr => format!("({x} | {})", a[1]),
+            BitwiseXor => format!("XOR({x}, {})", a[1]),
+            // a shift is an int64 whatever is shifted
+            BitwiseLeftShift => format!("({} << {})", bigint(x)?, a[1]),
+            BitwiseRightShift => format!("({} >> {})", bigint(x)?, a[1]),
+            BitwiseNot => format!("(~{x})"),
+            Random => "RANDOM()".into(),
             IsInf => format!("ISINF({x})"),
             Clip => {
                 let open = |e: &Expr| matches!(e, Expr::Literal(Value::Null, _));

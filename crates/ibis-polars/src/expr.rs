@@ -363,6 +363,16 @@ impl Tx<'_> {
             Cot => f64_of(x).cot(),
             IsNan => f64_of(x).is_nan(),
             IsInf => f64_of(x).is_infinite(),
+            BitwiseAnd => x.cast(t.clone()).and(a[1].clone().cast(t)),
+            BitwiseOr => x.cast(t.clone()).or(a[1].clone().cast(t)),
+            BitwiseXor => x.cast(t.clone()).xor(a[1].clone().cast(t)),
+            // Polars has no shift: times or over a power of two, in integers
+            BitwiseLeftShift | BitwiseRightShift => {
+                let (x, by) = (x.cast(pl::DataType::Int64), pl::lit(2i64).pow(a[1].clone().cast(pl::DataType::UInt32)));
+                if f == BitwiseLeftShift { x * by } else { x.floor_div(by) }
+            }
+            BitwiseNot => (pl::lit(-1) - x).cast(t),
+            Random => return unsupported("random"),
             Clip => {
                 let mut s = x;
                 if !is_null_lit(&args[1]) {

@@ -21,6 +21,7 @@ Env:   IBIS_TESTING_DATA           (default: ci/ibis-testing-data)
 
 from __future__ import annotations
 
+import decimal
 import json
 import math
 import os
@@ -65,6 +66,8 @@ def cell(v, t: pa.DataType):
         return [cell(x, t.value_type) for x in v]
     if pa.types.is_struct(t):
         return {f.name: cell(v.get(f.name), f.type) for f in t}
+    if pa.types.is_decimal(t):
+        return decimal.Decimal(str(v))
     return v
 
 
@@ -101,6 +104,8 @@ def sql_type(t: pa.DataType, backend: str) -> str:
         return "TIMESTAMP"
     if pa.types.is_date(t):
         return "DATE"
+    if pa.types.is_decimal(t):
+        return f"DECIMAL({t.precision}, {t.scale})"
     return "TEXT"
 
 
@@ -117,6 +122,8 @@ def create(con, name: str, data: pa.Table) -> None:
     if con.name == "sqlite":
         # timestamps as ISO text, like Ibis's own SQLite fixtures
         rows = [tuple(v.isoformat(sep=" ") if hasattr(v, "isoformat") else v for v in r) for r in rows]
+        # and no decimals: the driver takes a float
+        rows = [tuple(float(v) if isinstance(v, decimal.Decimal) else v for v in r) for r in rows]
         con.con.execute(f'DROP TABLE IF EXISTS "{name}"')
         con.con.execute(f'CREATE TABLE "{name}" ({cols})')
         con.con.executemany(f'INSERT INTO "{name}" VALUES ({", ".join("?" * len(data.schema))})', rows)

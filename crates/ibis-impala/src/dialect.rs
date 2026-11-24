@@ -134,6 +134,15 @@ impl Dialect for ImpalaDialect {
             Func::RegexSearch => Some(format!("REGEXP_LIKE({}, {})", a(0)?, a(1)?)),
             Func::RegexReplace => Some(format!("REGEXP_REPLACE({}, {}, {})", a(0)?, a(1)?, a(2)?)),
             Func::IsNan => Some(format!("IS_NAN({})", a(0)?)),
+            Func::BitwiseAnd => Some(format!("BITAND({}, {})", a(0)?, a(1)?)),
+            Func::BitwiseOr => Some(format!("BITOR({}, {})", a(0)?, a(1)?)),
+            Func::BitwiseXor => Some(format!("BITXOR({}, {})", a(0)?, a(1)?)),
+            // a shift is as wide as what is shifted: a literal 3 is a TINYINT
+            Func::BitwiseLeftShift => Some(format!("SHIFTLEFT(CAST({} AS BIGINT), {})", a(0)?, int(a(1)?))),
+            Func::BitwiseRightShift => Some(format!("SHIFTRIGHT(CAST({} AS BIGINT), {})", a(0)?, int(a(1)?))),
+            Func::BitwiseNot => Some(format!("BITNOT({})", a(0)?)),
+            // RAND() alone starts from the same seed in every query
+            Func::Random => Some("RAND(UTC_TO_UNIX_MICROS(UTC_TIMESTAMP()))".into()),
             Func::IsInf => Some(format!("IS_INF({})", a(0)?)),
             // DAYOFWEEK: 1 is Sunday
             Func::DayOfWeekIndex => Some(format!("CAST(PMOD(DAYOFWEEK({}) - 2, 7) AS SMALLINT)", a(0)?)),

@@ -27,8 +27,8 @@ pub mod prelude {
     pub use crate::datatypes::{DataType, IntervalUnit, Schema};
     pub use crate::expr::{
         Expr, WindowSpec, array, asc, cases, coalesce, col, count, date, date_from_ymd, desc, e, greatest, interval,
-        least, lit, lit_as, map, now, null, nunique, pi, range, row_number, struct_, timestamp, timestamp_from_ymdhms,
-        today,
+        least, lit, lit_as, map, now, null, nunique, pi, random, range, row_number, struct_, timestamp,
+        timestamp_from_ymdhms, today,
     };
     pub use crate::table::{How, JoinKind, Table};
     pub use crate::value::Value;
@@ -246,6 +246,21 @@ mod tests {
         assert_eq!((steps[0].literal(), steps[0].unit, steps[0].back), (Some(14), Day, false));
         assert_eq!((steps[1].literal(), steps[1].unit, steps[1].back), (None, Month, true));
         assert!(col("int_col").shifts().is_err());
+    }
+
+    #[test]
+    fn bits_have_ibis_types() {
+        let t = alltypes();
+        let dtype = |e: Expr| t.select([e.name("x")]).map(|t| t.schema().fields[0].dtype.to_string());
+        // the wider of the two integers; a shift is an int64 whatever is shifted
+        assert_eq!(dtype(col("int_col").bitwise_and(3)).unwrap(), "int32");
+        assert_eq!(dtype(lit(4).bitwise_xor(2)).unwrap(), "int8");
+        assert_eq!(dtype(lit(4).lshift(2)).unwrap(), "int64");
+        assert_eq!(dtype(col("int_col").bitwise_not()).unwrap(), "int32");
+        assert!(dtype(col("double_col").bitwise_or(1)).is_err());
+        assert_eq!(dtype(random()).unwrap(), "float64");
+        // a histogram is arithmetic on the column and its range
+        assert_eq!(dtype(col("int_col").histogram(10)).unwrap(), "int64");
     }
 
     #[test]

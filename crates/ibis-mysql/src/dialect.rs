@@ -139,6 +139,14 @@ impl Dialect for MySqlDialect {
                 Some(format!("CASE WHEN {x} IS NULL THEN NULL ELSE COALESCE({matched}, '') END"))
             }
             Func::RegexReplace => Some(format!("REGEXP_REPLACE({}, {}, {}, 1, 0, 'c')", a(0)?, a(1)?, a(2)?)),
+            // the bit operators answer in BIGINT UNSIGNED: read the bits as signed
+            Func::BitwiseAnd => Some(format!("CAST({} & {} AS SIGNED)", a(0)?, a(1)?)),
+            Func::BitwiseOr => Some(format!("CAST({} | {} AS SIGNED)", a(0)?, a(1)?)),
+            Func::BitwiseXor => Some(format!("CAST({} ^ {} AS SIGNED)", a(0)?, a(1)?)),
+            Func::BitwiseLeftShift => Some(format!("CAST({} << {} AS SIGNED)", a(0)?, a(1)?)),
+            Func::BitwiseRightShift => Some(format!("CAST({} >> {} AS SIGNED)", a(0)?, a(1)?)),
+            Func::BitwiseNot => Some(format!("CAST(~{} AS SIGNED)", a(0)?)),
+            Func::Random => Some("RAND()".into()),
             Func::IsNan | Func::IsInf => Some(never(a(0)?)),
             // ROUND of a DOUBLE rounds half to even; Ibis rounds half away from zero
             Func::Round if c.dtype(&args[0])?.is_floating() => {

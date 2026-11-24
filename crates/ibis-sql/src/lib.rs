@@ -364,6 +364,17 @@ mod tests {
     }
 
     #[test]
+    fn a_decimal_literal_says_its_precision_and_scale() {
+        use ibis_core::prelude::lit_as;
+        let one = |e: Expr| sql(&t().select([e.name("x")]).unwrap());
+        let decimal = one(lit_as(1.1, DataType::Decimal { precision: 38, scale: 9 }));
+        assert!(decimal.contains("CAST(1.1 AS DECIMAL(38, 9))"), "{decimal}");
+        // a shift is an int64 whatever is shifted
+        let shift = one(col("a").lshift(2));
+        assert!(shift.contains(r#"(CAST(t0."a" AS BIGINT) << 2)"#), "{shift}");
+    }
+
+    #[test]
     fn a_zone_is_part_of_a_timestamps_type_not_of_its_value() {
         let t = Table::named("e", Schema::of(&[("ts", DataType::Timestamp { tz: None })]));
         let zoned = |zone: &str| DataType::Timestamp { tz: Some(zone.into()) };

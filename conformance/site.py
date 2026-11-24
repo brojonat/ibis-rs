@@ -143,10 +143,16 @@ def ported(repo: str) -> dict[str, dict[str, list[dict]]]:
 def client_cases(repo: str, ids: list[str], mine: dict[str, dict[str, list[dict]]]) -> None:
     """Add the tests that are procedures (crates/ibis-conformance/src/client.rs
     for the connection API, dot_sql.rs for test_dot_sql, reductions.rs for
-    test_aggregation) to `mine`. They have no Python side: results ids are
+    test_aggregation, moments.rs for test_temporal, random.rs for
+    test_numeric) to `mine`. They have no Python side: results ids are
     `client::<module>::<pytest id>`."""
     src = "crates/ibis-conformance/src"
-    by_module = {"test_dot_sql": "dot_sql.rs", "test_aggregation": "reductions.rs", "test_temporal": "moments.rs"}
+    by_module = {
+        "test_dot_sql": "dot_sql.rs",
+        "test_aggregation": "reductions.rs",
+        "test_temporal": "moments.rs",
+        "test_numeric": "random.rs",
+    }
     files = {name: (ROOT / src / name).read_text().splitlines() for name in ("client.rs", *by_module.values())}
     for case_id in ids:
         _, module, test_id = case_id.split("::", 2)

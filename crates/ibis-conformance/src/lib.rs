@@ -5,6 +5,7 @@ pub mod cases;
 pub mod client;
 mod dot_sql;
 mod moments;
+mod random;
 mod reductions;
 pub mod tpch;
 

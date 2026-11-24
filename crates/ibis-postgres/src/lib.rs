@@ -131,6 +131,10 @@ impl Dialect for PostgresDialect {
             }
             // Postgres orders NaN as equal to itself (and above everything)
             Func::IsNan => Some(format!("({} = CAST('NaN' AS DOUBLE PRECISION))", a(0)?)),
+            Func::BitwiseXor => Some(format!("({} # {})", a(0)?, a(1)?)),
+            // no `bigint << bigint`: the count is an integer
+            Func::BitwiseLeftShift => Some(format!("(CAST({} AS BIGINT) << CAST({} AS INTEGER))", a(0)?, a(1)?)),
+            Func::BitwiseRightShift => Some(format!("(CAST({} AS BIGINT) >> CAST({} AS INTEGER))", a(0)?, a(1)?)),
             Func::IsInf => {
                 let x = a(0)?;
                 Some(format!(

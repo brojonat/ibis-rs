@@ -273,6 +273,15 @@ pub enum Func {
     /// `clip(x, lower, upper)`: limit `x` to the bounds; a NULL bound is no
     /// bound, a NULL `x` stays NULL. Keeps `x`'s type.
     Clip,
+    /// Bit by bit on integers (Ibis `&`, `|`, `^`, `<<`, `>>`, `~`).
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseLeftShift,
+    BitwiseRightShift,
+    BitwiseNot,
+    /// A float in `[0, 1)`, another for each row (Ibis `ibis.random()`).
+    Random,
     // arrays. Positions are **0-based** everywhere, as in Ibis.
     /// `array(a, b, ...)`: an array of the arguments.
     Array,
@@ -537,6 +546,11 @@ pub fn pi() -> Expr {
 /// Euler's number (Ibis `ibis.e`).
 pub fn e() -> Expr {
     lit(std::f64::consts::E)
+}
+
+/// A random float in `[0, 1)`, drawn again for each row (Ibis `ibis.random()`).
+pub fn random() -> Expr {
+    func(Func::Random, vec![])
 }
 
 /// A date from year, month and day expressions (Ibis `ibis.date(y, m, d)`).
@@ -974,6 +988,40 @@ impl Expr {
     pub fn clip(self, lower: Option<Expr>, upper: Option<Expr>) -> Expr {
         let open = || null(DataType::Null);
         func(Func::Clip, vec![self, lower.unwrap_or_else(open), upper.unwrap_or_else(open)])
+    }
+    /// The bits both integers have set (Ibis `a & b`).
+    pub fn bitwise_and(self, o: impl Into<Expr>) -> Expr {
+        func(Func::BitwiseAnd, vec![self, o.into()])
+    }
+    /// The bits either integer has set (Ibis `a | b`).
+    pub fn bitwise_or(self, o: impl Into<Expr>) -> Expr {
+        func(Func::BitwiseOr, vec![self, o.into()])
+    }
+    /// The bits exactly one of the integers has set (Ibis `a ^ b`).
+    pub fn bitwise_xor(self, o: impl Into<Expr>) -> Expr {
+        func(Func::BitwiseXor, vec![self, o.into()])
+    }
+    /// The bits moved `n` places up, an int64 (Ibis `a << n`).
+    pub fn lshift(self, n: impl Into<Expr>) -> Expr {
+        func(Func::BitwiseLeftShift, vec![self, n.into()])
+    }
+    /// The bits moved `n` places down, an int64 (Ibis `a >> n`).
+    pub fn rshift(self, n: impl Into<Expr>) -> Expr {
+        func(Func::BitwiseRightShift, vec![self, n.into()])
+    }
+    /// Every bit flipped: `-x - 1` (Ibis `~a` on an integer).
+    pub fn bitwise_not(self) -> Expr {
+        func(Func::BitwiseNot, vec![self])
+    }
+    /// The number of the bin a value falls in, when the column's range is
+    /// cut into `nbins` bins of one width: 0 for the lowest (Ibis
+    /// `histogram(nbins=n)`). The range is read from the data, so this
+    /// is a window function.
+    pub fn histogram(self, nbins: i64) -> Expr {
+        // as Ibis: the base sits a hair under the minimum
+        let base = self.clone().min() - lit(1e-13);
+        let width = (self.clone().max() - base.clone()) / lit(nbins);
+        ((self - base) / width).floor().clip(Some(lit(-1)), Some(lit(nbins - 1)))
     }
     pub fn fill_null(self, v: impl Into<Expr>) -> Expr {
         coalesce([self, v.into()])
@@ -2290,6 +2338,16 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
         }
         IsInf => T::Boolean,
         Clip => first,
+        BitwiseAnd | BitwiseOr | BitwiseXor | BitwiseLeftShift | BitwiseRightShift | BitwiseNot => {
+            if let Some(t) = ts.iter().find(|t| !t.is_integer() && **t != T::Null) {
+                return invalid(format!("{f:?} needs integers, got {t}"));
+            }
+            match f {
+                BitwiseLeftShift | BitwiseRightShift => T::Int64,
+                _ => ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?,
+            }
+        }
+        Random => T::Float64,
         Array => T::array(ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?),
         ArrayLength | ArrayPosition | MapLength => T::Int64,
         ArrayContains | MapContains => T::Boolean,

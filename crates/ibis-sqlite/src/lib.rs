@@ -174,6 +174,15 @@ impl Dialect for SqliteDialect {
             Func::Minute => extract("%M")?,
             Func::Second => extract("%S")?,
             Func::DayOfWeekIndex => Some(format!("((CAST(STRFTIME('%w', {}) AS INTEGER) + 6) % 7)", a(0)?)),
+            // no XOR: the bits in either, less the bits in both
+            Func::BitwiseXor => {
+                let (x, y) = (a(0)?, a(1)?);
+                Some(format!("(({x} | {y}) - ({x} & {y}))"))
+            }
+            Func::BitwiseLeftShift => Some(format!("({} << {})", a(0)?, a(1)?)),
+            Func::BitwiseRightShift => Some(format!("({} >> {})", a(0)?, a(1)?)),
+            // RANDOM() is any int64: 53 of its bits make a float in [0, 1)
+            Func::Random => Some("((RANDOM() & 9007199254740991) / 9007199254740992.0)".into()),
             Func::IsInf => Some(format!("(ABS({}) = 9e999)", a(0)?)),
             Func::Radians => Some(format!("({} * 0.017453292519943295)", a(0)?)),
             Func::Degrees => Some(format!("({} * 57.29577951308232)", a(0)?)),
@@ -404,6 +413,11 @@ fn parse_declared(decl: &str) -> DataType {
         "DATE" => DataType::Date,
         "TIMESTAMP" | "DATETIME" => DataType::Timestamp { tz: None },
         "BLOB" => DataType::Binary,
+        // DECIMAL(p, s): the name `type_name` gives a decimal
+        d if d.starts_with("DECIMAL(") || d.starts_with("NUMERIC(") => {
+            d.to_ascii_lowercase().replacen("numeric", "decimal", 1).parse().unwrap_or(DataType::Float64)
+        }
+        "DECIMAL" | "NUMERIC" => DataType::Float64,
         d if d.contains("INT") => DataType::Int64,
         d if d.contains("CHAR") || d.contains("CLOB") || d.contains("TEXT") => DataType::String,
         d if d.contains("REAL") || d.contains("FLOA") || d.contains("DOUB") => DataType::Float64,

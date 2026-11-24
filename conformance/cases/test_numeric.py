@@ -173,3 +173,77 @@ register(
     },
 )
 register("test_constants", {"pi": scalar(lambda: ibis.pi), "e": scalar(lambda: ibis.e)})
+
+# --- the rest of test_numeric.py ---------------------------------------------
+import decimal  # noqa: E402
+import operator  # noqa: E402
+
+import ibis.expr.datatypes as dt  # noqa: E402
+
+from cases import tables  # noqa: E402
+
+# float16 is left out: DuckDB has no such type and neither has ibis-rs
+register(
+    "test_numeric_literal",
+    {
+        name: scalar(lambda name=name: ibis.literal(1, type=name))
+        for name in ["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float32", "float64"]
+    },
+)
+# decimal-big is past what DuckDB holds; infinity and NaN are not decimals there
+register(
+    "test_decimal_literal",
+    {
+        "default": scalar(lambda: ibis.literal(decimal.Decimal("1.1"), type=dt.decimal)),
+        "decimal-small": scalar(lambda: ibis.literal(decimal.Decimal("1.1"), type=dt.Decimal(38, 9))),
+    },
+)
+register(
+    "test_complex_math_functions_columns",
+    {
+        "log2-explicit": column(lambda t: t.double_col.add(1).log(2)),
+        "log_base_bigint": column(lambda t: (t.double_col + 1).log(ibis.greatest(9_000, t.bigint_col))),
+    },
+)
+r.add("test_histogram#1", column(lambda t: t.int_col.histogram(nbins=10)))
+r.add(
+    "test_histogram#2",
+    tables(
+        lambda c: c.mem("range100")
+        .select(bin=_.value.histogram(nbins=10))
+        .value_counts()
+        .aggregate(tmp=_.bin_count.nunique())
+    ),
+)
+
+BITWISE = {"and_": operator.and_, "or_": operator.or_, "xor": operator.xor}
+SHIFTS = {"lshift": operator.lshift, "rshift": operator.rshift}
+SIDES = {
+    "col_col": (lambda t: t.int_col, lambda t: t.int_col),
+    "scalar_col": (lambda t: 3, lambda t: t.int_col),
+    "col_scalar": (lambda t: t.int_col, lambda t: 3),
+}
+for sid, (left, right) in SIDES.items():
+    for oid, op in BITWISE.items():
+        r.add(
+            f"test_bitwise_columns[{sid}-{oid}]",
+            column(lambda t, op=op, left=left, right=right: op(left(t), right(t))),
+        )
+for oid, op in SHIFTS.items():
+    for sid, (left, right) in SIDES.items():
+        r.add(
+            f"test_bitwise_shift[{oid}_{sid}]",
+            column(lambda t, op=op, left=left, right=right: op(left(t), right(t))),
+        )
+for oid, op in {**BITWISE, **SHIFTS}.items():
+    r.add(f"test_bitwise_scalars[int_col-{oid}]", scalar(lambda op=op: op(4, L(2))))
+    r.add(f"test_bitwise_scalars[col_int-{oid}]", scalar(lambda op=op: op(L(4), 2)))
+r.add("test_bitwise_not_scalar", scalar(lambda: ~L(2)))
+r.add("test_bitwise_not_col", column(lambda t: ~t.int_col))
+r.add("test_column_round_is_integer", tables(lambda c: c.mem("x_floats").select(tmp=_.x.round().cast(int))))
+r.add("test_scalar_round_is_integer", scalar(lambda: ibis.literal(1.2).round().cast(int)))
+# the Ibis test checks the schema the table comes back with
+register(
+    "test_memtable_decimal",
+    {"ints": tables(lambda c: c.mem("decimal_ints")), "decimals": tables(lambda c: c.mem("decimal_decimals"))},
+)

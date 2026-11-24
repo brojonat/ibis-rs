@@ -228,6 +228,15 @@ impl Dialect for TrinoDialect {
             }
             Func::RegexReplace => Some(format!("REGEXP_REPLACE({}, {}, {})", a(0)?, a(1)?, a(2)?)),
             Func::IsNan => Some(format!("IS_NAN({})", a(0)?)),
+            Func::BitwiseAnd => Some(format!("BITWISE_AND({}, {})", a(0)?, a(1)?)),
+            Func::BitwiseOr => Some(format!("BITWISE_OR({}, {})", a(0)?, a(1)?)),
+            Func::BitwiseXor => Some(format!("BITWISE_XOR({}, {})", a(0)?, a(1)?)),
+            // a shift is as wide as what is shifted
+            Func::BitwiseLeftShift => Some(format!("BITWISE_LEFT_SHIFT(CAST({} AS BIGINT), {})", a(0)?, a(1)?)),
+            Func::BitwiseRightShift => {
+                Some(format!("BITWISE_RIGHT_SHIFT_ARITHMETIC(CAST({} AS BIGINT), {})", a(0)?, a(1)?))
+            }
+            Func::BitwiseNot => Some(format!("BITWISE_NOT({})", a(0)?)),
             Func::IsInf => Some(format!("IS_INFINITE({})", a(0)?)),
             Func::Cot => Some(format!("(1E0 / TAN({}))", a(0)?)),
             // DAY_OF_WEEK: 1 is Monday

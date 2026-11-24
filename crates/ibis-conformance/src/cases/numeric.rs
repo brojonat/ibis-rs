@@ -6,7 +6,7 @@
 
 use ibis_core::prelude::*;
 
-use super::{Case, c, column, scalar, table};
+use super::{Case, c, column, scalar, table, tables};
 
 pub fn register(v: &mut Vec<Case>) {
     let m = |id: &str| format!("test_simple_math_functions_columns[{id}]");
@@ -166,4 +166,69 @@ fn more(v: &mut Vec<Case>) {
     }
     v.push(scalar("test_constants[pi]", || Ok(pi())));
     v.push(scalar("test_constants[e]", || Ok(e())));
+
+    rest(v);
+}
+
+/// What is left of test_numeric.py, in the order of the Python file.
+fn rest(v: &mut Vec<Case>) {
+    use DataType as T;
+    let types =
+        [T::Int8, T::Int16, T::Int32, T::Int64, T::UInt8, T::UInt16, T::UInt32, T::UInt64, T::Float32, T::Float64];
+    for t in types {
+        v.push(scalar(&format!("test_numeric_literal[{t}]"), move || Ok(lit_as(1, t.clone()))));
+    }
+    // Ibis's `decimal` has no precision of its own and takes the engine's
+    // (18 and 3 on DuckDB); an ibis-rs decimal always says both.
+    v.push(
+        scalar("test_decimal_literal[default]", || Ok(lit_as(1.1, T::Decimal { precision: 18, scale: 3 })))
+            .notimpl(&["schema"]),
+    );
+    v.push(scalar("test_decimal_literal[decimal-small]", || Ok(lit_as(1.1, T::Decimal { precision: 38, scale: 9 }))));
+    let cm = |id: &str| format!("test_complex_math_functions_columns[{id}]");
+    v.push(column(&cm("log2-explicit"), |_| Ok((c("double_col") + 1).log(2))));
+    v.push(column(&cm("log_base_bigint"), |_| Ok((c("double_col") + 1).log(greatest([lit(9_000), c("bigint_col")])))));
+    // a column and the reductions of it: not `column`, which would aggregate
+    v.push(table("test_histogram#1", |t| t.select([c("id"), c("int_col").histogram(10).name("tmp")])));
+    v.push(tables("test_histogram#2", |fx| {
+        fx.mem("range100")?.select([c("value").histogram(10).name("bin")])?.value_counts(c("bin"))?.aggregate([c(
+            "bin_count",
+        )
+        .nunique()
+        .name("tmp")])
+    }));
+
+    type Bits = fn(Expr, Expr) -> Expr;
+    let bitwise: [(&str, Bits); 3] =
+        [("and_", |a, b| a.bitwise_and(b)), ("or_", |a, b| a.bitwise_or(b)), ("xor", |a, b| a.bitwise_xor(b))];
+    let shifts: [(&str, Bits); 2] = [("lshift", |a, b| a.lshift(b)), ("rshift", |a, b| a.rshift(b))];
+    let sides: [(&str, Num, Num); 3] = [
+        ("col_col", || c("int_col"), || c("int_col")),
+        ("scalar_col", || lit(3), || c("int_col")),
+        ("col_scalar", || c("int_col"), || lit(3)),
+    ];
+    for (sid, left, right) in sides {
+        for (oid, op) in bitwise {
+            v.push(column(&format!("test_bitwise_columns[{sid}-{oid}]"), move |_| Ok(op(left(), right()))));
+        }
+    }
+    for (oid, op) in shifts {
+        for (sid, left, right) in sides {
+            v.push(column(&format!("test_bitwise_shift[{oid}_{sid}]"), move |_| Ok(op(left(), right()))));
+        }
+    }
+    for (oid, op) in bitwise.into_iter().chain(shifts) {
+        // the two ids differ in which side Python wraps in a literal
+        v.push(scalar(&format!("test_bitwise_scalars[int_col-{oid}]"), move || Ok(op(lit(4), lit(2)))));
+        v.push(scalar(&format!("test_bitwise_scalars[col_int-{oid}]"), move || Ok(op(lit(4), lit(2)))));
+    }
+    v.push(scalar("test_bitwise_not_scalar", || Ok(lit(2).bitwise_not())));
+    v.push(column("test_bitwise_not_col", |_| Ok(c("int_col").bitwise_not())));
+    v.push(tables("test_column_round_is_integer", |fx| {
+        fx.mem("x_floats")?.select([c("x").round(None).cast(T::Int64).name("tmp")])
+    }));
+    v.push(scalar("test_scalar_round_is_integer", || Ok(lit(1.2).round(None).cast(T::Int64))));
+    // the Ibis test checks the schema the table comes back with
+    v.push(tables("test_memtable_decimal[ints]", |fx| fx.mem("decimal_ints")));
+    v.push(tables("test_memtable_decimal[decimals]", |fx| fx.mem("decimal_decimals")));
 }
