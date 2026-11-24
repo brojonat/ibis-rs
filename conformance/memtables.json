@@ -264,5 +264,17 @@
  "decimal_decimals": {
   "columns": [["numbers", "decimal(38, 9)"]],
   "rows": [[1.1], [2.2], [3.3]]
+ },
+ "strings_accents": {
+  "columns": [["string_col", "string"], ["index_col", "int64"]],
+  "rows": [["AbC\t", 0], ["\n123\n   ", 1], ["abc, 123", 2], ["123", 3], ["aBc", 4], ["🐍", 5], ["ÉéÈèêç", 6]]
+ },
+ "strings_plain": {
+  "columns": [["string_col", "string"], ["index_col", "int64"]],
+  "rows": [["AbC\t", 0], ["\n123\n   ", 1], ["abc, 123", 2], ["123", 3], ["aBc", 4]]
+ },
+ "arr_empty_abc": {
+  "columns": [["arr", "array<string>"]],
+  "rows": [[[]], [["a", "b", "c"]]]
  }
 }

@@ -147,6 +147,19 @@ impl Dialect for MySqlDialect {
             Func::BitwiseRightShift => Some(format!("CAST({} >> {} AS SIGNED)", a(0)?, a(1)?)),
             Func::BitwiseNot => Some(format!("CAST(~{} AS SIGNED)", a(0)?)),
             Func::Random => Some("RAND()".into()),
+            // TRIM takes off one string, not any of a set of characters
+            Func::Strip | Func::LStrip | Func::RStrip => {
+                let set = r"[ \t\n\r\x0B\f]+";
+                let pattern = match f {
+                    Func::LStrip => format!("^{set}"),
+                    Func::RStrip => format!("{set}$"),
+                    _ => format!("^{set}|{set}$"),
+                };
+                Some(format!("REGEXP_REPLACE({}, {}, '')", a(0)?, quote_str(&pattern)))
+            }
+            Func::Translate | Func::Levenshtein | Func::StringSplit | Func::RegexSplit | Func::ArrayStringJoin => {
+                return unsupported(format!("{f:?}"));
+            }
             Func::IsNan | Func::IsInf => Some(never(a(0)?)),
             // ROUND of a DOUBLE rounds half to even; Ibis rounds half away from zero
             Func::Round if c.dtype(&args[0])?.is_floating() => {

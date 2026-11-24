@@ -282,6 +282,23 @@ pub enum Func {
     BitwiseNot,
     /// A float in `[0, 1)`, another for each row (Ibis `ibis.random()`).
     Random,
+    /// `(string, from, to)`: each character of `from` replaced by the one
+    /// at its place in `to`.
+    Translate,
+    /// `(string, delimiter)`: the pieces between delimiters, an array.
+    StringSplit,
+    /// `(string, pattern)`: the pieces between matches of a regular
+    /// expression, an array.
+    RegexSplit,
+    /// `(separator, strings...)`: the strings with the separator between.
+    /// With an array in place of the strings, `ArrayStringJoin`.
+    StringJoin,
+    /// `(array, separator)`: the array's strings with the separator
+    /// between; NULL for an empty array.
+    ArrayStringJoin,
+    /// `(a, b)`: how many characters to insert, delete or replace to turn
+    /// one string into the other.
+    Levenshtein,
     // arrays. Positions are **0-based** everywhere, as in Ibis.
     /// `array(a, b, ...)`: an array of the arguments.
     Array,
@@ -1022,6 +1039,55 @@ impl Expr {
         let base = self.clone().min() - lit(1e-13);
         let width = (self.clone().max() - base.clone()) / lit(nbins);
         ((self - base) / width).floor().clip(Some(lit(-1)), Some(lit(nbins - 1)))
+    }
+    /// Each character found in `from` replaced by the character at the
+    /// same place in `to` (Ibis `translate`).
+    pub fn translate(self, from: &str, to: &str) -> Expr {
+        func(Func::Translate, vec![self, lit(from), lit(to)])
+    }
+    /// The 0-based place of this string among `items`, -1 if it is none
+    /// of them (Ibis `find_in_set`). A comparison with each, so it runs
+    /// on every backend.
+    pub fn find_in_set(self, items: impl IntoIterator<Item = impl IntoOperand>) -> Expr {
+        let mut branches = vec![(self.clone().isnull(), null(DataType::Int64))];
+        for (i, item) in items.into_iter().enumerate() {
+            branches.push((self.clone().eq(item.into_operand()), lit(i as i64)));
+        }
+        cases(branches, Some(lit(-1))).cast(DataType::Int64)
+    }
+    /// The pieces of the string between occurrences of `delimiter`, an
+    /// array (Ibis `split`).
+    pub fn split(self, delimiter: &str) -> Expr {
+        func(Func::StringSplit, vec![self, lit(delimiter)])
+    }
+    /// The pieces of the string between matches of a regular expression,
+    /// an array (Ibis `re_split`).
+    pub fn re_split(self, pattern: impl IntoOperand) -> Expr {
+        func(Func::RegexSplit, vec![self, pattern.into_operand()])
+    }
+    /// `parts` with this string between them (Python's `sep.join(parts)`,
+    /// Ibis `join`). The parts may be one array of strings; and called on
+    /// an array with one string, that string is the separator
+    /// (`arr.join([","])`). An empty array gives NULL.
+    pub fn join(self, parts: impl IntoIterator<Item = impl IntoOperand>) -> Expr {
+        func(Func::StringJoin, std::iter::once(self).chain(parts.into_iter().map(IntoOperand::into_operand)).collect())
+    }
+    /// The number of characters to insert, delete or replace to make this
+    /// string `other` (Ibis `levenshtein`).
+    pub fn levenshtein(self, other: impl IntoOperand) -> Expr {
+        func(Func::Levenshtein, vec![self, other.into_operand()])
+    }
+    /// This value replaced by what `pairs` maps it to; a value that is not
+    /// mapped stays, or becomes `default` if there is one (Ibis
+    /// `substitute`).
+    pub fn substitute(
+        self,
+        pairs: impl IntoIterator<Item = (impl IntoOperand, impl IntoOperand)>,
+        default: Option<Expr>,
+    ) -> Expr {
+        let default = default.unwrap_or_else(|| self.clone());
+        let pairs: Vec<(Expr, Expr)> = pairs.into_iter().map(|(k, v)| (k.into_operand(), v.into_operand())).collect();
+        self.cases(pairs, Some(default))
     }
     pub fn fill_null(self, v: impl Into<Expr>) -> Expr {
         coalesce([self, v.into()])
@@ -1997,6 +2063,9 @@ impl Expr {
                     return invalid(format!("truncate: unknown unit {u:?}; expected one of {TRUNCATE_UNITS:?}"));
                 }
                 let ts = args.iter().map(|a| a.dtype(schema)).collect::<Result<Vec<_>>>()?;
+                if let Some(form) = string_form(*f, args, &ts) {
+                    return form.dtype(schema);
+                }
                 let literal_name = |e: &Expr| match e.unaliased() {
                     Expr::Literal(Value::String(s), _) => Ok(s.clone()),
                     other => invalid(format!("{f:?}: a field name must be a string literal, got {other}")),
@@ -2193,6 +2262,39 @@ fn fixed_micros(e: &Expr) -> Result<i64> {
     Ok(total)
 }
 
+/// What a function means when its arguments turn out to be strings where
+/// it was built for arrays, or the other way round, as an expression of
+/// functions that say so; `None` if it means what it says. Python's
+/// `s[2]`, `s[1:3]` and `s.concat(...)` on a string, and `sep.join(arr)`
+/// and `arr.join(sep)`.
+pub fn string_form(f: Func, args: &[Expr], types: &[DataType]) -> Option<Expr> {
+    use DataType as T;
+    let text = |t: &T| *t == T::String;
+    let open = |e: &Expr| matches!(e, Expr::Literal(Value::Null, _));
+    let s = || args[0].clone();
+    match f {
+        Func::ArrayIndex if text(types.first()?) => Some(s().substr(args[1].clone(), Some(lit(1)))),
+        Func::ArraySlice if text(types.first()?) => Some(match (open(&args[1]), open(&args[2])) {
+            (true, true) => s(),
+            (false, true) => s().substr(args[1].clone(), None),
+            (true, false) => s().substr(0, Some(args[2].clone())),
+            (false, false) => s().substr(args[1].clone(), Some(args[2].clone() - args[1].clone())),
+        }),
+        // an untyped NULL among strings is a string
+        Func::ArrayConcat if types.iter().any(text) && types.iter().all(|t| matches!(t, T::String | T::Null)) => {
+            let part = |(e, t): (&Expr, &T)| if *t == T::Null { null(T::String) } else { e.clone() };
+            args.iter().zip(types).map(part).reduce(|a, b| a + b)
+        }
+        Func::StringJoin if args.len() == 2 && matches!(types[1], T::Array(_)) => {
+            Some(func(Func::ArrayStringJoin, vec![args[1].clone(), s()]))
+        }
+        Func::StringJoin if args.len() == 2 && matches!(types[0], T::Array(_)) => {
+            Some(func(Func::ArrayStringJoin, vec![s(), args[1].clone()]))
+        }
+        _ => None,
+    }
+}
+
 /// The arguments of a `bucket` as the expression it stands for: the
 /// microseconds since 1970 rounded down to a multiple of the width (after
 /// the offset is taken off, and put back on), as a timestamp again. Built
@@ -2348,6 +2450,20 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
             }
         }
         Random => T::Float64,
+        Translate | StringSplit | RegexSplit | Levenshtein | StringJoin => {
+            if let Some(t) = ts.iter().find(|t| **t != T::String && **t != T::Null) {
+                return invalid(format!("{f:?} needs strings, got {t}"));
+            }
+            match f {
+                StringSplit | RegexSplit => T::array(T::String),
+                Levenshtein => T::Int64,
+                _ => T::String,
+            }
+        }
+        ArrayStringJoin => match (&first, ts.get(1)) {
+            (T::Array(item), Some(T::String)) if matches!(**item, T::String | T::Null) => T::String,
+            (a, b) => return invalid(format!("join needs an array of strings and a separator, got {a} and {b:?}")),
+        },
         Array => T::array(ts.iter().try_fold(T::Null, |acc, t| unify(&acc, t))?),
         ArrayLength | ArrayPosition | MapLength => T::Int64,
         ArrayContains | MapContains => T::Boolean,

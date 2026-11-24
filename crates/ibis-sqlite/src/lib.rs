@@ -183,6 +183,18 @@ impl Dialect for SqliteDialect {
             Func::BitwiseRightShift => Some(format!("({} >> {})", a(0)?, a(1)?)),
             // RANDOM() is any int64: 53 of its bits make a float in [0, 1)
             Func::Random => Some("((RANDOM() & 9007199254740991) / 9007199254740992.0)".into()),
+            // no GREATEST: the scalar MAX. A longer string is left whole.
+            Func::LPad => Some(format!("LPAD({x}, MAX(LENGTH({x}), {}), {})", a(1)?, a(2)?, x = a(0)?)),
+            Func::RPad => Some(format!("RPAD({x}, MAX(LENGTH({x}), {}), {})", a(1)?, a(2)?, x = a(0)?)),
+            // no arrays to split into or join from
+            Func::StringSplit | Func::RegexSplit | Func::ArrayStringJoin => {
+                return Err(Error::Unsupported { backend: "sqlite".into(), op: format!("{f:?}") });
+            }
+            // functions this crate registers on the connection (polyfill.rs)
+            Func::Translate => Some(format!("ibis_translate({}, {}, {})", a(0)?, a(1)?, a(2)?)),
+            Func::Levenshtein => Some(format!("ibis_levenshtein({}, {})", a(0)?, a(1)?)),
+            Func::Upper => Some(format!("ibis_upper({})", a(0)?)),
+            Func::Lower => Some(format!("ibis_lower({})", a(0)?)),
             Func::IsInf => Some(format!("(ABS({}) = 9e999)", a(0)?)),
             Func::Radians => Some(format!("({} * 0.017453292519943295)", a(0)?)),
             Func::Degrees => Some(format!("({} * 57.29577951308232)", a(0)?)),

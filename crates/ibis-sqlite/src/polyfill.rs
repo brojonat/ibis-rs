@@ -27,6 +27,32 @@ type BinaryF64 = fn(f64, f64) -> f64;
 
 type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
+fn translate(s: &str, from: &str, to: &str) -> String {
+    let (from, to): (Vec<char>, Vec<char>) = (from.chars().collect(), to.chars().collect());
+    s.chars()
+        .filter_map(|c| match from.iter().position(|f| *f == c) {
+            Some(i) => to.get(i).copied(),
+            None => Some(c),
+        })
+        .collect()
+}
+
+/// The edits (a character inserted, deleted or replaced) between two strings.
+fn levenshtein(a: &str, b: &str) -> i64 {
+    let b: Vec<char> = b.chars().collect();
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut diagonal = row[0];
+        row[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let replace = diagonal + usize::from(ca != *cb);
+            diagonal = row[j + 1];
+            row[j + 1] = replace.min(row[j] + 1).min(diagonal + 1);
+        }
+    }
+    row[b.len()] as i64
+}
+
 fn pad(s: &str, n: usize, fill: &str, left: bool) -> String {
     let len = s.chars().count();
     if len >= n {
@@ -80,6 +106,23 @@ pub fn register(conn: &Connection) -> Result<()> {
         let re = regex(ctx, 1)?;
         let rep: String = ctx.get(2)?;
         Ok(text(ctx, 0)?.map(|s| re.replace_all(&s, rep.as_str()).into_owned()))
+    })?;
+    // UPPER and LOWER know ASCII only.
+    conn.create_scalar_function("ibis_upper", 1, DET, |ctx| Ok(text(ctx, 0)?.map(|s| s.to_uppercase())))?;
+    conn.create_scalar_function("ibis_lower", 1, DET, |ctx| Ok(text(ctx, 0)?.map(|s| s.to_lowercase())))?;
+    // Each character found in `from` becomes the one at its place in `to`,
+    // or goes if `to` is shorter (Postgres TRANSLATE).
+    conn.create_scalar_function("ibis_translate", 3, DET, |ctx| {
+        Ok(match (text(ctx, 0)?, text(ctx, 1)?, text(ctx, 2)?) {
+            (Some(s), Some(from), Some(to)) => Some(translate(&s, &from, &to)),
+            _ => None,
+        })
+    })?;
+    conn.create_scalar_function("ibis_levenshtein", 2, DET, |ctx| {
+        Ok(match (text(ctx, 0)?, text(ctx, 1)?) {
+            (Some(a), Some(b)) => Some(levenshtein(&a, &b)),
+            _ => None,
+        })
     })?;
     // SQLite formats moments (`strftime`) and has nothing to read them
     // back: text by a C `strptime` pattern, as the text of a timestamp;

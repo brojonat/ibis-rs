@@ -7,6 +7,7 @@ mod dot_sql;
 mod moments;
 mod random;
 mod reductions;
+mod strings;
 pub mod tpch;
 
 use std::collections::BTreeMap;

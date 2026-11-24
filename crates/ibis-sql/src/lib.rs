@@ -375,6 +375,32 @@ mod tests {
     }
 
     #[test]
+    fn a_substring_counts_from_zero_and_from_the_end() {
+        let one = |e: Expr| sql(&t().select([e.name("x")]).unwrap());
+        let s = || col("s");
+        assert!(one(s().substr(2, None)).contains(r#"SUBSTRING(t0."s", 3)"#));
+        // Python's s[-2]: one character, two from the end
+        let from_end = one(s().at(-2));
+        assert!(from_end.contains(r#"SUBSTRING(t0."s", (CAST(LENGTH(t0."s") AS INTEGER) + -1), 1)"#), "{from_end}");
+        // a start that is an expression is either
+        let computed = one(s().substr(col("a"), None));
+        assert!(
+            computed.contains(r#"CASE WHEN t0."a" >= 0 THEN t0."a" + 1 ELSE t0."a" + 1 + CAST(LENGTH("#),
+            "{computed}"
+        );
+        // a pad never cuts a string that is already longer
+        let padded = one(s().lpad(4, "-"));
+        assert!(padded.contains(r#"LPAD(t0."s", GREATEST(CAST(LENGTH(t0."s") AS INTEGER), 4), '-')"#), "{padded}");
+        // strip takes off every kind of ASCII whitespace
+        assert!(one(s().strip()).contains("TRIM(t0.\"s\", ' \t\n\r\u{b}\u{c}')"));
+        // s.concat(..) of strings is `||`; sep.join(parts) is CONCAT_WS
+        let concat = one(s().concat([lit("a")]));
+        assert!(concat.contains(r#"(t0."s" || 'a')"#), "{concat}");
+        let joined = one(lit("-").join([s(), lit("c")]));
+        assert!(joined.contains(r#"CONCAT_WS('-', t0."s", 'c')"#), "{joined}");
+    }
+
+    #[test]
     fn a_zone_is_part_of_a_timestamps_type_not_of_its_value() {
         let t = Table::named("e", Schema::of(&[("ts", DataType::Timestamp { tz: None })]));
         let zoned = |zone: &str| DataType::Timestamp { tz: Some(zone.into()) };

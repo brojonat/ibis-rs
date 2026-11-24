@@ -702,7 +702,12 @@ impl ExprCompiler<'_> {
             // a bucket is arithmetic on the microseconds since 1970
             Expr::Func(Func::Bucket, args) => self.sql(&ibis_core::expr::bucket_expr(args)?)?,
             Expr::Func(f, args) => {
-                let first = args.first().map(|a| self.dtype(a)).transpose()?;
+                // `s[1:3]`, `s.concat(..)`, `sep.join(arr)`: what they mean on these types
+                let types = args.iter().map(|a| self.dtype(a)).collect::<Result<Vec<_>>>()?;
+                if let Some(form) = ibis_core::expr::string_form(*f, args, &types) {
+                    return self.sql(&form);
+                }
+                let first = types.first().cloned();
                 // what reads the wall clock would read UTC's
                 let reads_clock = matches!(
                     f,
@@ -979,6 +984,17 @@ impl ExprCompiler<'_> {
         })
     }
 
+    /// The characters `strip` takes off, as a string literal: the six of
+    /// Python's `str.strip()` that are ASCII.
+    pub fn whitespace(&self) -> Result<String> {
+        self.literal(&Value::String(" \t\n\r\x0b\x0c".into()), &DataType::String)
+    }
+
+    /// The number of characters in a string, as the dialect counts them.
+    pub fn length(&self, s: &Expr) -> Result<String> {
+        self.sql(&Expr::Func(Func::Length, vec![s.clone()]))
+    }
+
     fn float(&self) -> Result<String> {
         self.d.cast_type_name(&DataType::Float64)
     }
@@ -1061,16 +1077,21 @@ impl ExprCompiler<'_> {
             Upper => format!("UPPER({x})"),
             Lower => format!("LOWER({x})"),
             Length => int(format!("LENGTH({x})"))?,
-            Strip => format!("TRIM({x})"),
-            LStrip => format!("LTRIM({x})"),
-            RStrip => format!("RTRIM({x})"),
+            Strip => format!("TRIM({x}, {})", self.whitespace()?),
+            LStrip => format!("LTRIM({x}, {})", self.whitespace()?),
+            RStrip => format!("RTRIM({x}, {})", self.whitespace()?),
             Reverse => format!("REVERSE({x})"),
             Repeat => format!("REPEAT({x}, {})", a[1]),
             Substring => {
+                // 0-based, and a negative start counts from the end
                 let start = match Self::lit_int(&args[1]) {
                     Some(i) if i >= 0 => (i + 1).to_string(),
-                    Some(_) => return unsupported(self.d, "substr with negative start"),
-                    None => format!("({} + 1)", a[1]),
+                    Some(i) => format!("({} + {})", self.length(&args[0])?, i + 1),
+                    None => format!(
+                        "CASE WHEN {s} >= 0 THEN {s} + 1 ELSE {s} + 1 + {} END",
+                        self.length(&args[0])?,
+                        s = a[1]
+                    ),
                 };
                 match a.get(2) {
                     Some(len) => format!("SUBSTRING({x}, {start}, {len})"),
@@ -1094,8 +1115,15 @@ impl ExprCompiler<'_> {
             RegexSearch => format!("REGEXP_MATCHES({x}, {})", a[1]),
             RegexExtract => format!("REGEXP_EXTRACT({x}, {}, {})", a[1], a[2]),
             RegexReplace => format!("REGEXP_REPLACE({x}, {}, {}, 'g')", a[1], a[2]),
-            LPad => format!("LPAD({x}, {}, {})", a[1], a[2]),
-            RPad => format!("RPAD({x}, {}, {})", a[1], a[2]),
+            // to at least that many characters: a longer string is left whole
+            LPad => format!("LPAD({x}, GREATEST({}, {}), {})", self.length(&args[0])?, a[1], a[2]),
+            RPad => format!("RPAD({x}, GREATEST({}, {}), {})", self.length(&args[0])?, a[1], a[2]),
+            Translate => format!("TRANSLATE({x}, {}, {})", a[1], a[2]),
+            StringSplit => format!("STR_SPLIT({x}, {})", a[1]),
+            RegexSplit => format!("STR_SPLIT_REGEX({x}, {})", a[1]),
+            StringJoin => format!("CONCAT_WS({})", a.join(", ")),
+            ArrayStringJoin => format!("CASE WHEN LEN({x}) = 0 THEN NULL ELSE ARRAY_TO_STRING({x}, {}) END", a[1]),
+            Levenshtein => bigint(format!("LEVENSHTEIN({x}, {})", a[1]))?,
             Capitalize => format!("(UPPER(SUBSTRING({x}, 1, 1)) || LOWER(SUBSTRING({x}, 2)))"),
             Ascii => int(format!("ASCII({x})"))?,
             Coalesce => format!("COALESCE({})", a.join(", ")),

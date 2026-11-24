@@ -237,6 +237,16 @@ impl Dialect for TrinoDialect {
                 Some(format!("BITWISE_RIGHT_SHIFT_ARITHMETIC(CAST({} AS BIGINT), {})", a(0)?, a(1)?))
             }
             Func::BitwiseNot => Some(format!("BITWISE_NOT({})", a(0)?)),
+            Func::Strip => Some(format!("TRIM(BOTH {} FROM {})", c.whitespace()?, a(0)?)),
+            Func::LStrip => Some(format!("TRIM(LEADING {} FROM {})", c.whitespace()?, a(0)?)),
+            Func::RStrip => Some(format!("TRIM(TRAILING {} FROM {})", c.whitespace()?, a(0)?)),
+            Func::StringSplit => Some(format!("SPLIT({}, {})", a(0)?, a(1)?)),
+            Func::RegexSplit => Some(format!("REGEXP_SPLIT({}, {})", a(0)?, a(1)?)),
+            Func::ArrayStringJoin => {
+                let x = a(0)?;
+                Some(format!("CASE WHEN CARDINALITY({x}) = 0 THEN NULL ELSE ARRAY_JOIN({x}, {}) END", a(1)?))
+            }
+            Func::Levenshtein => Some(format!("LEVENSHTEIN_DISTANCE({}, {})", a(0)?, a(1)?)),
             Func::IsInf => Some(format!("IS_INFINITE({})", a(0)?)),
             Func::Cot => Some(format!("(1E0 / TAN({}))", a(0)?)),
             // DAY_OF_WEEK: 1 is Monday

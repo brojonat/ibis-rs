@@ -8,8 +8,9 @@ services:
     image: postgres:18
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
-      # C locale: strings order bytewise, like DuckDB and the goldens
-      POSTGRES_INITDB_ARGS: --no-locale -E UTF8
+      # C collation: strings order bytewise, like DuckDB and the goldens.
+      # A UTF-8 character type: UPPER and LOWER know letters beyond ASCII.
+      POSTGRES_INITDB_ARGS: --lc-collate=C --lc-ctype=C.UTF-8 -E UTF8
       POSTGRES_DB: ibis_testing
     ports: ["127.0.0.1:54330:5432"]
     volumes:

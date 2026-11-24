@@ -334,13 +334,12 @@ impl ClickHouse {
     /// Run a query, returning rows typed by what ClickHouse says each column is.
     pub fn raw_sql(&self, sql: &str) -> Result<Vec<Vec<Value>>> {
         let body = self.send(&format!("{sql}\nFORMAT TabSeparatedWithNamesAndTypes"), None)?;
-        let mut lines = body.split('\n');
+        // every line ends in a newline; after the names and the types each
+        // line is a row, and an empty one is a row of one empty string
+        let mut lines = body.strip_suffix('\n').unwrap_or(&body).split('\n');
         let _names = lines.next();
         let types: Vec<DataType> = lines.next().unwrap_or("").split('\t').map(|t| parse_type(&unescape(t))).collect();
-        Ok(lines
-            .filter(|line| !line.is_empty())
-            .map(|line| line.split('\t').zip(&types).map(|(field, t)| cell(field, t)).collect())
-            .collect())
+        Ok(lines.map(|line| line.split('\t').zip(&types).map(|(field, t)| cell(field, t)).collect()).collect())
     }
 }
 

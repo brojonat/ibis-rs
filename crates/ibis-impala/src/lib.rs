@@ -235,7 +235,11 @@ impl Impala {
             return Err(bad(&"not an impala:// URL"));
         }
         let options = Options::from_url(url, 21050, false).map_err(|e| bad(&e))?;
-        let conn = Connection::open(&options).map_err(|e| Error::Other(format!("impala: {url}: {e}")))?;
+        let mut conn = Connection::open(&options).map_err(|e| Error::Other(format!("impala: {url}: {e}")))?;
+        // Strings are counted in characters, not bytes (LENGTH, SUBSTR, LPAD,
+        // UPPER, ...), as on every other backend. An Impala before 4.1 has
+        // no such option and keeps counting bytes.
+        let _ = conn.execute("SET UTF8_MODE=true");
         Ok(Impala { conn: Mutex::new(conn), dialect: ImpalaDialect })
     }
 

@@ -143,6 +143,19 @@ impl Dialect for ImpalaDialect {
             Func::BitwiseNot => Some(format!("BITNOT({})", a(0)?)),
             // RAND() alone starts from the same seed in every query
             Func::Random => Some("RAND(UTC_TO_UNIX_MICROS(UTC_TIMESTAMP()))".into()),
+            Func::Strip => Some(format!("RTRIM(LTRIM({}, {ws}), {ws})", a(0)?, ws = c.whitespace()?)),
+            Func::StringSplit | Func::RegexSplit | Func::ArrayStringJoin => return unsupported(format!("{f:?}")),
+            // LPAD and RPAD count bytes, in UTF-8 mode too: the fill is cut to
+            // the characters that are missing and put before or after
+            Func::LPad | Func::RPad => {
+                let (x, n, fill) = (a(0)?, a(1)?, a(2)?);
+                let len = c.length(&args[0])?;
+                let missing = format!("SUBSTR(REPEAT({fill}, {n}), 1, {n} - {len})");
+                let padded =
+                    if f == Func::LPad { format!("CONCAT({missing}, {x})") } else { format!("CONCAT({x}, {missing})") };
+                Some(format!("CASE WHEN {len} >= {n} THEN {x} ELSE {padded} END"))
+            }
+            Func::Levenshtein => Some(format!("CAST(LEVENSHTEIN({}, {}) AS BIGINT)", a(0)?, a(1)?)),
             Func::IsInf => Some(format!("IS_INF({})", a(0)?)),
             // DAYOFWEEK: 1 is Sunday
             Func::DayOfWeekIndex => Some(format!("CAST(PMOD(DAYOFWEEK({}) - 2, 7) AS SMALLINT)", a(0)?)),

@@ -254,6 +254,22 @@ impl Dialect for SparkDialect {
             Func::BitwiseLeftShift => Some(format!("SHIFTLEFT(CAST({} AS BIGINT), {})", a(0)?, int(a(1)?))),
             Func::BitwiseRightShift => Some(format!("SHIFTRIGHT(CAST({} AS BIGINT), {})", a(0)?, int(a(1)?))),
             Func::Random => Some("RAND()".into()),
+            Func::Strip => Some(format!("TRIM(BOTH {} FROM {})", c.whitespace()?, a(0)?)),
+            Func::LStrip => Some(format!("TRIM(LEADING {} FROM {})", c.whitespace()?, a(0)?)),
+            Func::RStrip => Some(format!("TRIM(TRAILING {} FROM {})", c.whitespace()?, a(0)?)),
+            // SPLIT takes a regular expression: a delimiter is quoted to be read literally
+            Func::StringSplit => {
+                let Some(delimiter) = ExprCompiler::lit_str(&args[1]) else {
+                    return unsupported("split by a delimiter that is not a literal");
+                };
+                Some(format!("SPLIT({}, {}, -1)", a(0)?, quote_str(&format!("\\Q{delimiter}\\E"))))
+            }
+            Func::RegexSplit => Some(format!("SPLIT({}, {}, -1)", a(0)?, pattern(1)?)),
+            Func::ArrayStringJoin => {
+                let x = a(0)?;
+                Some(format!("IF(SIZE({x}) > 0, CONCAT_WS({}, {x}), NULL)", a(1)?))
+            }
+            Func::Levenshtein => Some(format!("CAST(LEVENSHTEIN({}, {}) AS BIGINT)", a(0)?, a(1)?)),
             Func::IsInf => Some(format!("(ABS({}) = CAST('Infinity' AS DOUBLE))", a(0)?)),
             // WEEKDAY: 0 is Monday
             Func::DayOfWeekIndex => Some(format!("CAST(WEEKDAY({}) AS SMALLINT)", a(0)?)),

@@ -465,6 +465,7 @@ pub fn all() -> Vec<ClientCase> {
     v.extend(crate::reductions::cases());
     v.extend(crate::moments::cases());
     v.extend(crate::random::cases());
+    v.extend(crate::strings::cases());
     v
 }
 

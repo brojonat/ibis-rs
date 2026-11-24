@@ -135,6 +135,14 @@ impl Dialect for PostgresDialect {
             // no `bigint << bigint`: the count is an integer
             Func::BitwiseLeftShift => Some(format!("(CAST({} AS BIGINT) << CAST({} AS INTEGER))", a(0)?, a(1)?)),
             Func::BitwiseRightShift => Some(format!("(CAST({} AS BIGINT) >> CAST({} AS INTEGER))", a(0)?, a(1)?)),
+            Func::StringSplit => Some(format!("STRING_TO_ARRAY({}, {})", a(0)?, a(1)?)),
+            Func::RegexSplit => Some(format!("REGEXP_SPLIT_TO_ARRAY({}, {})", a(0)?, a(1)?)),
+            Func::ArrayStringJoin => {
+                let x = a(0)?;
+                Some(format!("CASE WHEN CARDINALITY({x}) = 0 THEN NULL ELSE ARRAY_TO_STRING({x}, {}) END", a(1)?))
+            }
+            // LEVENSHTEIN is in the fuzzystrmatch extension
+            Func::Levenshtein => Some(format!("CAST(LEVENSHTEIN({}, {}) AS BIGINT)", a(0)?, a(1)?)),
             Func::IsInf => {
                 let x = a(0)?;
                 Some(format!(

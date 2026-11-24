@@ -200,6 +200,30 @@ impl Dialect for ClickHouseDialect {
             }
             Func::BitwiseNot => Some(format!("bitNot({})", a(0)?)),
             Func::Random => Some("randCanonical()".into()),
+            Func::Strip => Some(format!("TRIM(BOTH {} FROM {})", c.whitespace()?, a(0)?)),
+            Func::LStrip => Some(format!("TRIM(LEADING {} FROM {})", c.whitespace()?, a(0)?)),
+            Func::RStrip => Some(format!("TRIM(TRAILING {} FROM {})", c.whitespace()?, a(0)?)),
+            // the plain functions work on bytes
+            Func::Upper => Some(format!("upperUTF8({})", a(0)?)),
+            Func::Lower => Some(format!("lowerUTF8({})", a(0)?)),
+            Func::LPad => {
+                Some(format!("leftPadUTF8({}, GREATEST({}, {}), {})", a(0)?, c.length(&args[0])?, a(1)?, a(2)?))
+            }
+            Func::RPad => {
+                Some(format!("rightPadUTF8({}, GREATEST({}, {}), {})", a(0)?, c.length(&args[0])?, a(1)?, a(2)?))
+            }
+            Func::Translate => Some(format!("translateUTF8({}, {}, {})", a(0)?, a(1)?, a(2)?)),
+            Func::StringSplit => Some(format!("splitByString({}, {})", a(1)?, a(0)?)),
+            Func::RegexSplit => Some(format!("splitByRegexp({}, {})", a(1)?, a(0)?)),
+            Func::StringJoin => {
+                let parts = args.iter().map(|x| c.sql(x)).collect::<Result<Vec<_>>>()?;
+                Some(format!("concatWithSeparator({})", parts.join(", ")))
+            }
+            Func::ArrayStringJoin => {
+                let x = a(0)?;
+                Some(format!("CASE WHEN length({x}) > 0 THEN arrayStringConcat({x}, {}) ELSE NULL END", a(1)?))
+            }
+            Func::Levenshtein => return cast(format!("editDistanceUTF8({}, {})", a(0)?, a(1)?), DataType::Int64),
             Func::IsInf => Some(format!("isInfinite({})", a(0)?)),
             Func::Cot => Some(format!("(1 / tan({}))", a(0)?)),
             Func::DayOfWeekIndex => return cast(format!("toDayOfWeek({}) - 1", a(0)?), DataType::Int16),

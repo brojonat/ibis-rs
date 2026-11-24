@@ -220,8 +220,12 @@ impl Tx<'_> {
             // a bucket is arithmetic on the microseconds since 1970
             Expr::Func(Func::Bucket, args) => self.expr(&ibis_core::expr::bucket_expr(args)?)?,
             Expr::Func(f, args) => {
-                let first = args.first().map(|a| self.dtype(a)).transpose()?;
-                self.func(e, f.resolve(first.as_ref()), args)?
+                // `s[1:3]`, `s.concat(..)`, `sep.join(arr)`: what they mean on these types
+                let types = args.iter().map(|a| self.dtype(a)).collect::<Result<Vec<_>>>()?;
+                if let Some(form) = ibis_core::expr::string_form(*f, args, &types) {
+                    return self.expr(&form);
+                }
+                self.func(e, f.resolve(types.first()), args)?
             }
             Expr::Agg { func, arg, filter, options } => {
                 self.agg(e, *func, arg.as_deref(), filter.as_deref(), options)?
@@ -399,12 +403,8 @@ impl Tx<'_> {
                 let n = int_arg(1, "count")?.max(0) as usize;
                 keep_null(&x, pl::concat_str(vec![x.clone(); n], "", false))
             }
-            Substring => {
-                if args.get(1).and_then(lit_int).is_some_and(|i| i < 0) {
-                    return unsupported("substr with negative start");
-                }
-                x.str().slice(a[1].clone(), a.get(2).cloned().unwrap_or_else(null))
-            }
+            // a negative start counts from the end, as in Ibis
+            Substring => x.str().slice(a[1].clone(), a.get(2).cloned().unwrap_or_else(null)),
             Right => x.str().tail(a[1].clone()),
             StartsWith => x.str().starts_with(a[1].clone()),
             EndsWith => x.str().ends_with(a[1].clone()),
@@ -434,11 +434,22 @@ impl Tx<'_> {
                 let (Some(c), None) = (chars.next(), chars.next()) else {
                     return unsupported(format!("{f:?} with a fill string that is not one character"));
                 };
-                let padded =
-                    if f == LPad { x.str().pad_start(a[1].clone(), c) } else { x.str().pad_end(a[1].clone(), c) };
-                // SQL padding also truncates to the target length
-                padded.str().slice(pl::lit(0), a[1].clone())
+                // to at least that many characters: a longer string is left whole
+                if f == LPad { x.str().pad_start(a[1].clone(), c) } else { x.str().pad_end(a[1].clone(), c) }
             }
+            StringSplit => x.str().split(a[1].clone()),
+            // Polars splits by a literal only: each match becomes a character
+            // no string holds, and the string is split there
+            RegexSplit => x.str().replace_all(a[1].clone(), pl::lit("\u{0}"), false).str().split(pl::lit("\u{0}")),
+            StringJoin => {
+                let sep = str_arg(0, "separator")?;
+                pl::concat_str(&a[1..], &sep, true)
+            }
+            ArrayStringJoin => {
+                let joined = x.clone().list().join(a[1].clone(), true);
+                pl::when(x.list().len().gt(pl::lit(0))).then(joined).otherwise(null())
+            }
+            Translate | Levenshtein => return unsupported(format!("{f:?}")),
             Capitalize => keep_null(
                 &x,
                 pl::concat_str(

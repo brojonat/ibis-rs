@@ -130,7 +130,9 @@ mod tests {
 
         let err = col("st").field("nope").dtype(&s).unwrap_err().to_string();
         assert!(err.contains("no field \"nope\""), "{err}");
-        assert!(col("name").at(0).dtype(&s).is_err());
+        // a string has characters at positions; a struct has not
+        assert_eq!(t(col("name").at(0)), "string");
+        assert!(col("st").at(0).dtype(&s).is_err());
     }
 
     #[test]
@@ -261,6 +263,42 @@ mod tests {
         assert_eq!(dtype(random()).unwrap(), "float64");
         // a histogram is arithmetic on the column and its range
         assert_eq!(dtype(col("int_col").histogram(10)).unwrap(), "int64");
+    }
+
+    #[test]
+    fn strings_take_the_forms_of_arrays() {
+        let t = alltypes();
+        let dtype = |e: Expr| t.select([e.name("x")]).map(|t| t.schema().fields[0].dtype.to_string());
+        let s = || col("string_col");
+        assert_eq!(dtype(s().split("/")).unwrap(), "array<string>");
+        assert_eq!(dtype(s().re_split(r"\d+")).unwrap(), "array<string>");
+        assert_eq!(dtype(s().levenshtein("kitten")).unwrap(), "int64");
+        assert_eq!(dtype(s().find_in_set(["a", "b"])).unwrap(), "int64");
+        assert_eq!(dtype(s().translate("01", "ab")).unwrap(), "string");
+        assert_eq!(dtype(s().substitute([("a", "b")], None)).unwrap(), "string");
+        assert!(dtype(col("int_col").split("/")).is_err());
+        // Python's s[2], s[1:3] and s.concat(..) are the array functions, read as substrings
+        assert_eq!(dtype(s().at(2)).unwrap(), "string");
+        assert_eq!(dtype(s().slice(Some(1), Some(3))).unwrap(), "string");
+        assert_eq!(dtype(s().concat([lit("a"), null(DataType::Null)])).unwrap(), "string");
+        let form = |e: Expr| match e {
+            Expr::Func(f, args) => {
+                let types: Vec<DataType> = args.iter().map(|a| a.dtype(t.schema()).unwrap()).collect();
+                crate::expr::string_form(f, &args, &types).map(|e| e.to_string())
+            }
+            _ => None,
+        };
+        assert_eq!(form(s().at(-2)).unwrap(), "Substring(string_col, -2, 1)");
+        assert_eq!(form(s().slice(Some(1), Some(3))).unwrap(), "Substring(string_col, 1, Sub(3, 1))");
+        assert_eq!(form(s().slice(None, None)).unwrap(), "string_col");
+        // sep.join(strings) is a join of strings; with one array either way round, of the array
+        assert_eq!(form(lit("-").join([s(), s()])), None);
+        assert_eq!(dtype(lit("-").join([s(), s()])).unwrap(), "string");
+        let arr = || array([lit("a"), lit("b")]);
+        assert_eq!(form(lit(",").join([arr()])), form(arr().join([lit(",")])));
+        assert_eq!(dtype(arr().join([lit(",")])).unwrap(), "string");
+        // an array is still an array
+        assert_eq!(form(arr().at(0)), None);
     }
 
     #[test]
