@@ -808,3 +808,57 @@ pattern language, and the marks say so. ibis-rs takes C patterns everywhere
 and translates (the helpers `strftime` already used read as well as they
 write), so the Java ids are marked not applicable instead of ported as
 expected failures on eight backends.
+
+## Time zones: the zone is in the type, the value stays UTC
+
+`Value::Timestamp` is microseconds since 1970 and a zoneless timestamp is
+read as UTC everywhere in this project. That made the first zone tests
+almost free:
+
+- `timestamp_col.cast("timestamp('UTC')")` and
+  `ibis.timestamp(...).cast(timestamp('PST8PDT'))` do not change the
+  moment, so on a SQL backend the cast compiles to its operand and the
+  schema carries the zone. Rows are turned into Arrow with the schema's
+  zone as a label (`with_timezone_opt`), so `16:20` comes back as
+  `08:20-08:00` for PST8PDT with no engine involved. Ibis marks this test
+  for MySQL, Spark, Impala and SQLite; all nine pass.
+- What this model cannot answer is anything that reads a wall clock other
+  than UTC's: `hour()`, `date()`, `strftime`, a cast back to no zone. Those
+  would silently answer in UTC, so the compiler refuses them for a zone
+  that is not UTC (`DataType::foreign_zone`). Wrong answers that look right
+  are the cost of a shortcut like this one; the refusal is what makes it
+  safe to ship before `AT TIME ZONE` is written for eight dialects.
+- Polars has real zones, and one sharp edge: it will not compare
+  `Datetime('us', 'UTC')` with `Datetime('us')`. Cast the zoneless side to
+  the other's type first (a zoneless value cast to a zone is read as UTC
+  there, as here).
+- `now()`: `CURRENT_TIMESTAMP` is a moment with the session's zone on most
+  engines and a wall clock in it on others. Asking for UTC outright
+  (`NOW() AT TIME ZONE 'UTC'`, `UTC_TIMESTAMP(6)`, `now64(6, 'UTC')`,
+  `STRFTIME(..., 'now')`, DuckDB's `MAKE_TIMESTAMP(EPOCH_US(NOW()))`, Spark's
+  `CONVERT_TIMEZONE(CURRENT_TIMEZONE(), 'UTC', LOCALTIMESTAMP())`) gives the
+  same value everywhere. The test compares it with the host's clock to
+  within ten minutes, which a wall clock from a session in another zone
+  would not meet (the test containers are all in UTC, so it has not been
+  seen to fail).
+- `test_timestamp_comparison_filter[eq]` matches no row at all (no row has
+  exactly that timestamp). It is Ibis's test, ported as it is; it passes on
+  an engine that returns nothing for every `=`.
+
+## The schema check is a tenth backend, and a one-backend summary hides it
+
+Commit d44dced went out with `as_timestamp(format)` typed `timestamp` where
+Ibis says `timestamp('UTC')`. Every backend returned the right rows, all
+nine summaries read "pass", and CI failed: the runner also compares the type
+ibis-rs gives each case with the type in the golden, and reports that as a
+backend called `schema`. The scratch scripts used to check a batch printed
+the line of the backend they were run for and nothing else, so the one
+`schema fail` among 1,139 outcomes was never on screen.
+
+- Run `mise run conformance` (it exits non-zero on any failure, the schema's
+  included), or make any narrower script print every status that is not
+  `pass` or `xfail`, whatever backend it belongs to.
+- A new function's type is part of porting it: read the type off the Ibis
+  expression (`expr.type()`) when writing the case, not only the SQL.
+- Waiting for CI before the next push is what kept this to one red build:
+  the following slice was ready and was held back when the run came in red.

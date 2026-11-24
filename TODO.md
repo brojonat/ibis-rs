@@ -3,7 +3,7 @@
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
 Current: 905 Ibis tests (862 expression cases, 43 client tests) + 22 TPC-H queries. DuckDB 905, Polars 896, Trino 892, Spark 891, Postgres 879, ClickHouse 852, Impala 576, MySQL 563, SQLite 562; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 1,119 of 1,722 applicable test ids (65%); per module at https://brojonat.github.io/ibis-rs/
+Coverage of the Ibis suite: 1,137 of 1,722 applicable test ids (66%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -32,7 +32,7 @@ Coverage of the Ibis suite: 1,119 of 1,722 applicable test ids (65%); per module
 - [x] Polars: arrays, structs and maps (all 311 cases), unnest, collect, views. Lists, structs, and maps as lists of `{key, value}` structs; `crates/ibis-polars/src/nested.rs` has the split between Polars expressions and the row-by-row fallback
 
 ## Next: parity
-- [ ] test_temporal tier 2 (29 ids left of 163 applicable)
+- [ ] test_temporal tier 2 (11 ids left of 163 applicable)
   - [x] Intervals: `DataType::Interval`, `interval(n, unit)`, `as_interval`, a timestamp or a date moved by one (35 ids)
   - [ ] Intervals as values: a result column of intervals (`Value`, Arrow, each backend's reader), `test_temporal_binop[timestamp-subtract-timestamp]` and `[date-subtract-date]`, `test_interval_literal`; comparisons and columns of intervals
   - [x] `iso_year`, `epoch_seconds`, `epoch_days`, `delta` of dates and timestamps, numbers as timestamps (`cast`, `as_timestamp(unit)`), date and timestamp literals far from now, a date compared with a built one (32 ids; the 4 SQL-text snapshot ids are not applicable)
@@ -40,7 +40,11 @@ Coverage of the Ibis suite: 1,119 of 1,722 applicable test ids (65%); per module
   - [ ] `bucket` of months and years (no fixed width: needs calendar arithmetic)
   - [ ] The `time` type: `test_delta[time]`, `test_string_as_time`, `test_time_literal`, `test_extract_time_from_timestamp`
   - [ ] A timestamp finer than a microsecond: `test_timestamp_truncate[ns-ns]`, `test_timestamp_precision_output[ns]`
-  - [ ] Time zones (`timestamp('UTC')` casts and comparisons), the `time` type, `now` and `today`, strftime with a column format
+  - [x] Time zones as part of the type (casts, comparisons, results), `now` and `today` (18 ids)
+  - [ ] The wall clock of a zone other than UTC on the SQL backends (`AT TIME ZONE` and its relatives): fields, dates, formats, a cast back to no zone. Today `Unsupported`
+  - [ ] Reading a column that the engine stores with a zone (`timestamptz`): not looked at
+  - [ ] strftime with a column format (1 id)
+  - [ ] ibis-polars: `floordiv` goes through float64, so an int64 above 2^53 loses its last digits (a bucket of a timestamp after the year 2255)
 - [x] test_aggregation: all 162 applicable ids
   - [x] Reductions of one argument: mode, median, approx_median, approx_nunique, kurtosis, bit_and/or/xor, arbitrary, first/last, notany/notall (27 ids; the Python-UDF ids are not applicable)
   - [x] `AggOptions` on `Expr::Agg` (further arguments, order, distinct, include_null) and `Dialect::reduction`; argmin/argmax and corr/cov on it (26 ids)

@@ -59,6 +59,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `Expr::bucket(width)` and `Expr::bucket_offset(width, offset)` (Ibis `bucket`): the start of the fixed-width bucket a timestamp falls in, counted from 1970-01-01 00:00:00. It compiles to arithmetic on `delta`, `microsecond` and `as_timestamp` (`ibis_core::expr::bucket_expr`), so every backend has it with no code of its own; Ibis has it on four of these nine.
 - `Expr::as_timestamp` also takes a C `strptime` pattern (`col("s").as_timestamp("%m/%d/%y")`; `AsTimestamp` is what it converts its argument to), and `Expr::as_date(format)`: a string read by a pattern, NULL where it does not match (`Func::StringToTimestamp`, `Func::StringToDate`). Each dialect translates the pattern as it does for `strftime`; ibis-sqlite registers `ibis_strptime` (SQLite has no parser), built on the new `ibis_core::convert::strptime`.
 - Conformance: 9 more ids of `test_temporal` (`test_timestamp_bucket`, `test_timestamp_bucket_offset`, the `[mysql_format]` ids of `test_string_as_timestamp` and `test_string_as_date`), passing on all nine backends. The `[pyspark_format]` ids, which pass Java's pattern through to the engine, are marked not applicable.
+- Time zones: a cast between a timestamp without a zone and one with any zone compiles, as a change of type (the SQL backends keep the value as UTC's wall clock; results come back as Arrow timestamps with the zone). Comparisons between the two work. What reads the wall clock of a zone other than UTC (fields, `truncate`, `strftime`, `delta`, a cast to a date or back to no zone) is `Unsupported` on the SQL backends. `DataType::foreign_zone`.
+- `now()` and `today()` (Ibis `ibis.now()`, `ibis.today()`; `Func::Now`, `Func::Today`): the moment the query runs, a `timestamp('UTC')`, and its date in UTC, on every backend whatever the session's zone.
+- Conformance: 18 more ids of `test_temporal`: `test_timestamp_comparison_filter` and its numpy twin (12), `test_timestamp_with_timezone_literal` (2) with goldens; `test_now`, `test_today` and their `_from_projection` twins as procedures. All pass on all nine backends (Ibis marks MySQL, Spark, Impala and SQLite for the zone literal).
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
@@ -84,6 +87,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - **Breaking:** `DataType::Interval` is a new variant.
 - ibis-sqlite: a string cast to a timestamp keeps its fraction of a second (`DATETIME` dropped it), and a timestamp cast to a timestamp is left alone.
 - ibis-polars: a string cast to a timestamp is parsed with `str.to_datetime`; the plain cast gave NULL for a string with a fraction of a second.
+- ibis-polars: a timestamp in a zone compared with one that has none (Polars refuses the comparison; the zoneless one is read as UTC).
+- `as_timestamp(format)` is typed `timestamp('UTC')`, as in Ibis. It was `timestamp` when it was added (commit d44dced), which the schema check caught in CI: the run for 1a0471c, the push that carried it, failed on `test_string_as_timestamp[mysql_format]`.
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
 
