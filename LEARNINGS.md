@@ -956,3 +956,35 @@ Other things from the same batch:
   loads every fixture: about a second on DuckDB, a minute and a half on
   Impala. Eleven filters on Impala is a quarter of an hour; give Impala one
   broad filter.
+
+## try_cast, hashes and a window in a filter
+
+- A cast that answers NULL instead of failing exists on DuckDB, Trino and
+  Spark (`TRY_CAST`), ClickHouse (`accurateCastOrNull`) and Polars (any cast
+  that is not `strict_cast`). Impala's plain `CAST` already answers NULL.
+  Postgres raises, and MySQL and SQLite answer 0 for text that is no number,
+  so `try_cast` is `Unsupported` there rather than a cast that lies.
+- "Cannot be cast" is the engine's judgement. A timestamp tried as an integer
+  is NULL on DuckDB, its seconds since 1970 on ClickHouse and Impala, its
+  microseconds on Polars, and a type error on Trino and Spark. Ibis marks all
+  of those against DuckDB's answer, and so do the cases.
+- `try_cast` carries its type as a string literal argument (`Func::TryCast`
+  with `[x, 'int64']`), like the unit of `truncate`: a `Func` has no place
+  for a `DataType`, and the type parses back from Ibis's spelling.
+  `Expr::dtype` types it before `func_dtype`, which only sees types.
+- A hash is not comparable between engines, so `test_hash` is a procedure:
+  an int64, never NULL, the same twice. DuckDB's `HASH` is unsigned (read the
+  bits as signed through `BIT`); Trino hashes bytes to bytes
+  (`FROM_BIG_ENDIAN_64(XXHASH64(TO_UTF8(...)))`); Polars's is a u64, reduced
+  modulo 2^63 because a cast of a u64 above the int64 range is NULL.
+- `Expr::hash` on Polars needs the crate's `row_hash` feature, and the Rust
+  compiler's hint for the missing method is `std::hash::Hash`, which is
+  beside the point.
+- `typeof` is a reserved word in Rust: the method is `typeof_`.
+- Ibis lets a window function into `filter`. The window is over the rows
+  before the filter, so it cannot be a `WHERE`: `Table::filter` computes each
+  such predicate as a column (`mutate`), filters on the columns, and selects
+  the original ones again. No backend needed to change.
+- A conformance `column` case whose function returns a literal is run as an
+  aggregate (a literal is a scalar to Ibis, as a reduction is). A test that
+  reads a literal as a column of the table is a `table` case.

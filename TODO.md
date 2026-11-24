@@ -2,8 +2,8 @@
 
 North star: Ibis parity, measured by ported Ibis backend test ids passing per backend.
 The target shape is Ibis's backend support matrix: https://ibis-project.org/backends/support/matrix (which backend supports which operation).
-Current: 1,254 Ibis tests (1,133 expression cases, 121 procedures) + 22 TPC-H queries. DuckDB 1,252, Polars 1,228, Trino 1,226, Postgres 1,224, Spark 1,203, ClickHouse 1,162, SQLite 856, Impala 829, MySQL 817; everything else is an expected failure with its reason in the case file (README has the table).
-Coverage of the Ibis suite: 1,254 of 1,722 applicable test ids (73%); per module at https://brojonat.github.io/ibis-rs/
+Current: 1,291 Ibis tests (1,162 expression cases, 129 procedures) + 22 TPC-H queries. DuckDB 1,289, Polars 1,261, Trino 1,261, Postgres 1,252, Spark 1,238, ClickHouse 1,197, SQLite 881, Impala 862, MySQL 842; everything else is an expected failure with its reason in the case file (README has the table).
+Coverage of the Ibis suite: 1,288 of 1,722 applicable test ids (75%); per module at https://brojonat.github.io/ibis-rs/
 
 ## Done
 - [x] Spike: DataFusion Unparser across Postgres/DuckDB/SQLite (spikes/unparser)
@@ -69,6 +69,15 @@ Coverage of the Ibis suite: 1,254 of 1,722 applicable test ids (73%); per module
   - [ ] `translate` and `levenshtein` on MySQL and Polars; `split` by a delimiter that is not a literal on Spark and Polars; a pattern per row for `re_split` on ClickHouse and Polars
   - [ ] ibis-clickhouse: `SUBSTRING` (so `substr`, `capitalize`, `left`) counts bytes; `substringUTF8` counts characters
   - [ ] `join` on SQLite before 3.44 (no `CONCAT_WS`); `strip` takes off Unicode whitespace on Polars and the six ASCII characters elsewhere
+- [ ] test_generic (66 ids left of 233 applicable)
+  - [x] Literals of NULL and booleans, `identical_to`, a window in `filter`, `try_cast`, `typeof_`, `hash`, `hexdigest`, casts of arrays and structs, and the plain select, sort and union tests (34 ids)
+  - [ ] Table slices with negative bounds (`test_static_table_slice`, `test_dynamic_table_slice*`: 13 ids), `sample` (6), `order_by(random())` (1)
+  - [ ] `distinct(on=..., keep=...)` (7 ids; six read Ibis's `diamonds` table, which is not among the fixtures), `pivot_longer`/`pivot_wider` (6)
+  - [ ] `info` and `describe` (7 ids)
+  - [ ] `ibis.memtable` (19 ids; with test_client slice 4), `test_named_literal` (a table from a value, with no table under it)
+  - [ ] `hashbytes` (binary digests; no golden, DuckDB has none in Ibis), `hexdigest` and `hashbytes` with another algorithm than SHA-256, and on SQLite and Polars (needs a SHA-256 in Rust: a dependency)
+  - [ ] `try_cast` on Postgres, MySQL and SQLite (a test of the text before the cast would do for numbers)
+  - [ ] The error tests (`test_table_fill_null_invalid`, `test_drop_null_invalid`), `test_column_fill_null[nan_col]` (SQLite only), `test_literal_na[time]`, `test_interactive` (to mark not applicable)
 - [ ] Rest of test_array: `ibis.range` over timestamps (10 ids; needs an interval type), `test_repr_timestamp_array` (a repr test: not applicable)
 - [ ] Nested types, loose ends: several `unnest`s in one projection on Trino and Spark (a join each today: a cross product, not DuckDB's side-by-side), a JSON type (Postgres `jsonb` columns that ibis-rs did not create come back as strings), Postgres arrays of arrays as JSONB
 - [ ] test_client (203 ids), in slices. These test the connection API, not expressions: they run as procedural tests per backend (`crates/ibis-conformance/src/client.rs`, ids `client::<module>::<pytest id>`, no goldens)

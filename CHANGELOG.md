@@ -73,6 +73,13 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ExprCompiler::whitespace` (the characters `strip` takes off, as a literal) and `ExprCompiler::length` (a string's length as the dialect counts it), for a dialect's `func`.
 - ibis-sqlite registers `ibis_translate`, `ibis_levenshtein`, `ibis_upper` and `ibis_lower` on the connection.
 - Conformance: 69 more ids of `test_string` (literals, `translate`, `find_in_set`, `split`, `join`, the slices of `test_substring`, `test_capitalize`, `test_levenshtein`, `test_re_split*`, `test_concat*`, `test_subs*`, and the two tests on strings with whitespace, accents and an emoji), 68 with goldens and one procedure (`crates/ibis-conformance/src/strings.rs`: `test_empty_array_string_join`, where DuckDB 2 no longer gives the NULL the test asks for). Memtables `strings_accents`, `strings_plain`, `arr_empty_abc`.
+- `Expr::identical_to(other)` (Ibis `identical_to`, `Func::IdenticalTo`): equal, with NULL equal to NULL. `IS NOT DISTINCT FROM`, `IS` on SQLite, `<=>` on MySQL and Spark, `eq_missing` on Polars.
+- `Expr::try_cast(type)` (Ibis `try_cast`, `Func::TryCast`): a cast that gives NULL where the value does not fit. `TRY_CAST` on DuckDB, Trino and Spark, `accurateCastOrNull` on ClickHouse, a plain `CAST` on Impala (which answers NULL), a cast that is not strict on Polars; `Unsupported` on Postgres, MySQL and SQLite, which have none (as in Ibis).
+- `Expr::typeof_()` (Ibis `typeof`, a reserved word in Rust; `Func::TypeOf`): the engine's own name for a value's type. Not on MySQL or Polars.
+- `Expr::hash()` (Ibis `hash`, `Func::Hash`): an int64 the engine computes from a value. On every backend, each with its own function (Trino and MySQL, where Ibis has none, through `xxhash64` and the first 64 bits of an MD5; SQLite through a function this crate registers).
+- `Expr::hexdigest()` (Ibis `hexdigest`, `Func::HexDigest`): the SHA-256 of a string in hexadecimal. Not on SQLite or Polars (as in Ibis).
+- `Table::filter` takes a predicate with a window function in it (`t.filter([col("x").mean().over(w).gt(3)])`), as Ibis does: the predicate is computed as a column over the rows before the filter, filtered on, and dropped. It was an error asking for a `mutate` first.
+- Conformance: 34 more ids of `test_generic`: 26 with goldens (`test_null_literal*`, `test_boolean_literal`, `test_identical_to`, `test_filter_with_window_op`, `test_mutate_rename`, `test_int_column`, `test_int_scalar`, four `test_select_*`, `test_union_generates_predictable_aliases`, `test_comparison_with_decimal_literal`, `test_cast[array]` and `[struct]`, nine of the `test_try_cast*` ids, `test_hexdigest`) and 8 procedures (`crates/ibis-conformance/src/engine.rs`: `test_hash`, `test_typeof`, `test_null_literal_typed_typeof`). Memtables `xy_dups`, `penguin`, `try_cast_ab`.
 
 ### Changed
 - **Breaking for backend implementations:** `Backend::create_table_with` is the required method; `create_table` and `create_empty_table` are provided on top of it (and still replace an existing table). The eight SQL backends get it from `sql_client_methods!`.
@@ -110,6 +117,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - ibis-sqlite: `upper` and `lower` change letters beyond ASCII.
 - ibis-impala sets `UTF8_MODE=true` on the connection, so `length`, `substr`, `upper`, `lower` and the rest count characters as the other backends do (Impala 4.1 and later; an older one keeps counting bytes). `lpad` and `rpad` are written without `LPAD`/`RPAD`, which count bytes either way.
 - The test Postgres is initialised with `--lc-collate=C --lc-ctype=C.UTF-8` instead of `--no-locale` (its `UPPER` and `LOWER` now know accented letters; strings still order bytewise) and has the `fuzzystrmatch` extension. A database made before this needs `docker compose rm -sf postgres`, its volume removed, and `mise run setup`.
+- **Breaking:** `Func` has five more variants (`IdenticalTo`, `TryCast`, `TypeOf`, `Hash`, `HexDigest`).
+- The `polars` dependency gains the `row_hash` feature (for `hash`).
 
 ## [ibis-sql 0.1.3, ibis-hiveserver2 0.1.0, ibis-spark 0.1.0, ibis-impala 0.1.0, ibis-rs 0.1.4] - 2026-11-16
 
