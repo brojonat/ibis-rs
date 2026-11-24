@@ -14,25 +14,25 @@ conformance case is a ported Ibis test (same pytest id), and its expected result
 comes from running the real Python Ibis expression. The shape to grow into is
 Ibis's [backend support matrix](https://ibis-project.org/backends/support/matrix).
 The [parity site](https://brojonat.github.io/ibis-rs/) lists every Ibis backend
-test, whether it is ported, and how each backend does on it: 1,110 of 1,724
+test, whether it is ported, and how each backend does on it: 1,119 of 1,722
 applicable test ids so far. See [docs/design.md](docs/design.md).
 
-Status: pre-alpha. Nine backends, 1,108 ported Ibis tests (994 expression
+Status: pre-alpha. Nine backends, 1,117 ported Ibis tests (1,003 expression
 cases with a result from Python Ibis, 114 tests that are procedures: the
 connection API, SQL as text, reductions whose answer is the engine's to
 choose) and Ibis's 22 TPC-H queries:
 
-| backend | Ibis tests (1,108) | TPC-H (22) |
+| backend | Ibis tests (1,117) | TPC-H (22) |
 |---|---|---|
-| DuckDB | 1,106 (2 expected failures, as in Ibis: no sample correlation) | 22 |
-| Polars (default) | 1,088 (20 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median or quantile of strings, one quantile at a time, `group_concat` with a literal separator only and not over a window) | 22 |
-| Trino | 1,080 (28 expected failures: no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median or quantile, no sample correlation, no interval of microseconds) | 22 |
-| Postgres | 1,078 (30 expected failures, as in Ibis: no arrays of arrays, no kurtosis, no sample correlation) | 22 |
-| Spark SQL | 1,057 (51 expected failures: no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median or quantile of strings or dates, no reduction that reads its rows in an order, no `collect` that keeps NULLs) | 22 |
-| ClickHouse | 1,017 (91 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median or quantile of strings, no population correlation, no reduction that reads its rows in an order, no `first`, `last` or `collect` that keeps NULLs; and no temporary tables over HTTP) | 22 |
-| SQLite | 717 (391 expected failures: no arrays, structs or maps, no NaN, no `MERGE`, no median, quantile, kurtosis, covariance or correlation, no ordered `group_concat`, no count of distinct rows, no interval of microseconds) | 22 |
-| Impala | 690 (418 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians and quantiles, kurtosis, the bitwise reductions, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance and correlation only the approximate median; `group_concat` neither ordered nor over a window) | 22 |
-| MySQL | 681 (427 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`, no `mode`, median, quantile, kurtosis, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance or correlation; `group_concat` with a literal separator only and not over a window) | 22 |
+| DuckDB | 1,115 (2 expected failures, as in Ibis: no sample correlation) | 22 |
+| Polars (default) | 1,097 (20 expected failures, as in Ibis: no `upsert`, no `NOT NULL` columns, no SQL text for an expression, no median or quantile of strings, one quantile at a time, `group_concat` with a literal separator only and not over a window) | 22 |
+| Trino | 1,089 (28 expected failures: no temporary tables, no `MERGE` in the test catalog, no `mode` of a column or an array, no exact median or quantile, no sample correlation, no interval of microseconds) | 22 |
+| Postgres | 1,087 (30 expected failures, as in Ibis: no arrays of arrays, no kurtosis, no sample correlation) | 22 |
+| Spark SQL | 1,066 (51 expected failures: no temporary tables, `MERGE` or `NOT NULL` columns, and as in Ibis no `mode` of a column or an array, no kurtosis or bitwise reductions, no median or quantile of strings or dates, no reduction that reads its rows in an order, no `collect` that keeps NULLs) | 22 |
+| ClickHouse | 1,026 (91 expected failures, as in Ibis: an array, struct or map cannot be NULL there, `x IN (NULL)` is false, no `MERGE`, no `mode` or kurtosis, no median or quantile of strings, no population correlation, no reduction that reads its rows in an order, no `first`, `last` or `collect` that keeps NULLs; and no temporary tables over HTTP) | 22 |
+| SQLite | 726 (391 expected failures: no arrays, structs or maps, no NaN, no `MERGE`, no median, quantile, kurtosis, covariance or correlation, no ordered `group_concat`, no count of distinct rows, no interval of microseconds) | 22 |
+| Impala | 699 (418 expected failures, as in Ibis: no array, struct or map support, no `NTH_VALUE`, `IN (subquery)` only in `WHERE`, no temporary tables, `MERGE` or `NOT NULL`, and of `mode`, the medians and quantiles, kurtosis, the bitwise reductions, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance and correlation only the approximate median; `group_concat` neither ordered nor over a window) | 22 |
+| MySQL | 690 (427 expected failures: no arrays, structs or maps, no NaN or infinity, no `MERGE`, no `mode`, median, quantile, kurtosis, `first`/`last`, `arbitrary`, `argmin`/`argmax`, covariance or correlation; `group_concat` with a literal separator only and not over a window) | 22 |
 
 Output column names and types match Ibis's on all 932. Ported so far:
 `test_generic`, `test_numeric`, `test_string`, `test_aggregation`,
@@ -184,6 +184,8 @@ col("ts").delta(col("since"), Hour);        // how many times the hour turns ove
 col("day").epoch_days();  col("ts").epoch_seconds();  col("ts").iso_year();
 col("seconds").cast(DataType::Timestamp { tz: None });   // a number as a timestamp: seconds since 1970
 col("millis").as_timestamp(Millisecond);                 // ... or another unit, down to nanoseconds
+col("text").as_timestamp("%m/%d/%y");  col("text").as_date("%m/%d/%y");  // a string, by a C strptime pattern
+col("ts").bucket(interval(5, Minute));                   // the start of the 5-minute bucket it falls in
 ```
 
 An interval is what a timestamp or a date is moved by. It compiles as part of
@@ -195,7 +197,10 @@ not yet a value a query returns: the difference of two timestamps has a type
 (`interval('s')`), and no backend reads such a column back. `delta` is the
 difference as a number: it counts the boundaries of the unit between the two,
 so from 23:59 to 00:01 is one day. A number becomes the same timestamp on
-every engine, whatever time zone its session is in.
+every engine, whatever time zone its session is in. A pattern is C's
+(`%Y-%m-%d`), translated to each engine's own; where the text does not match
+the result is NULL. Buckets are of a fixed width (weeks or shorter), counted
+from 1970-01-01 00:00:00.
 
 ## Requirements
 

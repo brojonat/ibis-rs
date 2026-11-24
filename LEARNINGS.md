@@ -782,3 +782,29 @@ Ibis marks `test_date_scalar` for dates outside 1900 to 2299 on ClickHouse.
 With ClickHouse 26.10 `toDate32('0001-07-17')` and `toDate32('9999-01-02')`
 come back unchanged, so those cases pass. An unexpected pass on a newer
 engine is worth one direct query before the mark is dropped.
+
+## bucket: a feature built from three others needs no dialect code
+
+Ibis's `bucket` is `time_bucket` on DuckDB, `date_bin` on Postgres,
+`toStartOfInterval` on ClickHouse, and missing on Trino, Spark, MySQL,
+SQLite and Impala. Here it is one expression in core
+(`ibis_core::expr::bucket_expr`): seconds since 1970 from `delta`, plus
+`microsecond`, rounded down to the width with `floordiv`, and back through
+`as_timestamp`. All nine backends passed the seven tests on the first run,
+because each piece was already tested on each of them. Before writing a
+dialect hook, check whether the operation is arithmetic on ones that exist.
+
+Two things to remember: the function is intercepted before its arguments are
+compiled (they are intervals, which do not compile outside date arithmetic),
+and the seconds must come from `delta` (int64), not `epoch_seconds`, which is
+int32 as in Ibis and ends in 2038.
+
+## Parsing by a pattern: `[pyspark_format]` is not a test of parsing
+
+`test_string_as_timestamp` and `test_string_as_date` have two ids each: a C
+pattern (`%m/%d/%y`) and Java's (`MM/dd/yy`). Ibis hands the pattern to the
+engine as written, so each id passes only where the engine speaks that
+pattern language, and the marks say so. ibis-rs takes C patterns everywhere
+and translates (the helpers `strftime` already used read as well as they
+write), so the Java ids are marked not applicable instead of ported as
+expected failures on eight backends.
