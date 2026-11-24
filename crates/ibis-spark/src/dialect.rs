@@ -270,6 +270,9 @@ impl Dialect for SparkDialect {
                 Some(format!("IF(SIZE({x}) > 0, CONCAT_WS({}, {x}), NULL)", a(1)?))
             }
             Func::Levenshtein => Some(format!("CAST(LEVENSHTEIN({}, {}) AS BIGINT)", a(0)?, a(1)?)),
+            Func::IdenticalTo => Some(format!("({} <=> {})", a(0)?, a(1)?)),
+            Func::Hash => Some(format!("XXHASH64({})", a(0)?)),
+            Func::HexDigest => Some(format!("SHA2({}, 256)", a(0)?)),
             Func::IsInf => Some(format!("(ABS({}) = CAST('Infinity' AS DOUBLE))", a(0)?)),
             // WEEKDAY: 0 is Monday
             Func::DayOfWeekIndex => Some(format!("CAST(WEEKDAY({}) AS SMALLINT)", a(0)?)),

@@ -593,6 +593,24 @@ impl Table {
     }
 
     pub fn filter(&self, predicates: impl IntoIterator<Item = Expr>) -> Result<Table> {
+        let predicates: Vec<Expr> = predicates.into_iter().collect();
+        let windowed = |p: &Expr| p.has(&|e| matches!(e, Expr::Window(..)));
+        if predicates.iter().any(windowed) {
+            // A window sees the rows as they are before the filter: each such
+            // predicate is computed as a column, filtered on, and dropped.
+            let names: Vec<String> = self.schema().names().map(String::from).collect();
+            let (mut computed, mut plain) = (vec![], vec![]);
+            for (i, p) in predicates.into_iter().enumerate() {
+                if windowed(&p) {
+                    let name = format!("_filter_{i}");
+                    plain.push(crate::expr::col(&name));
+                    computed.push(p.name(&name));
+                } else {
+                    plain.push(p);
+                }
+            }
+            return self.mutate(computed)?.filter(plain)?.select(names.iter());
+        }
         let d = self.rel.deref_map();
         let predicates =
             predicates.into_iter().map(|p| self.bind_with(p, Ctx::Filter, &d)).collect::<Result<Vec<_>>>()?;

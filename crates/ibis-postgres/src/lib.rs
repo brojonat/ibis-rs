@@ -143,6 +143,11 @@ impl Dialect for PostgresDialect {
             }
             // LEVENSHTEIN is in the fuzzystrmatch extension
             Func::Levenshtein => Some(format!("CAST(LEVENSHTEIN({}, {}) AS BIGINT)", a(0)?, a(1)?)),
+            // CAST raises on a value that does not fit, and there is no TRY_CAST
+            Func::TryCast => return Err(Error::Unsupported { backend: "postgres".into(), op: "try_cast".into() }),
+            Func::TypeOf => Some(format!("CAST(PG_TYPEOF({}) AS TEXT)", a(0)?)),
+            Func::Hash => Some(format!("HASHTEXTEXTENDED(CAST({} AS TEXT), 0)", a(0)?)),
+            Func::HexDigest => Some(format!("ENCODE(SHA256(CONVERT_TO({}, 'UTF8')), 'hex')", a(0)?)),
             Func::IsInf => {
                 let x = a(0)?;
                 Some(format!(

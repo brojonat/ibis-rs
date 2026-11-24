@@ -107,6 +107,24 @@ pub fn register(conn: &Connection) -> Result<()> {
         let rep: String = ctx.get(2)?;
         Ok(text(ctx, 0)?.map(|s| re.replace_all(&s, rep.as_str()).into_owned()))
     })?;
+    // An int64 from any value: FNV-1a over its type and its text.
+    conn.create_scalar_function("ibis_hash", 1, DET, |ctx| {
+        let v = ctx.get_raw(0);
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        let mut feed = |bytes: &[u8]| {
+            for b in bytes {
+                h = (h ^ u64::from(*b)).wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        };
+        feed(&[v.data_type() as u8]);
+        match v {
+            rusqlite::types::ValueRef::Null => {}
+            rusqlite::types::ValueRef::Integer(i) => feed(&i.to_le_bytes()),
+            rusqlite::types::ValueRef::Real(f) => feed(&f.to_le_bytes()),
+            rusqlite::types::ValueRef::Text(t) | rusqlite::types::ValueRef::Blob(t) => feed(t),
+        }
+        Ok(h as i64)
+    })?;
     // UPPER and LOWER know ASCII only.
     conn.create_scalar_function("ibis_upper", 1, DET, |ctx| Ok(text(ctx, 0)?.map(|s| s.to_uppercase())))?;
     conn.create_scalar_function("ibis_lower", 1, DET, |ctx| Ok(text(ctx, 0)?.map(|s| s.to_lowercase())))?;

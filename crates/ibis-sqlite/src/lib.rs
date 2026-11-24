@@ -195,6 +195,13 @@ impl Dialect for SqliteDialect {
             Func::Levenshtein => Some(format!("ibis_levenshtein({}, {})", a(0)?, a(1)?)),
             Func::Upper => Some(format!("ibis_upper({})", a(0)?)),
             Func::Lower => Some(format!("ibis_lower({})", a(0)?)),
+            Func::IdenticalTo => Some(format!("({} IS {})", a(0)?, a(1)?)),
+            // CAST gives 0 for text that is no number, and there is no SHA-256
+            Func::TryCast | Func::HexDigest => {
+                return Err(Error::Unsupported { backend: "sqlite".into(), op: format!("{f:?}") });
+            }
+            // a function this crate registers on the connection (polyfill.rs)
+            Func::Hash => Some(format!("ibis_hash({})", a(0)?)),
             Func::IsInf => Some(format!("(ABS({}) = 9e999)", a(0)?)),
             Func::Radians => Some(format!("({} * 0.017453292519943295)", a(0)?)),
             Func::Degrees => Some(format!("({} * 57.29577951308232)", a(0)?)),

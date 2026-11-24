@@ -1210,6 +1210,15 @@ impl ExprCompiler<'_> {
             BitwiseRightShift => format!("({} >> {})", bigint(x)?, a[1]),
             BitwiseNot => format!("(~{x})"),
             Random => "RANDOM()".into(),
+            IdenticalTo => format!("({x} IS NOT DISTINCT FROM {})", a[1]),
+            TryCast => {
+                let t = ibis_core::expr::type_arg(&args[1])?;
+                format!("TRY_CAST({x} AS {})", self.d.cast_type_name(&t)?)
+            }
+            TypeOf => format!("TYPEOF({x})"),
+            // HASH is unsigned: the same 64 bits, read as signed
+            Hash => format!("CAST(CAST(HASH({x}) AS BIT) AS BIGINT)"),
+            HexDigest => format!("SHA256({x})"),
             IsInf => format!("ISINF({x})"),
             Clip => {
                 let open = |e: &Expr| matches!(e, Expr::Literal(Value::Null, _));

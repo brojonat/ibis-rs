@@ -398,3 +398,90 @@ for dtype in [
     "date",
 ]:  # fmt: skip
     r.add(f"test_literal_na[{dtype}]", scalar(lambda dtype=dtype: ibis.literal(None, type=dtype)))
+
+# --- more of test_generic.py --------------------------------------------------
+import decimal  # noqa: E402
+
+r.add("test_null_literal#1", scalar(lambda: ibis.null()))
+r.add("test_null_literal#2", scalar(lambda: ibis.null().cast(str).upper()))
+r.add("test_null_literal_typed#1", scalar(lambda: ibis.null(bool)))
+r.add("test_null_literal_typed#2", scalar(lambda: ~ibis.null(bool)))
+r.add("test_null_literal_typed#3", scalar(lambda: ibis.null(bool).cast(str).upper()))
+r.add("test_boolean_literal", scalar(lambda: ibis.literal(False, type="boolean")))
+r.add("test_identical_to", column(lambda t: t.tinyint_col.identical_to(t.double_col)))
+# the Ibis test compares the whole frame; the ids say which rows are kept
+r.add(
+    "test_filter_with_window_op",
+    table(lambda t: t.filter(lambda t: t["id"].mean().over(ibis.window(group_by=t.id)) > 3).select("id")),
+)
+r.add("test_mutate_rename", table(lambda t: t.select("id", "bool_col", "string_col").mutate(dupe_col=_.bool_col)))
+r.add("test_int_column", table(lambda t: t.mutate(x=ibis.literal(1)).select("x")))
+r.add("test_int_scalar", column(lambda t: t.int_col.min()))
+r.add(
+    "test_select_distinct_order_by_alias",
+    tables(lambda c: c.mem("xy_dups").select(y="x", x="y").distinct().order_by("x", "y"), ordered=True),
+)
+r.add("test_select_mutate_with_dict", table(lambda t: t.mutate({"a": 1.0}).select("a").limit(1)))
+r.add("test_select_scalar", table(lambda t: t.select(y=ibis.literal(1)).limit(3)))
+r.add(
+    "test_select_sort_sort_deferred",
+    table(
+        lambda t: t.order_by(t.tinyint_col, t.bool_col, t.id)
+        .order_by(_.bool_col.asc(), (_.tinyint_col + 1).desc())
+        .select("bool_col", "tinyint_col", "id"),
+        ordered=True,
+    ),
+)
+
+
+def _predictable_aliases(c):
+    t = c.mem("penguin")
+    sub1 = t.inner_join(t.view(), "island").mutate(island_right=lambda t: t.island)
+    sub2 = t.inner_join(t.view(), "sex").mutate(sex_right=lambda t: t.sex)
+    return ibis.union(sub1, sub2)
+
+
+r.add("test_union_generates_predictable_aliases", tables(_predictable_aliases))
+r.add(
+    "test_comparison_with_decimal_literal",
+    tables(lambda c: c.mem("decimal_ints").filter(_.numbers == decimal.Decimal(2))),
+)
+r.params(
+    "test_cast",
+    {
+        "array": scalar(lambda: ibis.literal([0, 1, 2], type="array<int>").cast("array<string>")),
+        "struct": scalar(
+            lambda: ibis.literal({"a": 0, "b": "1"}, type="struct<a: int, b: string>").cast("struct<a: string, b: int>")
+        ),
+    },
+)
+# a timestamp tried as an integer is NULL on DuckDB, which the Ibis test marks wrong there
+r.params(
+    "test_try_cast",
+    {
+        "0-float-0.0": scalar(lambda: ibis.literal(0).try_cast("float")),
+        "0.0-int-0": scalar(lambda: ibis.literal(0.0).try_cast("int")),
+        "0-int-0": scalar(lambda: ibis.literal("0").try_cast("int")),
+        "0.0-float-0.0": scalar(lambda: ibis.literal("0.0").try_cast("float")),
+    },
+)
+r.params(
+    "test_try_cast_null",
+    {
+        "a-int": scalar(lambda: ibis.literal("a").try_cast("int")),
+        "2023-01-01 00:00:00-int": scalar(lambda: ibis.timestamp("2023-01-01 00:00:00").try_cast("int")),
+    },
+)
+r.add(
+    "test_try_cast_table",
+    tables(lambda c: c.mem("try_cast_ab").try_cast({"a": "int", "b": "float"}).order_by("a"), ordered=True),
+)
+r.params(
+    "test_try_cast_func",
+    {
+        "string-to-float": scalar(lambda: ibis.literal("a").try_cast("float")),
+        "datetime-to-float": scalar(lambda: ibis.timestamp("2023-01-01 00:00:00").try_cast("float")),
+    },
+)
+# the Ibis test reads the first ten rows in the order of id
+r.add("test_hexdigest", column(lambda t: t.string_col.hexdigest()))

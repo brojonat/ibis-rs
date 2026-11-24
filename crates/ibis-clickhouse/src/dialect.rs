@@ -224,6 +224,13 @@ impl Dialect for ClickHouseDialect {
                 Some(format!("CASE WHEN length({x}) > 0 THEN arrayStringConcat({x}, {}) ELSE NULL END", a(1)?))
             }
             Func::Levenshtein => return cast(format!("editDistanceUTF8({}, {})", a(0)?, a(1)?), DataType::Int64),
+            Func::TryCast => {
+                let t = ibis_core::expr::type_arg(&args[1])?;
+                Some(format!("accurateCastOrNull({}, '{}')", a(0)?, self.type_name(&t)?))
+            }
+            Func::TypeOf => Some(format!("toTypeName({})", a(0)?)),
+            Func::Hash => Some(format!("reinterpretAsInt64(sipHash64({}))", a(0)?)),
+            Func::HexDigest => Some(format!("lower(hex(SHA256({})))", a(0)?)),
             Func::IsInf => Some(format!("isInfinite({})", a(0)?)),
             Func::Cot => Some(format!("(1 / tan({}))", a(0)?)),
             Func::DayOfWeekIndex => return cast(format!("toDayOfWeek({}) - 1", a(0)?), DataType::Int16),

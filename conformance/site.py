@@ -144,7 +144,8 @@ def client_cases(repo: str, ids: list[str], mine: dict[str, dict[str, list[dict]
     """Add the tests that are procedures (crates/ibis-conformance/src/client.rs
     for the connection API, dot_sql.rs for test_dot_sql, reductions.rs for
     test_aggregation, moments.rs for test_temporal, random.rs for
-    test_numeric, strings.rs for test_string) to `mine`. They have no Python side: results ids are
+    test_numeric, strings.rs for test_string, engine.rs for test_generic)
+    to `mine`. They have no Python side: results ids are
     `client::<module>::<pytest id>`."""
     src = "crates/ibis-conformance/src"
     by_module = {
@@ -153,6 +154,7 @@ def client_cases(repo: str, ids: list[str], mine: dict[str, dict[str, list[dict]
         "test_temporal": "moments.rs",
         "test_numeric": "random.rs",
         "test_string": "strings.rs",
+        "test_generic": "engine.rs",
     }
     files = {name: (ROOT / src / name).read_text().splitlines() for name in ("client.rs", *by_module.values())}
     for case_id in ids:

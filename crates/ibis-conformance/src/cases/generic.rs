@@ -453,4 +453,97 @@ pub fn register(v: &mut Vec<Case>) {
     for (id, dtype) in na {
         v.push(scalar(&p("test_literal_na", id), move || Ok(null(dtype.clone()))));
     }
+
+    more(v);
+}
+
+/// More of test_generic.py, in the order of the Python file.
+fn more(v: &mut Vec<Case>) {
+    use DataType as T;
+    let no_nested = super::NO_NESTED;
+    v.push(scalar("test_null_literal#1", || Ok(null(T::Null))));
+    v.push(scalar("test_null_literal#2", || Ok(null(T::Null).cast(T::String).upper())));
+    v.push(scalar("test_null_literal_typed#1", || Ok(null(T::Boolean))));
+    v.push(scalar("test_null_literal_typed#2", || Ok(!null(T::Boolean))));
+    v.push(scalar("test_null_literal_typed#3", || Ok(null(T::Boolean).cast(T::String).upper())));
+    v.push(scalar("test_boolean_literal", || Ok(lit_as(false, T::Boolean))));
+    v.push(column("test_identical_to", |_| Ok(c("tinyint_col").identical_to(c("double_col")))));
+    v.push(table("test_filter_with_window_op", |t| {
+        let mean = c("id").mean().over(WindowSpec::new().partition_by(["id"]));
+        t.filter([mean.gt(3)])?.select(["id"])
+    }));
+    v.push(table("test_mutate_rename", |t| {
+        t.select(["id", "bool_col", "string_col"])?.mutate([c("bool_col").name("dupe_col")])
+    }));
+    v.push(table("test_int_column", |t| t.mutate([lit(1).name("x")])?.select(["x"])));
+    v.push(column("test_int_scalar", |_| Ok(c("int_col").min())));
+    v.push(
+        tables("test_select_distinct_order_by_alias", |fx| {
+            fx.mem("xy_dups")?.select([c("x").name("y"), c("y").name("x")])?.distinct().order_by(["x", "y"])
+        })
+        .ordered(),
+    );
+    v.push(table("test_select_mutate_with_dict", |t| Ok(t.mutate([lit(1.0).name("a")])?.select(["a"])?.limit(1, 0))));
+    v.push(table("test_select_scalar", |t| Ok(t.select([lit(1).name("y")])?.limit(3, 0))));
+    v.push(
+        table("test_select_sort_sort_deferred", |t| {
+            t.order_by(["tinyint_col", "bool_col", "id"])?
+                .order_by([c("bool_col").asc(), (c("tinyint_col") + 1).desc()])?
+                .select(["bool_col", "tinyint_col", "id"])
+        })
+        .ordered(),
+    );
+    v.push(tables("test_union_generates_predictable_aliases", |fx| {
+        let t = fx.mem("penguin")?;
+        let sub1 = t.inner_join(&t.view(), ["island"])?.mutate([c("island").name("island_right")])?;
+        let sub2 = t.inner_join(&t.view(), ["sex"])?.mutate([c("sex").name("sex_right")])?;
+        sub1.union(&sub2, false)
+    }));
+    v.push(tables("test_comparison_with_decimal_literal", |fx| {
+        let two = lit_as(2, T::Decimal { precision: 38, scale: 9 });
+        fx.mem("decimal_ints")?.filter([c("numbers").eq(two)])
+    }));
+    v.push(
+        scalar("test_cast[array]", || Ok(lit_as(vec![0, 1, 2], T::array(T::Int64)).cast(T::array(T::String))))
+            .notimpl(&no_nested),
+    );
+    v.push(
+        scalar("test_cast[struct]", || {
+            let from = T::structure(&[("a", T::Int64), ("b", T::String)]);
+            let value = Value::Struct(vec![("a".into(), Value::Int(0)), ("b".into(), Value::String("1".into()))]);
+            Ok(lit_as(value, from).cast(T::structure(&[("a", T::String), ("b", T::Int64)])))
+        })
+        .notimpl(&no_nested),
+    );
+
+    // Postgres, MySQL and SQLite have no cast that gives NULL instead of failing (as in Ibis)
+    let no_try: &[&str] = &["postgres", "mysql", "sqlite"];
+    let tries: [(&str, fn() -> Expr); 8] = [
+        ("test_try_cast[0-float-0.0]", || lit(0).try_cast(T::Float64)),
+        ("test_try_cast[0.0-int-0]", || lit(0.0).try_cast(T::Int64)),
+        ("test_try_cast[0-int-0]", || lit("0").try_cast(T::Int64)),
+        ("test_try_cast[0.0-float-0.0]", || lit("0.0").try_cast(T::Float64)),
+        ("test_try_cast_null[a-int]", || lit("a").try_cast(T::Int64)),
+        ("test_try_cast_null[2023-01-01 00:00:00-int]", || timestamp("2023-01-01 00:00:00").try_cast(T::Int64)),
+        ("test_try_cast_func[string-to-float]", || lit("a").try_cast(T::Float64)),
+        ("test_try_cast_func[datetime-to-float]", || timestamp("2023-01-01 00:00:00").try_cast(T::Float64)),
+    ];
+    // A timestamp tried as a number is NULL on DuckDB, where the goldens are
+    // from. These engines count its seconds or refuse (Ibis marks them too).
+    let no_null: &[&str] = &["polars", "clickhouse", "trino", "spark", "impala"];
+    for (id, f) in tries {
+        let case = scalar(id, move || Ok(f())).notimpl(no_try);
+        v.push(if id.contains("2023") || id.contains("datetime") { case.notimpl(no_null) } else { case });
+    }
+    v.push(
+        tables("test_try_cast_table", |fx| {
+            fx.mem("try_cast_ab")?
+                .mutate([c("a").try_cast(T::Int64).name("a"), c("b").try_cast(T::Float64).name("b")])?
+                .order_by(["a"])
+        })
+        .ordered()
+        .notimpl(no_try),
+    );
+    // no SHA-256 in SQLite or Polars (as in Ibis)
+    v.push(column("test_hexdigest", |_| Ok(c("string_col").hexdigest())).notimpl(&["sqlite", "polars"]));
 }

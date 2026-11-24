@@ -276,5 +276,17 @@
  "arr_empty_abc": {
   "columns": [["arr", "array<string>"]],
   "rows": [[[]], [["a", "b", "c"]]]
+ },
+ "xy_dups": {
+  "columns": [["x", "int64"], ["y", "int64"]],
+  "rows": [[1, 10], [2, 9], [3, 8], [3, 8]]
+ },
+ "penguin": {
+  "columns": [["island", "string"], ["body_mass_g", "int64"], ["sex", "string"]],
+  "rows": [["Torgerson", 3750, "male"]]
+ },
+ "try_cast_ab": {
+  "columns": [["a", "string"], ["b", "string"]],
+  "rows": [["1", "1.0"], ["2", "2.2"], [null, "goodbye"]]
  }
 }

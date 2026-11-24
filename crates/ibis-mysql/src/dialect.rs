@@ -160,6 +160,12 @@ impl Dialect for MySqlDialect {
             Func::Translate | Func::Levenshtein | Func::StringSplit | Func::RegexSplit | Func::ArrayStringJoin => {
                 return unsupported(format!("{f:?}"));
             }
+            Func::IdenticalTo => Some(format!("({} <=> {})", a(0)?, a(1)?)),
+            // CAST gives 0 with a warning for text that is no number
+            Func::TryCast | Func::TypeOf => return unsupported(format!("{f:?}")),
+            // no hash to an integer: the first 64 bits of the MD5, read as signed
+            Func::Hash => Some(format!("CAST(CONV(LEFT(MD5({}), 16), 16, -10) AS SIGNED)", a(0)?)),
+            Func::HexDigest => Some(format!("SHA2({}, 256)", a(0)?)),
             Func::IsNan | Func::IsInf => Some(never(a(0)?)),
             // ROUND of a DOUBLE rounds half to even; Ibis rounds half away from zero
             Func::Round if c.dtype(&args[0])?.is_floating() => {

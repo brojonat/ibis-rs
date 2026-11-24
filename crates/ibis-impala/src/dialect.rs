@@ -156,6 +156,13 @@ impl Dialect for ImpalaDialect {
                 Some(format!("CASE WHEN {len} >= {n} THEN {x} ELSE {padded} END"))
             }
             Func::Levenshtein => Some(format!("CAST(LEVENSHTEIN({}, {}) AS BIGINT)", a(0)?, a(1)?)),
+            // a CAST that cannot be done is NULL here
+            Func::TryCast => {
+                let t = ibis_core::expr::type_arg(&args[1])?;
+                Some(format!("CAST({} AS {})", a(0)?, self.cast_type_name(&t)?))
+            }
+            Func::Hash => Some(format!("FNV_HASH({})", a(0)?)),
+            Func::HexDigest => Some(format!("SHA2({}, 256)", a(0)?)),
             Func::IsInf => Some(format!("IS_INF({})", a(0)?)),
             // DAYOFWEEK: 1 is Sunday
             Func::DayOfWeekIndex => Some(format!("CAST(PMOD(DAYOFWEEK({}) - 2, 7) AS SMALLINT)", a(0)?)),

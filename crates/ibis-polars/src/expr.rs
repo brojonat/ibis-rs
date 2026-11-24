@@ -367,6 +367,12 @@ impl Tx<'_> {
             Cot => f64_of(x).cot(),
             IsNan => f64_of(x).is_nan(),
             IsInf => f64_of(x).is_infinite(),
+            IdenticalTo => x.eq_missing(a[1].clone()),
+            // a cast that is not strict gives NULL where the value does not fit
+            TryCast => x.cast(t),
+            // an unsigned 64-bit hash, brought into the range of an int64
+            Hash => (x.hash(0, 0, 0, 0) % pl::lit(1u64 << 63)).cast(pl::DataType::Int64),
+            TypeOf | HexDigest => return unsupported(format!("{f:?}")),
             BitwiseAnd => x.cast(t.clone()).and(a[1].clone().cast(t)),
             BitwiseOr => x.cast(t.clone()).or(a[1].clone().cast(t)),
             BitwiseXor => x.cast(t.clone()).xor(a[1].clone().cast(t)),

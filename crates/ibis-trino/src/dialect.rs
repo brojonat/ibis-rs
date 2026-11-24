@@ -247,6 +247,8 @@ impl Dialect for TrinoDialect {
                 Some(format!("CASE WHEN CARDINALITY({x}) = 0 THEN NULL ELSE ARRAY_JOIN({x}, {}) END", a(1)?))
             }
             Func::Levenshtein => Some(format!("LEVENSHTEIN_DISTANCE({}, {})", a(0)?, a(1)?)),
+            Func::Hash => Some(format!("FROM_BIG_ENDIAN_64(XXHASH64(TO_UTF8(CAST({} AS VARCHAR))))", a(0)?)),
+            Func::HexDigest => Some(format!("LOWER(TO_HEX(SHA256(TO_UTF8({}))))", a(0)?)),
             Func::IsInf => Some(format!("IS_INFINITE({})", a(0)?)),
             Func::Cot => Some(format!("(1E0 / TAN({}))", a(0)?)),
             // DAY_OF_WEEK: 1 is Monday

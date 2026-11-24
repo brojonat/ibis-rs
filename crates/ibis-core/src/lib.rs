@@ -302,6 +302,23 @@ mod tests {
     }
 
     #[test]
+    fn a_window_in_a_filter_is_computed_first() {
+        let t = alltypes();
+        let dtype = |e: Expr| t.select([e.name("x")]).map(|t| t.schema().fields[0].dtype.to_string());
+        assert_eq!(dtype(col("int_col").identical_to(col("double_col"))).unwrap(), "boolean");
+        assert_eq!(dtype(col("string_col").try_cast(DataType::Int64)).unwrap(), "int64");
+        assert_eq!(dtype(col("int_col").typeof_()).unwrap(), "string");
+        assert_eq!(dtype(col("double_col").hash()).unwrap(), "int64");
+        assert_eq!(dtype(col("string_col").hexdigest()).unwrap(), "string");
+        assert!(dtype(col("int_col").hexdigest()).is_err());
+        // the filtered table has the columns it had, and the window is under the filter
+        let mean = col("int_col").mean().over(WindowSpec::new().partition_by(["id"]));
+        let kept = t.filter([mean.gt(3), col("id").gt(0)]).unwrap();
+        assert_eq!(kept.schema(), t.schema());
+        assert!(t.filter([col("int_col").mean().over(WindowSpec::new())]).is_err(), "a predicate is boolean");
+    }
+
+    #[test]
     fn epochs_and_deltas_have_ibis_types() {
         use IntervalUnit::*;
         let t = alltypes();

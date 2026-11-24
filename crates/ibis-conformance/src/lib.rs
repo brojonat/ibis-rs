@@ -4,6 +4,7 @@
 pub mod cases;
 pub mod client;
 mod dot_sql;
+mod engine;
 mod moments;
 mod random;
 mod reductions;

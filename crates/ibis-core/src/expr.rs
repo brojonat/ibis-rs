@@ -299,6 +299,18 @@ pub enum Func {
     /// `(a, b)`: how many characters to insert, delete or replace to turn
     /// one string into the other.
     Levenshtein,
+    /// `(a, b)`: equal, or both NULL; never NULL itself.
+    IdenticalTo,
+    /// `(x, type)`: `x` as the type the string names, NULL where it
+    /// cannot be one.
+    TryCast,
+    /// The engine's own name for the type of a value.
+    TypeOf,
+    /// An int64 the engine computes from a value, the same for the same
+    /// value; which int64 is the engine's business.
+    Hash,
+    /// The SHA-256 of a string, as 64 hexadecimal digits.
+    HexDigest,
     // arrays. Positions are **0-based** everywhere, as in Ibis.
     /// `array(a, b, ...)`: an array of the arguments.
     Array,
@@ -1039,6 +1051,29 @@ impl Expr {
         let base = self.clone().min() - lit(1e-13);
         let width = (self.clone().max() - base.clone()) / lit(nbins);
         ((self - base) / width).floor().clip(Some(lit(-1)), Some(lit(nbins - 1)))
+    }
+    /// Equal, where NULL equals NULL: true or false, never NULL (Ibis
+    /// `identical_to`, SQL `IS NOT DISTINCT FROM`).
+    pub fn identical_to(self, other: impl Into<Expr>) -> Expr {
+        func(Func::IdenticalTo, vec![self, other.into()])
+    }
+    /// This value as type `t`, NULL where it cannot be one (Ibis `try_cast`).
+    pub fn try_cast(self, t: DataType) -> Expr {
+        func(Func::TryCast, vec![self, lit(t.to_string())])
+    }
+    /// The engine's name for this value's type, a string (Ibis `typeof`,
+    /// which is a reserved word in Rust).
+    pub fn typeof_(self) -> Expr {
+        func(Func::TypeOf, vec![self])
+    }
+    /// An int64 hash of this value: equal values hash alike, and each
+    /// engine has its own function (Ibis `hash`).
+    pub fn hash(self) -> Expr {
+        func(Func::Hash, vec![self])
+    }
+    /// The SHA-256 of this string as hexadecimal digits (Ibis `hexdigest`).
+    pub fn hexdigest(self) -> Expr {
+        func(Func::HexDigest, vec![self])
     }
     /// Each character found in `from` replaced by the character at the
     /// same place in `to` (Ibis `translate`).
@@ -2066,6 +2101,9 @@ impl Expr {
                 if let Some(form) = string_form(*f, args, &ts) {
                     return form.dtype(schema);
                 }
+                if *f == Func::TryCast {
+                    return type_arg(&args[1]);
+                }
                 let literal_name = |e: &Expr| match e.unaliased() {
                     Expr::Literal(Value::String(s), _) => Ok(s.clone()),
                     other => invalid(format!("{f:?}: a field name must be a string literal, got {other}")),
@@ -2262,6 +2300,14 @@ fn fixed_micros(e: &Expr) -> Result<i64> {
     Ok(total)
 }
 
+/// The type a `TryCast` names in its second argument.
+pub fn type_arg(e: &Expr) -> Result<DataType> {
+    match e {
+        Expr::Literal(Value::String(name), _) => name.parse(),
+        other => invalid(format!("a type is named by a string literal, got {other}")),
+    }
+}
+
 /// What a function means when its arguments turn out to be strings where
 /// it was built for arrays, or the other way round, as an expression of
 /// functions that say so; `None` if it means what it says. Python's
@@ -2450,6 +2496,17 @@ fn func_dtype(f: Func, ts: &[DataType]) -> Result<DataType> {
             }
         }
         Random => T::Float64,
+        IdenticalTo => T::Boolean,
+        // typed from its argument, where the expression is at hand (`Expr::dtype`)
+        TryCast => return invalid("try_cast is typed by the type it names"),
+        TypeOf => T::String,
+        Hash => T::Int64,
+        HexDigest => {
+            if first != T::String && first != T::Null {
+                return invalid(format!("hexdigest needs a string, got {first}"));
+            }
+            T::String
+        }
         Translate | StringSplit | RegexSplit | Levenshtein | StringJoin => {
             if let Some(t) = ts.iter().find(|t| **t != T::String && **t != T::Null) {
                 return invalid(format!("{f:?} needs strings, got {t}"));
